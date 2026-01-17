@@ -1,0 +1,71 @@
+#root {
+  padding: 0;
+  margin: 0;
+  scroll-behavior: smooth;
+}
+
+.text-hover-black:hover{
+  background-color: black;
+  color: #fff;
+}
+
+.text-active-white:active{
+  background-color: #fff;
+  color: black;
+}
+.cursor {
+  cursor: pointer;
+}
+
+.text-red {
+  color: #8B0000
+}
+.bg-red {
+  background-color: #8B0000;
+}
+
+.frosted {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); /* Safari */
+  background: rgba(255,255,255,0.35); /* translucent */
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+
+@keyframes slideIn {
+        from {
+            transform: translateX(-100%);
+        }
+        to {
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    /* Custom scrollbar for webkit browsers (Chrome, Safari, Edge) */
+    .vh-100::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .vh-100::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .vh-100::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+    }
+
+    .vh-100::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+}
