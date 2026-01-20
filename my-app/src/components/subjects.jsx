@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
-
+import * as XLSX from 'xlsx';
 
 
 
@@ -66,6 +66,22 @@ const SubjectManagement = () => {
     const [availableSections, setAvailableSections] = useState([]);
     const [loadingSections, setLoadingSections] = useState(false);
 
+
+
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [excelFile, setExcelFile] = useState(null);
+    const [excelData, setExcelData] = useState([]);
+    const [excelPreview, setExcelPreview] = useState([]);
+    const [importErrors, setImportErrors] = useState([]);
+    const [isProcessingExcel, setIsProcessingExcel] = useState(false);
+
+    
+
+    // After existing states (around line 40)
+    const [manualRows, setManualRows] = useState([]);
+
+
+
     const navigate = useNavigate();
 
 
@@ -119,6 +135,7 @@ const SubjectManagement = () => {
 
 
 
+
     // Ilagay mo after ng fetchTeachers function
     const fetchSections = async (gradeLevel, track, strand, semester) => {
         try {
@@ -142,6 +159,10 @@ const SubjectManagement = () => {
             setLoadingSections(false);
         }
     };
+
+
+
+
 
 
     const fetchTeachers = async () => {
@@ -203,16 +224,17 @@ const SubjectManagement = () => {
             subjectCode: '',
             gradeLevel: 11,
             strand: '',
-            section: '',
             semester: 1,
             subjectType: 'core',
             track: '',
             teacher: '',
             // ✅ SIMPLE SCHEDULE FIELDS
-            scheduleDay: '',
-            scheduleStartTime: '',
-            scheduleEndTime: '',
-            room: ''
+            // scheduleDay: '',
+            // scheduleStartTime: '',
+            // scheduleEndTime: '',
+            // room: ''
+            // section: '',
+
         });
         setModalType('add');
         setShowModal(true);
@@ -249,6 +271,7 @@ const SubjectManagement = () => {
 
 
     const handleSubmitSubject = async () => {
+
         if (
             !selectedSubject.subjectName.trim() ||
             !selectedSubject.subjectCode.trim() ||
@@ -308,8 +331,6 @@ const SubjectManagement = () => {
         
         }
     };
-
-
 
     const confirmDelete = async () => {
         try {
@@ -450,9 +471,280 @@ const SubjectManagement = () => {
     };
 
         
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Check if Excel file
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        if (!['xlsx', 'xls'].includes(fileExtension)) {
+            showAlert('Please upload a valid Excel file (.xlsx or .xls)', 'error');
+            return;
+        }
+        
+        setExcelFile(file);
+        processExcelFile(file);
+    };
 
 
 
+    const processExcelFile = async (file) => {
+        try {
+            setIsProcessingExcel(true);
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
+            const validatedData = [];
+            const errors = [];
+            
+            jsonData.forEach((row, index) => {
+                const rowNum = index + 2;
+                const rowErrors = [];
+                
+                // ✅ NORMALIZE KEYS - handle spaces and case variations
+                const normalizedRow = {};
+                Object.keys(row).forEach(key => {
+                    const normalizedKey = key.replace(/\s+/g, '').toLowerCase();
+                    const keyMap = {
+                        'subjectcode': 'subjectCode',
+                        'subjectname': 'subjectName',
+                        'gradelevel': 'gradeLevel',
+                        'grade': 'gradeLevel',
+                        'semester': 'semester',
+                        'semeseter': 'semester',
+                        'track': 'track',
+                        'strand': 'strand',
+                        'subjecttype': 'subjectType',
+                        'type': 'subjectType',
+                        'teachername': 'teacherName',
+                        'teacher': 'teacherName'
+                    };
+                    const mappedKey = keyMap[normalizedKey] || key;
+                    normalizedRow[mappedKey] = row[key];
+                });
+                
+                // ✅ Parse Grade Level (handle "Grade 11" or just "11")
+                let gradeLevel = normalizedRow.gradeLevel;
+                if (typeof gradeLevel === 'string') {
+                    gradeLevel = parseInt(gradeLevel.replace(/\D/g, ''));
+                }
+                normalizedRow.gradeLevel = gradeLevel;
+                
+                // Required field validation
+                if (!normalizedRow.subjectCode?.toString().trim()) {
+                    rowErrors.push(`Row ${rowNum}: Subject Code is required`);
+                }
+                if (!normalizedRow.subjectName?.toString().trim()) {
+                    rowErrors.push(`Row ${rowNum}: Subject Name is required`);
+                }
+                if (!normalizedRow.gradeLevel) {
+                    rowErrors.push(`Row ${rowNum}: Grade Level is required`);
+                }
+                if (!normalizedRow.semester) {
+                    rowErrors.push(`Row ${rowNum}: Semester is required`);
+                }
+                if (!normalizedRow.track?.toString().trim()) {
+                    rowErrors.push(`Row ${rowNum}: Track is required`);
+                }
+                if (!normalizedRow.strand?.toString().trim()) {
+                    rowErrors.push(`Row ${rowNum}: Strand is required`);
+                }
+                if (!normalizedRow.subjectType?.toString().trim()) {
+                    rowErrors.push(`Row ${rowNum}: Subject Type is required`);
+                }
+                if (!normalizedRow.teacherName?.toString().trim()) {
+                    rowErrors.push(`Row ${rowNum}: Teacher Name is required`);
+                }
+                
+                // Value validation
+                if (normalizedRow.gradeLevel && ![11, 12].includes(parseInt(normalizedRow.gradeLevel))) {
+                    rowErrors.push(`Row ${rowNum}: Grade Level must be 11 or 12`);
+                }
+                if (normalizedRow.semester && ![1, 2].includes(parseInt(normalizedRow.semester))) {
+                    rowErrors.push(`Row ${rowNum}: Semester must be 1 or 2`);
+                }
+                if (normalizedRow.track && !trackOptions.includes(normalizedRow.track.toString().trim())) {
+                    rowErrors.push(`Row ${rowNum}: Invalid Track (must be Academic or TVL)`);
+                }
+                
+                // ✅ Handle "CORE" vs "core"
+                const subjectType = normalizedRow.subjectType?.toString().toLowerCase().trim();
+                if (subjectType && !subjectTypeOptions.includes(subjectType)) {
+                    rowErrors.push(`Row ${rowNum}: Invalid Subject Type (must be core, specialized, or applied)`);
+                }
+                
+                if (rowErrors.length > 0) {
+                    errors.push(...rowErrors);
+                } else {
+                    const teacher = teachersList.find(t => 
+                        t.fullName.toLowerCase() === normalizedRow.teacherName.toString().trim().toLowerCase()
+                    );
+                    
+                    if (!teacher) {
+                        errors.push(`Row ${rowNum}: Teacher "${normalizedRow.teacherName}" not found`);
+                    } else {
+                        validatedData.push({
+                            subjectCode: normalizedRow.subjectCode.toString().trim().toUpperCase(),
+                            subjectName: normalizedRow.subjectName.toString().trim(),
+                            gradeLevel: parseInt(normalizedRow.gradeLevel),
+                            semester: parseInt(normalizedRow.semester),
+                            track: normalizedRow.track.toString().trim(),
+                            strand: normalizedRow.strand.toString().trim(),
+                            subjectType: subjectType,
+                            teacherId: teacher._id,
+                            teacherName: teacher.fullName
+                        });
+                    }
+                }
+            });
+            
+            setExcelData(validatedData);
+            setExcelPreview(validatedData.slice(0, 10));
+            setImportErrors(errors);
+            
+        } catch (error) {
+            console.error('Error processing Excel:', error);
+            showAlert('Error processing Excel file: ' + error.message, 'error');
+        } finally {
+            setIsProcessingExcel(false);
+        }
+    };
+
+
+
+
+
+
+
+
+
+    const handleBulkImport = async () => {
+
+
+        // ✅ VALIDATE MANUAL ROWS
+        const validManualRows = [];
+        const errors = [];
+        
+        manualRows.forEach((row, idx) => {
+            // Skip completely empty rows
+            if (!row.subjectCode && !row.subjectName) return;
+            
+            const rowNum = `Manual Row ${idx + 1}`;
+            
+            // Validate required fields
+            if (!row.subjectCode.trim()) errors.push(`${rowNum}: Subject Code required`);
+            if (!row.subjectName.trim()) errors.push(`${rowNum}: Subject Name required`);
+            if (!row.track) errors.push(`${rowNum}: Track required`);
+            if (!row.strand) errors.push(`${rowNum}: Strand required`);
+            if (!row.teacherId) errors.push(`${rowNum}: Teacher required`);
+            
+            if (errors.length === 0) {
+                validManualRows.push({
+                    subjectCode: row.subjectCode.trim().toUpperCase(),
+                    subjectName: row.subjectName.trim(),
+                    gradeLevel: row.gradeLevel,
+                    semester: row.semester,
+                    track: row.track,
+                    strand: row.strand,
+                    subjectType: row.subjectType,
+                    teacherId: row.teacherId,
+                    teacherName: row.teacherName
+                });
+            }
+        });
+        
+
+
+        if (errors.length > 0) {
+            showAlert(errors.join('\n'), 'error');
+            return;
+        }
+        
+        // ✅ COMBINE EXCEL + MANUAL
+        const allSubjects = [...excelData, ...validManualRows];
+        
+        if (allSubjects.length === 0) {
+            showAlert('No data to import', 'error');
+            return;
+        }
+        
+
+        console.log(allSubjects); // ✅ ADD THIS
+        if(true) return
+
+
+        try {
+            setIsProcessingExcel(true);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bulkAddSubjects`, {
+                method: 'POST',
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ subjects: allSubjects }),
+                credentials: "include",
+            });
+            
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            
+            showAlert(`Successfully imported ${data.imported} subject(s)!`, 'success');
+            setShowImportModal(false);
+            resetImportState();
+            fetchSubjectsData();
+            
+        } catch (error) {
+            console.error('Bulk import error:', error);
+            showAlert('Failed to import: ' + error.message, 'error');
+        } finally {
+            setIsProcessingExcel(false);
+        }
+    };
+
+
+    const resetImportState = () => {
+        setExcelFile(null);
+        setExcelData([]);
+        setExcelPreview([]);
+        setImportErrors([]);
+        setManualRows([]); // ✅ ADD THIS
+    };
+
+
+    const createEmptyRow = () => ({
+        id: `manual-${Date.now()}-${Math.random()}`, // unique ID
+        subjectCode: '',
+        subjectName: '',
+        gradeLevel: 11,
+        semester: 1,
+        track: '',
+        strand: '',
+        subjectType: 'core',
+        teacherName: '',
+        teacherId: ''
+    });
+
+    const handleAddManualRow = () => {
+        setManualRows([...manualRows, createEmptyRow()]);
+    };
+
+
+    const updateManualRow = (id, field, value) => {
+        setManualRows(manualRows.map(row => 
+            row.id === id 
+                ? { ...row, [field]: value } 
+                : row
+        ));
+        console.log('Updated row:', id, field, value); // ✅ ADD THIS
+    };
+
+
+
+
+
+    const handleDeleteManualRow = (id) => {
+        setManualRows(manualRows.filter(row => row.id !== id));
+    };
 
     return (
         <>
@@ -464,13 +756,23 @@ const SubjectManagement = () => {
                                 <h4 className="text-capitalize fw-bold mb-1">subject management</h4>
                                 <p className="text-muted small mb-0">Manage academic subjects by grade level</p>
                             </div>
-                            <button 
-                                className="btn btn-danger"
-                                onClick={handleAddSubject}
-                            >
-                                <i className="fa fa-plus me-2"></i>
-                                Add Subject
-                            </button>
+
+                            <div className="d-flex gap-2">
+                                <button 
+                                    className="btn btn-outline-danger"
+                                    onClick={() => setShowImportModal(true)}
+                                >
+                                    <i className="fa fa-file-excel me-2"></i>
+                                    Import Excel
+                                </button>
+                                <button 
+                                    className="btn btn-danger"
+                                    onClick={handleAddSubject}
+                                >
+                                    <i className="fa fa-plus me-2"></i>
+                                    Add Subject
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -832,7 +1134,6 @@ const SubjectManagement = () => {
                                                             ...selectedSubject, 
                                                             track: e.target.value,
                                                             strand: '',
-                                                            section: '' 
                                                         });
                                                     }}
                                                 >
@@ -851,7 +1152,6 @@ const SubjectManagement = () => {
                                                         setSelectedSubject({
                                                             ...selectedSubject, 
                                                             strand: e.target.value,
-                                                            section: ''  
                                                         });
                                                     }}
                                                     disabled={!selectedSubject?.track || selectedSubject?.track === ''}
@@ -1138,6 +1438,356 @@ const SubjectManagement = () => {
                                     onClick={() => setShowAlertModal(false)}
                                 >
                                     OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Excel Modal */}
+            {showImportModal && (
+                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog modal-dialog-centered modal-xl">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">
+                                    <i className="fa fa-file-excel me-2 text-success"></i>
+                                    Import Subjects from Excel
+                                </h5>
+                                <button 
+                                    type="button" 
+                                    className="btn-close"
+                                    onClick={() => {
+                                        setShowImportModal(false);
+                                        resetImportState();
+                                    }}
+                                ></button>
+                            </div>
+                            
+                            <div className="modal-body">
+                                {/* File Upload Section */}
+                                <div className="mb-4">
+                                    <label className="form-label fw-bold">
+                                        <i className="fa fa-upload me-2"></i>Select Excel File
+                                    </label>
+                                    <input 
+                                        type="file"
+                                        className="form-control"
+                                        accept=".xlsx,.xls"
+                                        onChange={handleFileUpload}
+                                    />
+                                    <small className="text-muted d-block mt-2">
+                                        <i className="fa fa-info-circle me-1"></i>
+                                        Required columns: Subject Code, Subject Name, Grade Level, Semester, Track, Strand, Subject Type, Teacher Name
+                                    </small>
+                                </div>
+                                
+                                {/* Processing Indicator */}
+                                {isProcessingExcel && (
+                                    <div className="text-center py-4">
+                                        <div className="spinner-border text-danger" role="status">
+                                            <span className="visually-hidden">Processing...</span>
+                                        </div>
+                                        <p className="text-muted mt-2">Processing Excel file...</p>
+                                    </div>
+                                )}
+                                
+                                {/* Errors Display */}
+                                {importErrors.length > 0 && (
+                                    <div className="alert alert-danger">
+                                        <h6 className="alert-heading">
+                                            <i className="fa fa-exclamation-triangle me-2"></i>
+                                            Validation Errors ({importErrors.length})
+                                        </h6>
+                                        <div style={{maxHeight: '200px', overflowY: 'auto'}}>
+                                            {importErrors.map((error, idx) => (
+                                                <small key={idx} className="d-block">{error}</small>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Preview Table */}
+                                {excelPreview.length > 0 && (
+                                    <>
+                                        <div className="alert alert-success">
+                                            <i className="fa fa-check-circle me-2"></i>
+                                            Found {excelData.length} valid subject(s) ready to import
+                                        </div>
+                                        
+                                        <label className="form-label fw-bold">Preview (First 10 records)</label>
+                                        <div className="table-responsive" style={{maxHeight: '400px', overflowY: 'auto'}}>
+                                            <table className="table table-sm table-bordered">
+                                                <thead className="bg-light sticky-top">
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Code</th>
+                                                        <th>Subject Name</th>
+                                                        <th>Grade</th>
+                                                        <th>Sem</th>
+                                                        <th>Track</th>
+                                                        <th>Strand</th>
+                                                        <th>Type</th>
+                                                        <th>Teacher</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {excelPreview.map((subject, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>{idx + 1}</td>
+                                                            <td className="font-monospace">{subject.subjectCode}</td>
+                                                            <td>{subject.subjectName}</td>
+                                                            <td>Grade {subject.gradeLevel}</td>
+                                                            <td>{subject.semester}</td>
+                                                            <td>{subject.track}</td>
+                                                            <td>{subject.strand}</td>
+                                                            <td className="text-capitalize">{subject.subjectType}</td>
+                                                            <td>{subject.teacherName}</td>
+                                                        </tr>
+                                                    ))}
+
+
+                                                    {manualRows.map((row) => (
+                                                        <tr key={row.id} className="table-warning">
+                                                            <td>
+                                                                <span className="badge bg-success">NEW</span>
+                                                            </td>
+                                                            
+                                                            {/* Subject Code */}
+                                                            <td>
+                                                                <input 
+                                                                    type="text"
+                                                                    className="form-control form-control-sm text-monospace"
+                                                                    value={row.subjectCode}
+                                                                    
+                                                                    onChange={(e) => {
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { ...r, subjectCode: e.target.value.toUpperCase() }
+                                                                                : r
+                                                                        ));
+                                                                    }}
+                                                                    placeholder="CODE"
+                                                                />
+                                                            </td>
+                                                            
+                                                            {/* Subject Name */}
+                                                            <td>
+                                                                <input 
+                                                                    type="text"
+                                                                    className="form-control form-control-sm text-capitalize"
+                                                                    value={row.subjectName}
+                                                                    
+                                                                     
+                                                                    onChange={(e) => {
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { ...r, subjectName: e.target.value }
+                                                                                : r
+                                                                        ));
+                                                                    }}
+                                                                    
+                                                                    placeholder="Subject Name"
+                                                                />
+                                                            </td>
+                                                            
+                                                            {/* Grade Level */}
+                                                            <td>
+                                                                <select 
+                                                                    className="form-select form-select-sm"
+                                                                    value={row.gradeLevel}
+                                                                    
+                                                                    onChange={(e) => {
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { ...r, gradeLevel: e.target.value }
+                                                                                : r
+                                                                        ));
+                                                                    }}
+                                                                
+                                                                
+                                                                >
+                                                                    <option value="11">Grade 11</option>
+                                                                    <option value="12">Grade 12</option>
+                                                                </select>
+                                                            </td>
+                                                            
+                                                            {/* Semester */}
+                                                            <td>
+                                                                <select 
+                                                                    className="form-select form-select-sm"
+                                                                    value={row.semester}
+                                                                    onChange={(e) => {
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { ...r, semester: e.target.value }
+                                                                                : r
+                                                                        ));
+                                                                    }}
+                                                                
+                                                                >
+                                                                    <option value="1">1</option>
+                                                                    <option value="2">2</option>
+                                                                </select>
+                                                            </td>
+                                                            
+                                                            {/* Track */}
+                                                            <td>
+                                                                <select 
+                                                                    className="form-select form-select-sm"
+                                                                    value={row.track}
+                                                                    onChange={(e) => {
+                                                                        const newTrack = e.target.value;
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { ...r, track: newTrack, strand: '' }
+                                                                                : r
+                                                                        ));  // ✅ Use prevRows instead of manualRows
+                                                                    }}
+                                                                >
+                                                                    <option value="">Select</option>
+                                                                    {trackOptions.map(t => (
+                                                                        <option key={t} value={t}>{t}</option>
+                                                                    ))}
+                                                                </select>   
+                                                            </td>
+
+
+                                                            {/* Strand */}
+                                                            <td>
+                                                                <select 
+                                                                    className="form-select form-select-sm"
+                                                                    value={row.strand}
+                                                                    
+                                                                    onChange={(e) => {
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { ...r, strand: e.target.value }
+                                                                                : r
+                                                                        ));
+                                                                    }}
+
+
+                                                                    disabled={!row.track}
+                                                                >
+                                                                    <option value="">Select</option>
+                                                                    {row.track && getStrandOptionsForTrack(row.track).map(s => (
+                                                                        <option key={s} value={s}>{s}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
+                                                            
+                                                            {/* Subject Type */}
+                                                            <td>
+                                                                <select 
+                                                                    className="form-select form-select-sm"
+                                                                    value={row.subjectType}
+
+                                                                    onChange={(e) => {
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { ...r, subjectType: e.target.value }
+                                                                                : r
+                                                                        ));
+                                                                    }}
+
+
+                                                                >
+                                                                    <option value="core">Core</option>
+                                                                    <option value="specialized">Specialized</option>
+                                                                    <option value="applied">Applied</option>
+                                                                </select>
+                                                            </td>
+                                                            
+                                                            {/* Teacher */}
+                                                            <td>
+                                                               <select 
+                                                                    className="form-select form-select-sm"
+                                                                    value={row.teacherName}
+                                                                    onChange={(e) => {
+                                                                        const selectedTeacherName = e.target.value;
+                                                                        const teacher = teachersList.find(t => t.fullName === selectedTeacherName);
+                                                                        
+                                                                        setManualRows(prevRows => prevRows.map(r => 
+                                                                            r.id === row.id 
+                                                                                ? { 
+                                                                                    ...r, 
+                                                                                    teacherName: selectedTeacherName,
+                                                                                    teacherId: teacher?._id || '' 
+                                                                                }
+                                                                                : r
+                                                                        ));  // ✅ Use prevRows
+                                                                    }}
+                                                                >
+                                                                    <option value="">Select</option>
+                                                                    {teachersList.map(t => (
+                                                                        <option key={t._id} value={t.fullName}>{t.fullName}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
+                                                            
+                                                            {/* ✅ DELETE BUTTON (optional) */}
+                                                            <td>
+                                                                <button 
+                                                                    className="btn btn-sm btn-danger"
+                                                                    onClick={() => handleDeleteManualRow(row.id)}
+                                                                    title="Remove row"
+                                                                >
+                                                                    <i className="fa fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+
+                                            {/* ✅ ADD ROW BUTTON */}
+                                            <div className="p-3 border-top">
+                                                <button 
+                                                    className="btn btn-sm btn-outline-success"
+                                                    onClick={handleAddManualRow}
+                                                >
+                                                    <i className="fa fa-plus me-1"></i>
+                                                    Add Row Manually
+                                                </button>
+                                                {manualRows.length > 0 && (
+                                                    <small className="text-muted ms-3">
+                                                        {manualRows.length} manual row(s) added
+                                                    </small>
+                                                )}
+                                            </div>
+
+
+                                        </div>
+                                        {excelData.length > 10 && (
+                                            <small className="text-muted d-block mt-2">
+                                                ...and {excelData.length - 10} more
+                                            </small>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                            
+                            <div className="modal-footer">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setShowImportModal(false);
+                                        resetImportState();
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                              <button 
+                                    type="button"
+                                    className="btn btn-success"
+                                    onClick={handleBulkImport}
+                                    disabled={excelData.length === 0 && manualRows.length === 0}
+                                >
+                                    <i className="fa fa-upload me-2"></i>
+                                    Import {excelData.length + manualRows.length} Subject(s)
                                 </button>
                             </div>
                         </div>

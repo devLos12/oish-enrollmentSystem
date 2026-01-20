@@ -241,6 +241,8 @@ export const getSubjectDetails = async(req, res) => {
 
 
 
+
+
 export const getSubjectSection = async (req, res) => {
     try {
         const { gradeLevel, track, strand, semester, subjectId } = req.query;
@@ -456,6 +458,8 @@ export const createSubject = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+
 
 
 
