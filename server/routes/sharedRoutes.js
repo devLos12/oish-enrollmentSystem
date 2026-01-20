@@ -2,7 +2,10 @@ import express from "express";
 import { Logout } from "../controller/logout.js";
 import { accessGeneratedCode, accessGmailCode } from "../controller/admin/accessCode.js";
 import { deleteStaff, getStaffList, updateStaff } from "../controller/stafffManagement.js";
-import { createSubject, deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection, getSubjectDetails, addSubjectSection, updateSubjectSection, deleteSubjectSection  } from "../controller/subject.js";
+import { createSubject, bulkAddSubjects,
+deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection,
+getSubjectDetails, addSubjectSection, updateSubjectSection, deleteSubjectSection  
+} from "../controller/subject.js";
 import { ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant } from "../controller/enrollment.js";
 import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending } from "../controller/student.js";
 import { createSection, deleteSection, getSections, updateEnrollmentStatus, updateSection } from "../controller/sectionManagement.js";
@@ -25,6 +28,9 @@ SharedRouter.get('/staff_list', getStaffList);
 SharedRouter.patch('/staff_update/:id', updateStaff);
 SharedRouter.delete('/staff_delete/:id', deleteStaff);
 SharedRouter.post('/addSubjects', createSubject);
+SharedRouter.post('/bulkAddSubjects', bulkAddSubjects);
+
+
 SharedRouter.get('/getSubjects', verifyAuth, getAllSubjects);
 SharedRouter.get('/getTeachers',verifyAuth, getAllTeachers);
 SharedRouter.get('/getSubjetSections', verifyAuth, getSubjectSection);

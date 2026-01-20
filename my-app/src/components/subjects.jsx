@@ -620,7 +620,6 @@ const SubjectManagement = () => {
 
 
 
-
     const handleBulkImport = async () => {
 
 
@@ -670,10 +669,6 @@ const SubjectManagement = () => {
             showAlert('No data to import', 'error');
             return;
         }
-        
-
-        console.log(allSubjects); // ✅ ADD THIS
-        if(true) return
 
 
         try {

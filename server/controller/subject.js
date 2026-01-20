@@ -344,6 +344,155 @@ export const getAllTeachers = async (req, res) => {
 
 
 
+
+// Add this to your subject controller file
+export const bulkAddSubjects = async (req, res) => {
+    try {
+        const { subjects } = req.body;
+
+        // Validate request
+        if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+            return res.status(400).json({ 
+                message: "No subjects data provided" 
+            });
+        }
+
+        // Validate each subject has required fields
+        const validationErrors = [];
+        subjects.forEach((subject, index) => {
+            const required = ['subjectCode', 'subjectName', 'gradeLevel', 'semester', 'track', 'strand', 'subjectType', 'teacherId', 'teacherName'];
+            const missing = required.filter(field => !subject[field]);
+            
+            if (missing.length > 0) {
+                validationErrors.push(`Subject ${index + 1}: Missing ${missing.join(', ')}`);
+            }
+        });
+
+        if (validationErrors.length > 0) {
+            return res.status(400).json({ 
+                message: "Validation failed",
+                errors: validationErrors 
+            });
+        }
+
+        // Check for duplicate subject codes in the batch
+        const subjectCodes = subjects.map(s => s.subjectCode.toUpperCase());
+        const duplicates = subjectCodes.filter((code, index) => subjectCodes.indexOf(code) !== index);
+        
+        if (duplicates.length > 0) {
+            return res.status(400).json({ 
+                message: `Duplicate subject codes found in batch: ${[...new Set(duplicates)].join(', ')}` 
+            });
+        }
+
+        // Check for existing subject codes in database
+        const existingSubjects = await Subject.find({ 
+            subjectCode: { $in: subjectCodes } 
+        });
+
+        if (existingSubjects.length > 0) {
+            const existing = existingSubjects.map(s => s.subjectCode).join(', ');
+            return res.status(400).json({ 
+                message: `Subject codes already exist: ${existing}` 
+            });
+        }
+
+        // Prepare subjects for insertion
+        const subjectsToInsert = subjects.map(subject => ({
+            subjectCode: subject.subjectCode.toUpperCase(),
+            subjectName: subject.subjectName.trim(),
+            gradeLevel: parseInt(subject.gradeLevel),
+            semester: parseInt(subject.semester),
+            track: subject.track.trim(),
+            strand: subject.strand.toUpperCase(),
+            subjectType: subject.subjectType.toLowerCase().trim(),
+            teacherId: subject.teacherId,
+            teacher: subject.teacherName.trim()
+        }));
+
+        // Bulk insert
+        const insertedSubjects = await Subject.insertMany(subjectsToInsert, { 
+            ordered: false 
+        });
+
+        // 🔹 Auto-assign to enrolled students (same logic as createSubject)
+        for (const savedSubject of insertedSubjects) {
+            const enrolledStudents = await Student.find({
+                status: "enrolled",
+                gradeLevel: savedSubject.gradeLevel,
+                strand: savedSubject.strand,
+                semester: savedSubject.semester
+            });
+
+            if (enrolledStudents.length > 0) {
+                const updateOps = enrolledStudents.map(student => {
+                    const alreadyHas = student.subjects.some(
+                        s => s.subjectId.toString() === savedSubject._id.toString()
+                    );
+
+                    const update = {};
+
+                    if (!alreadyHas) {
+                        update.$push = {
+                            subjects: {
+                                subjectId: savedSubject._id,
+                                subjectName: savedSubject.subjectName,
+                                subjectTeacher: savedSubject.teacher || "",
+                                semester: savedSubject.semester
+                            }
+                        };
+                    }
+
+                    const lastIndex = student.registrationHistory.length - 1;
+                    if (lastIndex >= 0) {
+                        if (!update.$push) update.$push = {};
+                        update.$push[`registrationHistory.${lastIndex}.subjects`] = {
+                            subjectId: savedSubject._id,
+                            subjectName: savedSubject.subjectName,
+                            subjectTeacher: savedSubject.teacher || "",
+                            semester: savedSubject.semester
+                        };
+                    }
+
+                    return Object.keys(update).length ? Student.findByIdAndUpdate(student._id, update) : null;
+                }).filter(Boolean);
+
+                await Promise.all(updateOps);
+
+                await Subject.findByIdAndUpdate(savedSubject._id, {
+                    $addToSet: { 
+                        students: { $each: enrolledStudents.map(s => s._id) } 
+                    }
+                });
+            }
+        }
+
+        res.status(201).json({
+            message: `Successfully imported ${insertedSubjects.length} subject(s)`,
+            imported: insertedSubjects.length
+        });
+
+    } catch (error) {
+        console.error("Bulk add subjects error:", error);
+        
+        // Handle MongoDB duplicate key errors
+        if (error.code === 11000) {
+            return res.status(400).json({ 
+                message: "Some subject codes already exist in the database" 
+            });
+        }
+
+        res.status(500).json({ 
+            message: "Failed to import subjects",
+            error: error.message 
+        });
+    }
+};
+
+
+
+
+
 export const createSubject = async (req, res) => {
     try {
         const { 
@@ -376,7 +525,6 @@ export const createSubject = async (req, res) => {
         //         message: `Subject code "${subjectCode.toUpperCase()}" already exists for ${strand.toUpperCase()} strand` 
         //     });
         // }
-
 
 
 
