@@ -20,6 +20,11 @@ const Applicants = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success');
     
+    const [modalLoading, setModalLoading] = useState(false);
+
+
+
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -127,6 +132,7 @@ const Applicants = () => {
 
     const confirmApprove = async (enrollmentId) => {
         try {
+            setModalLoading(true); // START LOADING
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/approveApplicant`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json"},
@@ -143,11 +149,17 @@ const Applicants = () => {
             console.log(error.message);
             setShowModal(false);
             showAlert(error.message, 'error');
+        } finally {
+            setModalLoading(false); // STOP LOADING
         }
     };
 
+
+
+
     const confirmReject = async (enrollmentId) => {
         try {
+            setModalLoading(true); // START LOADING
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/rejectApplicant/${enrollmentId}`, {
                 method: "PATCH",
                 credentials: "include",
@@ -161,11 +173,16 @@ const Applicants = () => {
         } catch (error) {
             setShowModal(false);
             showAlert(error.message, 'error');
+        } finally {
+            setModalLoading(false); // STOP LOADING
         }
     };
 
+    
+
     const confirmRemove = async (enrollmentId) => {
         try {
+            setModalLoading(true); // START LOADING
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/removeApplicant/${enrollmentId}`, {
                 method: "DELETE",
                 credentials: "include",
@@ -180,8 +197,14 @@ const Applicants = () => {
             console.error("Error removing applicant:", error.message);
             setShowModal(false);
             showAlert("Failed to remove applicant", 'error');
+        } finally {
+            setModalLoading(false); // STOP LOADING
         }
     };
+
+
+
+
 
     const getStatusBadge = (status) => {
         const badges = {
@@ -355,16 +378,16 @@ const Applicants = () => {
                         </div>
                     </div>
                     <div className="col-12 col-md-3 mt-2 mt-md-0">
-                        <select 
-                            className="form-select"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                        >
-                            <option value="all">All Status ({statusCounts.all})</option>
-                            <option value="pending">Pending ({statusCounts.pending})</option>
-                            <option value="approved">Approved ({statusCounts.approved})</option>
-                            <option value="rejected">Rejected ({statusCounts.rejected})</option>
-                        </select>
+                    <select 
+                        className="form-select"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
                     </div>
                     <div className="col-12 col-md-5 text-end">
                         <p className="text-muted mb-0 mt-2">
@@ -516,6 +539,8 @@ const Applicants = () => {
                 </div>
             </div>
 
+                                
+
             {/* Action Confirmation Modal (Approve/Reject/Remove) */}
             {showModal && selectedApplicant && (
                 <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
@@ -531,6 +556,7 @@ const Applicants = () => {
                                     type="button" 
                                     className="btn-close"
                                     onClick={() => setShowModal(false)}
+                                    disabled={modalLoading}
                                 ></button>
                             </div>
 
@@ -557,6 +583,7 @@ const Applicants = () => {
                                             type="button" 
                                             className="btn btn-secondary"
                                             onClick={() => setShowModal(false)}
+                                            disabled={modalLoading}
                                         >
                                             Cancel
                                         </button>
@@ -564,9 +591,19 @@ const Applicants = () => {
                                             type="button" 
                                             className="btn btn-success"
                                             onClick={() => confirmApprove(selectedApplicant._id)}
+                                            disabled={modalLoading}
                                         >
-                                            <i className="fa fa-check me-2"></i>
-                                            Yes, Approve
+                                            {modalLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                                    Approving...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-check me-2"></i>
+                                                    Yes, Approve
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </>
@@ -593,6 +630,7 @@ const Applicants = () => {
                                             type="button" 
                                             className="btn btn-secondary"
                                             onClick={() => setShowModal(false)}
+                                            disabled={modalLoading}
                                         >
                                             Cancel
                                         </button>
@@ -600,9 +638,19 @@ const Applicants = () => {
                                             type="button" 
                                             className="btn btn-danger"
                                             onClick={() => confirmReject(selectedApplicant._id)}
+                                            disabled={modalLoading}
                                         >
-                                            <i className="fa fa-times me-2"></i>
-                                            Yes, Reject
+                                            {modalLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                                    Rejecting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-times me-2"></i>
+                                                    Yes, Reject
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </>
@@ -633,6 +681,7 @@ const Applicants = () => {
                                             type="button" 
                                             className="btn btn-secondary"
                                             onClick={() => setShowModal(false)}
+                                            disabled={modalLoading}
                                         >
                                             Cancel
                                         </button>
@@ -640,9 +689,19 @@ const Applicants = () => {
                                             type="button" 
                                             className="btn btn-danger"
                                             onClick={() => confirmRemove(selectedApplicant._id)}
+                                            disabled={modalLoading}
                                         >
-                                            <i className="fa fa-trash me-2"></i>
-                                            Yes, Remove
+                                            {modalLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                                    Removing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-trash me-2"></i>
+                                                    Yes, Remove
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </>
@@ -651,6 +710,10 @@ const Applicants = () => {
                     </div>
                 </div>
             )}
+
+
+
+
 
             {/* Alert Modal - Success/Error Messages */}
             {showAlertModal && (

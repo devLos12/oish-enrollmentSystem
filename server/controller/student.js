@@ -1,6 +1,121 @@
 import Student from "../model/student.js";
 import Section from "../model/section.js";
 import Subject from "../model/subject.js";
+import bcrypt from "bcrypt";
+import Staff from "../model/staff.js";
+import Admin from "../model/admin.js";
+
+
+export const createStudent = async (req, res) => {
+    try {
+        const {
+            lrn,
+            firstName,
+            middleName,
+            lastName,
+            extensionName,
+            birthDate,
+            sex,
+            contactNumber,
+            email,
+            gradeLevel,
+            track,
+            strand,
+            semester,
+            studentType,
+            password,
+            confirmPassword
+        } = req.body;
+
+        // ✅ 1. VALIDATE PASSWORD MATCH
+        if (password !== confirmPassword) {
+            return res.status(400).json({ message: "Passwords do not match." });
+        }
+
+        // ✅ 2. VALIDATE PASSWORD LENGTH
+        if (!password || password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters." });
+        }
+
+        // ✅ 3. CHECK DUPLICATE LRN
+        const existingLRN = await Student.findOne({ lrn });
+        if (existingLRN) {
+            return res.status(409).json({ message: "LRN already exists." });
+        }
+
+        // ✅ 4. CHECK DUPLICATE EMAIL (across ALL models)
+        const [existingStudent, existingAdmin, existingStaff] = await Promise.all([
+            Student.findOne({ email }),
+            Admin.findOne({ email }),
+            Staff.findOne({ email })
+        ]);
+
+        if (existingStudent) {
+            return res.status(409).json({ message: "Email already exists in Student records." });
+        }
+        if (existingAdmin) {
+            return res.status(409).json({ message: "Email already exists in Admin records." });
+        }
+        if (existingStaff) {
+            return res.status(409).json({ message: "Email already exists in Staff records." });
+        }
+
+        // ✅ 5. GENERATE STUDENT NUMBER (Sequential)
+        const year = new Date().getFullYear();
+        const studentCount = await Student.countDocuments({});
+        const nextNumber = studentCount + 1;
+        const studentNumber = `${year}-${String(nextNumber).padStart(4, "0")}`;
+
+        // ✅ 6. CHECK DUPLICATE STUDENT NUMBER (safety check)
+        const existingStudentNumber = await Student.findOne({ studentNumber });
+        if (existingStudentNumber) {
+            return res.status(409).json({
+                message: "Student Number conflict. Please try again."
+            });
+        }
+
+        // ✅ 7. HASH PASSWORD
+        const salt = await bcrypt.genSalt(10);
+        const hashedPass = await bcrypt.hash(password, salt);
+
+        // ✅ 8. CREATE STUDENT
+        const newStudent = await Student.create({
+            studentNumber,
+            lrn,
+            firstName,
+            middleName,
+            lastName,
+            extensionName: extensionName || "N/A",
+            birthDate,
+            sex,
+            contactNumber: contactNumber.replace(/\s/g, ''), // Remove spaces
+            email,
+            gradeLevel: parseInt(gradeLevel),
+            track,
+            strand,
+            semester: parseInt(semester),
+            studentType: studentType || 'regular',
+            password: hashedPass,
+            enrollmentYear: year,
+            status: 'pending' // or 'pending' depende sa requirement
+        });
+
+        // ✅ 9. RETURN SUCCESS RESPONSE
+        res.status(201).json({ 
+            message: "Student created successfully!",
+            student: {
+                studentNumber: newStudent.studentNumber,
+                name: `${newStudent.firstName} ${newStudent.lastName}`,
+                email: newStudent.email
+            }
+        });
+
+    } catch (error) {
+        console.error("Create Student Error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 
 
 
@@ -428,26 +543,6 @@ export const updateStudent = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // GET all students
 export const getStudents = async (req, res) => {
     try {
@@ -552,14 +647,6 @@ export const getAssignSections = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
 export const setStudentsPending = async (req, res) => {
     try {   
         const { studentIds } = req.body;
@@ -604,6 +691,7 @@ export const setStudentsPending = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
 
 
 

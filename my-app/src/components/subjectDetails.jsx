@@ -340,10 +340,10 @@ const SubjectDetails = () => {
                                     <span className="badge bg-info me-2">{subjectData.subjectCode}</span>
                                     <span className="badge bg-danger me-2">{subjectData.strand}</span>
                                 </p>
-                                <p className="mb-0 gap-2 d-flex">
+                                <p className="mb-0 gap-2 d-flex text-capitalize">
                                     <strong>Teacher:</strong> {subjectData.teacher} 
                                 </p>
-                                <span className="fw-semibold">Grade {subjectData.gradeLevel} - Semester {subjectData.semester}</span>
+                                <span className="fw-semibold">Grade {subjectData.gradeLevel} - {subjectData.semester === 1 ? "First Semester" : "Second Semester"}</span>
                             </div>
                         </div>
                     </div>

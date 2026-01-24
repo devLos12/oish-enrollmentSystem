@@ -4,11 +4,94 @@ import { globalContext } from "../context/global";
 
 
 
+const ProgressStepper = ({ currentStep }) => {
+    const steps = [
+        { number: 1, label: 'Learner\nInformation' },
+        { number: 2, label: 'Address & Parents' },
+        { number: 3, label: 'Documents &\nCertification' }
+    ];
+
+    return (
+        <div className="container mb-5 mt-4">
+            <div className="row justify-content-center">
+                <div className="col-12 col-lg-10">
+                    <div className="position-relative">
+                        {/* Steps */}
+                        <div className="d-flex justify-content-between position-relative" style={{ zIndex: 2 }}>
+                            {steps.map((step, index) => (
+                                <div 
+                                    key={step.number}
+                                    className="d-flex flex-column align-items-center position-relative"
+                                    style={{ flex: 1 }}
+                                >
+                                    {/* Progress Line AFTER this circle (connects to next circle) */}
+                                    {index < steps.length - 1 && (
+                                        <div 
+                                            className="position-absolute"
+                                            style={{
+                                                height: '3px',
+                                                width: 'calc(100% - 42px)',
+                                                top: '20px',
+                                                left: 'calc(50% + 21px)',
+                                                backgroundColor: currentStep > step.number ? '#dc3545' : '#d6d6d6',
+                                                transition: 'background-color 0.4s ease',
+                                                zIndex: 0
+                                            }}
+                                        />
+                                    )}
+
+                                    {/* Circle with Number */}
+                                    <div 
+                                        className={`rounded-circle d-flex align-items-center justify-content-center fw-bold position-relative
+                                            ${currentStep >= step.number ? 'bg-danger text-white' : 'bg-white border border-2 text-secondary'}`}
+                                        style={{
+                                            width: '42px',
+                                            height: '42px',
+                                            fontSize: '1.1rem',
+                                            transition: 'all 0.3s ease',
+                                            borderColor: currentStep >= step.number ? '#dc3545' : '#6c757d',
+                                            zIndex: 1
+                                        }}
+                                    >
+                                        {step.number}
+                                    </div>
+                                    
+                                    {/* Label */}
+                                    <div 
+                                        className={`mt-3 text-center small fw-semibold
+                                            ${currentStep >= step.number ? 'text-danger' : 'text-secondary'}`}
+                                        style={{ 
+                                            maxWidth: '120px',
+                                            lineHeight: '1.3',
+                                            whiteSpace: 'pre-line'
+                                        }}
+                                    >
+                                        {step.label}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
 export const Step1 = () => {
     const { formData, setFormData, role } = useContext(globalContext);   
     const navigate = useNavigate();
     const location = useLocation();
     const [viewOnly, setViewOnly] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');  
+    const [showErrorModal, setShowErrorModal] = useState(false);  // ✅ Add this
+    const [isLoading, setIsLoading] = useState(false);  // ✅ Add this
+
+    const [lrnError, setLrnError] = useState('');
+    const [psaError, setPsaError] = useState('');
+
 
     useEffect(() => {
         if (!location?.state?.allowed) {
@@ -86,33 +169,7 @@ export const Step1 = () => {
 
    
 
-
-    const generateSchoolYears = () => {
-        const currentYear = new Date().getFullYear();
-        const years = [];
-        
-        // Generate 5 years back and 5 years forward
-        for (let i = -5; i <= 5; i++) {
-            const startYear = currentYear + i;
-            const endYear = startYear + 1;
-            years.push(`${startYear}-${endYear}`);
-        }
-        
-        return years;
-    };
-
-     // Config objects
-    const headerFields = [
-        { 
-            label: 'School Year', 
-            name: 'schoolYear', 
-            type: 'select', // changed from 'text'
-            options: generateSchoolYears() // add this
-        }
-    ];
-
-
-    
+    const headerFields = [];
 
 
     const gradeLevelOptions = ['Grade 11', 'Grade 12'];
@@ -123,17 +180,53 @@ export const Step1 = () => {
     ];
 
     const learnerFields = [
-        { label: 'Email Address. (Use Gmail Account)', name: 'email', type: 'email' },
-        { label: 'PSA Birth Certificate No. (if available upon registration)', name: 'psaNo', type: 'text', note: 'Put N/A if not available' },
-        { label: 'Learner Reference No.', name: 'lrn', type: 'text' },
+        { label: 'Email Address', name: 'email', type: 'email' },
+        { label: 'PSA Birth Certificate No. (if available upon registration)', name: 'psaNo', type: 'text', note: '', optional: true },
+        { label: 'Learner Reference No.', name: 'lrn', type: 'text', conditionalDisable: 'withLRN' },  // ✅ Added flag
         { label: 'Last Name', name: 'lastName', type: 'text' },
         { label: 'First Name', name: 'firstName', type: 'text' },
         { label: 'Middle Name', name: 'middleName', type: 'text' },
-        { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: 'Put N/A if not applicable' }
+        { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: '', optional: true }
+    ];
+
+
+    const indigenousPeopleOptions = [
+        'Aeta',
+        'Agta',
+        'Ati',
+        'Badjao',
+        'Bagobo',
+        'Banwaon',
+        'Bontoc',
+        'Bukidnon',
+        'Dumagat',
+        'Gaddang',
+        'Higaonon',
+        'Ibaloi',
+        'Ifugao',
+        'Igorot',
+        'Ilongot',
+        'Isneg',
+        'Kalinga',
+        'Kankanaey',
+        'Lumad',
+        'Maguindanao',
+        'Mangyan',
+        'Manobo',
+        'Maranao',
+        'Subanon',
+        'Tagbanwa',
+        'Tausug',
+        'Teduray',
+        'Tingguian',
+        'T\'boli',
+        'Yakan',
+        'Others'
     ];
 
     const rightFields = [
-        { label: 'Birthdate (mm/dd/yyyy)', name: 'birthDate', type: 'date', colClass: 'col-md-6' },
+        { label: 'Birthdate (Day/Month/Year)', name: 'birthDate', type: 'date', colClass: 'col-md-6' },
+
         { label: 'Place of Birth (Municipality/City)', name: 'placeOfBirth', type: 'text', colClass: 'col-md-6' },
         { label: 'Age', name: 'age', type: 'number', colClass: 'col-md-3' },
         { label: 'Mother Tongue', name: 'motherTongue', type: 'text', colClass: 'col-md-9' }
@@ -221,34 +314,179 @@ export const Step1 = () => {
                 }
             }));
         } else if (name.startsWith('learnerInfo.')) {
-            // For learnerInfo fields
             const fieldName = name.split('.')[1];
-            setFormData(prev => ({
-                ...prev,
-                learnerInfo: {
-                    ...prev.learnerInfo,
-                    [fieldName]: value
+
+
+            // ✅ PSA Certificate validation - add after LRN validation
+            if (fieldName === 'psaNo') {
+                // Remove non-numeric characters
+                const numericValue = value.replace(/\D/g, '');
+                
+                // Limit to 12 digits
+                const limitedValue = numericValue.slice(0, 12);
+                
+                // Update PSA error message (only if not empty since it's optional)
+                if (limitedValue.length > 0 && limitedValue.length < 12) {
+                    setPsaError('PSA Certificate No. must be exactly 12 digits');
+                } else {
+                    setPsaError('');
                 }
-            }));
+                
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        psaNo: limitedValue  // ✅ Use limitedValue, not numericValue
+                    }
+                }));
+                return;
+            }
+
+
+            // Sa loob ng handleChange function, sa part ng learnerInfo fields:
+            if (fieldName === 'lrn') {
+                // Remove non-numeric characters
+                const numericValue = value.replace(/\D/g, '');
+                
+                // Limit to 12 digits  ✅ Changed from 13 to 12
+                const limitedValue = numericValue.slice(0, 12);
+                
+                // Update LRN error message
+                if (limitedValue.length > 0 && limitedValue.length < 12) {
+                    setLrnError('LRN must be exactly 12 digits');  // ✅ Changed message
+                } else {
+                    setLrnError('');
+                }
+                
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        lrn: limitedValue
+                    }
+                }));
+                return;
+            }
+
+
+            // For learnerInfo fields
+            
+            // ✅ Auto-calculate age if birthDate changes
+            if (fieldName === 'birthDate' && value) {
+                // Fix timezone issue by parsing date correctly
+                const [year, month, day] = value.split('-').map(Number);
+                const birthDate = new Date(year, month - 1, day); // month is 0-indexed
+                const today = new Date();
+                
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                
+                // Adjust age if birthday hasn't occurred this year yet
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        birthDate: value,
+                        age: age >= 0 ? age.toString() : '0'  // ✅ Prevent negative age
+                    }
+                }));
+
+
+            } else {
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        [fieldName]: value
+                    }
+                }));
+            }
         } else {
             // For top-level fields like schoolYear, gradeLevelToEnroll, etc.
             setFormData(prev => ({ ...prev, [name]: value }));
         }
     };
 
-    const handleNext = () => {
-        if(role === "admin" || role === "staff"){
-            document.getElementById("scrollContainer").scrollTo({
-                top: 0,
-                behavior: "auto"
-            });
-            navigate(`/${role}/applicant_form/step2`, { state: { allowed: true, applicant: location?.state.applicant }}); // Navigate to next step
-        } else {
+
+
+
+
+
+    // const handleNext = () => {
+    //     if(role === "admin" || role === "staff"){
+    //         document.getElementById("scrollContainer").scrollTo({
+    //             top: 0,
+    //             behavior: "auto"
+    //         });
+    //         navigate(`/${role}/applicant_form/step2`, { state: { allowed: true, applicant: location?.state.applicant }}); // Navigate to next step
+    //     } else {
+    //         window.scrollTo({ top: 0, behavior: "auto"});
+    //         navigate("/enrollment/step2", { state: { allowed: true }}); // Navigate to next step
+    //         sessionStorage.setItem("myForm", JSON.stringify(formData));
+    //     }
+    // };
+
+
+
+
+
+    const handleNext = async () => {
+        setErrorMessage('');  
+        setShowErrorModal(false);
+
+        const isIncomplete = sessionStorage.getItem("step1Saved") === "true";
+
+        // ✅ If already submitted, no need for loading - just navigate
+        if(isIncomplete){
             window.scrollTo({ top: 0, behavior: "auto"});
-            navigate("/enrollment/step2", { state: { allowed: true }}); // Navigate to next step
+            navigate("/enrollment/step2", { state: { allowed: true }});
+            return 
+        }
+
+        // ✅ Show loading only when making API call
+        setIsLoading(true);
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    step: "step1",
+                    gradeLevelToEnroll: formData.gradeLevelToEnroll,
+                    withLRN: formData.withLRN,
+                    isReturning: formData.isReturning,
+                    learnerInfo: JSON.stringify(formData.learnerInfo)
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            sessionStorage.setItem("enrollmentId", data.enrollmentId); 
             sessionStorage.setItem("myForm", JSON.stringify(formData));
+            sessionStorage.setItem("step1Saved", data.step1);
+
+            
+
+            window.scrollTo({ top: 0, behavior: "auto"});
+            navigate("/enrollment/step2", { state: { allowed: true }});
+        } catch (error) {
+            setErrorMessage(error.message);  
+            setShowErrorModal(true);
+        } finally {
+            // ✅ Hide loading after API call completes
+            setIsLoading(false);
         }
     };
+
+
+
+
+
 
 
     const handleDisabilityCheckbox = (e) => {
@@ -388,26 +626,70 @@ export const Step1 = () => {
     };
 
     // Reusable render functions
-    const renderTextField = (field, isNested = false) => (
-        <div key={field.name} className="mb-3">
-            <label className="form-label small">
-                {field.label}
-                {field.note && <span className="text-muted ms-2">({field.note})</span>}
-            </label>
-            {field.type === 'select' ? (
-                <select
-                    name={isNested ? `learnerInfo.${field.name}` : field.name}
-                    value={isNested ? (formData?.learnerInfo?.[field.name] || '') : (formData[field.name] || '')}
-                    onChange={handleChange}
-                    className="form-select"
-                    disabled={viewOnly}
-                >
-                    <option value="">Select School Year</option>
-                    {field.options.map(option => (
-                        <option key={option} value={option}>{option}</option>
-                    ))}
-                </select>
-            ) : (
+    const renderTextField = (field, isNested = false) => {
+        const isLRNDisabled = field.conditionalDisable === 'withLRN' && formData.withLRN === 'No';
+        
+        // ✅ Special handling for PSA No. field (add after LRN check)
+        if (field.name === 'psaNo') {
+            return (
+                <div key={field.name} className="mb-3">
+                    <label className="form-label small">
+                        {field.label}
+                        {field.note && <span className="text-muted ms-2">({field.note})</span>}
+                        {field.optional && <span className="text-muted ms-2">(Optional)</span>}
+                    </label>
+                    <input
+                        type="text"
+                        name="learnerInfo.psaNo"
+                        value={formData?.learnerInfo?.psaNo || ''}
+                        onChange={handleChange}
+                        className={`form-control ${psaError ? 'is-invalid' : ''}`}
+                        disabled={viewOnly}
+                        maxLength="12"  // ✅ Limit to 12 digits
+                        placeholder="Enter 12-digit PSA Certificate No."  // ✅ Updated placeholder
+                    />
+                    {psaError && <div className="invalid-feedback d-block">{psaError}</div>}
+                    <small className="text-muted">
+                        {formData?.learnerInfo?.psaNo?.length || 0}/12 digits  {/* ✅ Show counter */}
+                    </small>
+                </div>
+            );
+        }
+
+
+        // ✅ Special handling for LRN field
+        if (field.name === 'lrn') {
+            return (
+                <div key={field.name} className="mb-3">
+                    <label className="form-label small">
+                        {field.label}
+                        {field.note && <span className="text-muted ms-2">({field.note})</span>}
+                    </label>
+                    <input
+                        type="text"
+                        name="learnerInfo.lrn"
+                        value={formData?.learnerInfo?.lrn || ''}
+                        onChange={handleChange}
+                        className={`form-control ${lrnError ? 'is-invalid' : ''}`}
+                        disabled={viewOnly || isLRNDisabled}
+                        maxLength="12"  // ✅ Changed from 13 to 12
+                        placeholder="Enter 12-digit LRN"  // ✅ Changed message
+                    />
+                    {lrnError && <div className="invalid-feedback d-block">{lrnError}</div>}
+                    <small className="text-muted">
+                        {formData?.learnerInfo?.lrn?.length || 0}/12 digits  {/* ✅ Changed from 13 to 12 */}
+                    </small>
+                </div>
+            );
+        }
+        
+        // ✅ Regular fields (existing code)
+        return (
+            <div key={field.name} className="mb-3">
+                <label className="form-label small">
+                    {field.label}
+                    {field.note && <span className="text-muted ms-2">({field.note})</span>}
+                </label>
                 <input
                     type={field.type}
                     name={isNested ? `learnerInfo.${field.name}` : field.name}
@@ -415,11 +697,11 @@ export const Step1 = () => {
                     value={isNested ? (formData?.learnerInfo?.[field.name] || '') : (formData[field.name] || '')}
                     onChange={handleChange}
                     className="form-control"
-                    disabled={viewOnly}
+                    disabled={viewOnly || isLRNDisabled}
                 />
-            )}
-        </div>
-    );
+            </div>
+        );
+    };
 
 
 
@@ -452,8 +734,13 @@ export const Step1 = () => {
         );
     };
 
+
+
     const renderConditionalSection = (section) => {
         const isMember = formData?.learnerInfo?.[section.path]?.[section.radioName];
+        
+        // ✅ Check if this is indigenous people section
+        const isIndigenousSection = section.path === 'indigenousCommunity';
         
         return (
             <div className="mb-3" key={section.path}>
@@ -465,18 +752,42 @@ export const Step1 = () => {
                     )}
                 </div>
                 <label className="form-label small">{section.inputLabel}</label>
-                <input
-                    type="text"
-                    name={section.inputName}
-                    placeholder={section.inputPlaceholder}
-                    value={formData?.learnerInfo?.[section.path]?.[section.inputName] || ''}
-                    onChange={(e) => handleChange(e, section.path)}
-                    className="form-control"
-                    disabled={isMember !== 'Yes' || viewOnly}
-                />
+                
+                {/* ✅ Dropdown for Indigenous People, Text input for others */}
+                {isIndigenousSection ? (
+                    <select
+                        name={section.inputName}
+                        value={formData?.learnerInfo?.[section.path]?.[section.inputName] || ''}
+                        onChange={(e) => handleChange(e, section.path)}
+                        className="form-select"
+                        disabled={isMember !== 'Yes' || viewOnly}
+                    >
+                        <option value="">Select Indigenous Group</option>
+                        {indigenousPeopleOptions.map(option => (
+                            <option key={option} value={option}>{option}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <input
+                        type="text"
+                        name={section.inputName}
+                        placeholder={section.inputPlaceholder}
+                        value={formData?.learnerInfo?.[section.path]?.[section.inputName] || ''}
+                        onChange={(e) => handleChange(e, section.path)}
+                        className="form-control"
+                        disabled={isMember !== 'Yes' || viewOnly}
+                    />
+                )}
             </div>
         );
     };
+
+
+
+
+
+
+
 
     const renderDisabilityCheckbox = (item) => {
         if (item.subOptions) {
@@ -531,12 +842,111 @@ export const Step1 = () => {
     };
 
 
+    // ✅ Check if all required fields are filled
+    const isFormValid = () => {
+
+        // LRN required if "With LRN?" is "Yes"
+        if (formData.withLRN === 'Yes') {
+            const lrn = formData?.learnerInfo?.lrn || '';
+            if (lrn.trim() === '' || lrn.length !== 12) {  // ✅ Changed from 13 to 12
+                return false;
+            }
+        }
+
+
+        // ✅ If already submitted (incomplete status exists), allow to proceed
+        const statusRegistration = sessionStorage.getItem("statusRegistration");
+        if (statusRegistration === "incomplete") {
+            return true;
+        }
+
+        // Check top-level required fields
+        if (!formData.gradeLevelToEnroll || !formData.withLRN || !formData.isReturning) {
+            return false;
+        }
+
+        // Check learnerInfo required fields
+        const requiredLearnerFields = [
+            'email', 'lastName', 'firstName', 'middleName', 
+            'birthDate', 'age', 'sex', 'placeOfBirth', 'motherTongue'
+        ];
+
+
+        for (const field of requiredLearnerFields) {
+            if (!formData?.learnerInfo?.[field] || formData.learnerInfo[field].trim() === '') {
+                return false;
+            }
+        }
+
+        // LRN required if "With LRN?" is "Yes"
+        if (formData.withLRN === 'Yes' && (!formData?.learnerInfo?.lrn || formData.learnerInfo.lrn.trim() === '')) {
+            return false;
+        }
+
+        return true;
+    };
+
+    // ✅ Error Modal Component
+    const ErrorModal = () => {
+        if (!showErrorModal) return null;
+
+        return (
+            <>
+                {/* Backdrop */}
+                <div 
+                    className="modal-backdrop fade show" 
+                    style={{ zIndex: 1040 }}
+                    onClick={() => setShowErrorModal(false)}
+                ></div>
+                
+                {/* Modal */}
+                <div 
+                    className="modal fade show d-block" 
+                    tabIndex="-1" 
+                    style={{ zIndex: 1050 }}
+                >
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            {/* ✅ Icon at Top Center */}
+                            <div className="modal-body text-center pt-5 pb-4">
+                                <div className="mb-3">
+                                    <i className="fa-solid fa-circle-xmark text-danger" style={{ fontSize: '4rem' }}></i>
+                                </div>
+                                <h5 className="fw-bold mb-3">Oops! Something went wrong</h5>
+                                <p className="text-muted mb-0">{errorMessage}</p>
+                            </div>
+                            
+                            {/* ✅ Footer with Close Button */}
+                            <div className="modal-footer border-0 justify-content-center pb-4">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-danger px-4" 
+                                    onClick={() => setShowErrorModal(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    };
+
+
     return (
-        <div className="container bg-light ">
-            <div className={`row justify-content-center`}
+        <div className="container bg-light d-flex ">
+            <div className={`row justify-content-center `}
             style={{marginTop: "120px"}}
+
             >
                 <div className="col-12 col-md-12 col-lg-12">
+
+                    {!location?.state?.forPrint && !viewOnly && (
+                        <ProgressStepper currentStep={1} />
+                    )}
+
+
                     <div className="p-0 p-md-4">
                         {/* School Year & Grade Level Section */}
                         <div className="card border-0 mb-4">
@@ -597,7 +1007,8 @@ export const Step1 = () => {
                                                         value={formData?.learnerInfo?.[field.name] || ''}
                                                         onChange={handleChange}
                                                         className="form-control"
-                                                        disabled={viewOnly}
+                                                        disabled={viewOnly || field.name === 'age'}
+                                                        style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}  // ✅ Visual indicator
                                                     />
                                                 </div>
                                             ))}
@@ -681,20 +1092,28 @@ export const Step1 = () => {
                             <button 
                                 className="btn btn-primary text-white text-capitalize px-5"
                                 onClick={handleNext}
+                                disabled={isLoading}
                             >
-                                next
+                                {isLoading ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        Submitting...
+                                    </>
+                                ) : (
+                                    'next'
+                                )}
                             </button>
                         </div>
                     )}
 
                 </div>
             </div>
+            
+            
+            <ErrorModal />
         </div>
     );
 };
-
-
-
 
 
 
@@ -733,7 +1152,7 @@ const STRAND_OPTIONS = {
 
 const FORM_FIELDS = {
     parentInfo: [
-        { label: 'Last Name', name: 'lastName', type: 'text' },
+        { label: 'Last Name', name: 'lastName', type: 'text' }, 
         { label: 'First Name', name: 'firstName', type: 'text' },
         { label: 'Middle Name', name: 'middleName', type: 'text' },
         { label: 'Contact Number', name: 'contactNumber', type: 'tel' }
@@ -792,6 +1211,48 @@ const DEFAULT_FORM_STRUCTURE = {
 
 // ZIP Code mapping for major cities/municipalities
 const ZIP_CODE_MAP = {
+
+
+    // BATANGAS - Complete List
+    'Agoncillo': '4211',
+    'Alitagtag': '4205',
+    'Balayan': '4213',
+    'Balete': '4219',
+    'City of Batangas': '4200',
+    'Batangas City': '4200',
+    'Bauan': '4201',
+    'Calaca': '4212',
+    'Calatagan': '4215',
+    'Cuenca': '4222',
+    'Ibaan': '4230',
+    'Laurel': '4221',
+    'Lemery': '4209',
+    'Lian': '4216',
+    'City of Lipa': '4217',
+    'Lipa': '4217',
+    'Lipa City': '4217',
+    'Lobo': '4229',
+    'Mabini': '4202',
+    'Malvar': '4233',
+    'Mataasnakahoy': '4223',
+    'Mataas na Kahoy': '4223',
+    'Nasugbu': '4231',
+    'Padre Garcia': '4224',
+    'Rosario': '4225',
+    'San Jose': '4227',
+    'San Juan': '4226',
+    'San Luis': '4210',
+    'San Nicolas': '4207',
+    'San Pascual': '4204',
+    'City of Tanauan': '4232',
+    'Tanauan': '4232',
+    'Tanauan City': '4232',
+    'Talisay': '4220',
+    'Taysan': '4228',
+    'Tingloy': '4208',
+    'Tuy': '4214',
+
+
     // Metro Manila
     'Manila': '1000',
     'Quezon City': '1100',
@@ -890,6 +1351,25 @@ const ZIP_CODE_MAP = {
 };
 
 
+// Helper function to get ZIP code from map
+const getZipCode = (municipalityName) => {
+    if (!municipalityName) return '';
+    
+    // Try exact match
+    let zipCode = ZIP_CODE_MAP[municipalityName];
+    
+    // Try without "City of" prefix
+    if (!zipCode && municipalityName.startsWith('City of ')) {
+        zipCode = ZIP_CODE_MAP[municipalityName.replace('City of ', '')];
+    }
+    
+    // Try with "City of" prefix
+    if (!zipCode && !municipalityName.startsWith('City of ')) {
+        zipCode = ZIP_CODE_MAP['City of ' + municipalityName];
+    }
+    
+    return zipCode || '';
+};
 
 
 // Utility function to merge saved data with defaults
@@ -929,6 +1409,8 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
         barangays: false
     });
 
+    const [isInitialized, setIsInitialized] = useState(false);
+
     // Fetch regions on mount
     useEffect(() => {
         const fetchRegions = async () => {
@@ -958,27 +1440,129 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
         fetchRegions();
     }, []);
 
+
+
+
     // Sync selectedCodes with values when component loads or values change externally
+    // useEffect(() => {
+    //     if (values.region && regions.length > 0) {
+    //         const region = regions.find(r => r.name === values.region || r.regionName === values.region);
+    //         if (region) setSelectedCodes(prev => ({ ...prev, regionCode: region.code }));
+    //     }
+    // }, [values.region, regions]);
+
+
+    // Comprehensive sync effect - syncs ALL dropdown values when data changes
     useEffect(() => {
-        if (values.region && regions.length > 0) {
-            const region = regions.find(r => r.name === values.region || r.regionName === values.region);
-            if (region) setSelectedCodes(prev => ({ ...prev, regionCode: region.code }));
-        }
-    }, [values.region, regions]);
+        if (!regions.length) return;
+
+        const syncAllCodes = async () => {
+            try {
+                let newCodes = { regionCode: '', provinceCode: '', municipalityCode: '', barangayCode: '' };
+
+                // 1. Sync Region
+                if (values.region) {
+                    const region = regions.find(r => r.name === values.region || r.regionName === values.region);
+                    if (region) {
+                        newCodes.regionCode = region.code;
+
+                        // 2. Fetch and sync Province
+                        if (values.province && newCodes.regionCode) {
+                            if (newCodes.regionCode === '130000000') {
+                                // NCR - set province directly
+                                newCodes.provinceCode = 'NCR';
+                                
+                                // Fetch municipalities for NCR
+                                const cityRes = await fetch(`https://psgc.gitlab.io/api/regions/${newCodes.regionCode}/cities-municipalities/`);
+                                const cities = await cityRes.json();
+                                setMunicipalities(cities);
+                                setProvinces([{ code: 'NCR', name: 'Metro Manila' }]);
+                            } else {
+                                // Regular provinces
+                                const provRes = await fetch(`https://psgc.gitlab.io/api/regions/${newCodes.regionCode}/provinces/`);
+                                const provs = await provRes.json();
+                                setProvinces(provs);
+                                
+                                const province = provs.find(p => p.name === values.province);
+                                if (province) {
+                                    newCodes.provinceCode = province.code;
+                                }
+                            }
+
+                            // 3. Fetch and sync Municipality
+                            if (values.municipality && newCodes.provinceCode) {
+                                let munis = [];
+                                if (newCodes.regionCode === '130000000') {
+                                    // Already fetched for NCR
+                                    munis = municipalities.length ? municipalities : await (await fetch(`https://psgc.gitlab.io/api/regions/${newCodes.regionCode}/cities-municipalities/`)).json();
+                                } else {
+                                    const muniRes = await fetch(`https://psgc.gitlab.io/api/provinces/${newCodes.provinceCode}/cities-municipalities/`);
+                                    munis = await muniRes.json();
+                                }
+                                setMunicipalities(munis);
+                                
+                                
+
+                                const muni = munis.find(m => m.name === values.municipality);
+                                if (muni) {
+                                    newCodes.municipalityCode = muni.code;
+
+
+                                    // Auto-fetch ZIP code based on municipality
+                                    const zipCode = getZipCode(values.municipality);
+
+                                    // Update ZIP code if found
+                                    if (zipCode) {
+                                        onChange({ target: { name: 'zipCode', value: zipCode } }, addressType);
+                                    }
+
+
+
+                                    // 4. Fetch and sync Barangay
+                                    if (values.barangay && newCodes.municipalityCode) {
+                                        const brgyRes = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${newCodes.municipalityCode}/barangays/`);
+                                        const brgys = await brgyRes.json();
+                                        setBarangays(brgys);
+                                        
+                                        const brgy = brgys.find(b => b.name === values.barangay);
+                                        if (brgy) {
+                                            newCodes.barangayCode = brgy.code;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                setSelectedCodes(newCodes);
+                setIsInitialized(true);
+            } catch (error) {
+                console.error('Error syncing address codes:', error);
+                setIsInitialized(true);
+            }
+        };
+
+        syncAllCodes();
+    }, [values.region, values.province, values.municipality, values.barangay, regions]);
+
+
+
 
     // Fetch provinces when region changes
     useEffect(() => {
-        if (!selectedCodes.regionCode) {
-            setProvinces([]);
-            setMunicipalities([]);
-            setBarangays([]);
+        if (!selectedCodes.regionCode || !isInitialized) {
+            if (!selectedCodes.regionCode) {
+                setProvinces([]);
+                setMunicipalities([]);
+                setBarangays([]);
+            }
             return;
         }
 
         const fetchProvinces = async () => {
             setLoading(prev => ({ ...prev, provinces: true }));
             try {
-                // For NCR, fetch cities directly as it has no provinces
                 if (selectedCodes.regionCode === '130000000') {
                     const response = await fetch(`https://psgc.gitlab.io/api/regions/${selectedCodes.regionCode}/cities-municipalities/`);
                     const data = await response.json();
@@ -996,12 +1580,17 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             }
         };
         fetchProvinces();
-    }, [selectedCodes.regionCode]);
+    }, [selectedCodes.regionCode, isInitialized]);
 
-    // Fetch municipalities when province changes
+
+
+
+
+
+    // Fetch municipalities when province changes (skip if initializing from sync)
     useEffect(() => {
-        if (!selectedCodes.provinceCode || selectedCodes.provinceCode === 'NCR') {
-            if (selectedCodes.provinceCode !== 'NCR') {
+        if (!selectedCodes.provinceCode || selectedCodes.provinceCode === 'NCR' || !isInitialized) {
+            if (selectedCodes.provinceCode !== 'NCR' && !selectedCodes.provinceCode) {
                 setMunicipalities([]);
                 setBarangays([]);
             }
@@ -1021,12 +1610,18 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             }
         };
         fetchMunicipalities();
-    }, [selectedCodes.provinceCode]);
+    }, [selectedCodes.provinceCode, isInitialized]);
 
-    // Fetch barangays when municipality changes
+
+
+
+
+   // Fetch barangays when municipality changes (skip if initializing from sync)
     useEffect(() => {
-        if (!selectedCodes.municipalityCode) {
-            setBarangays([]);
+        if (!selectedCodes.municipalityCode || !isInitialized) {
+            if (!selectedCodes.municipalityCode) {
+                setBarangays([]);
+            }
             return;
         }
 
@@ -1043,7 +1638,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             }
         };
         fetchBarangays();
-    }, [selectedCodes.municipalityCode]);
+    }, [selectedCodes.municipalityCode, isInitialized]);
+
+
+
 
     const handleRegionChange = (e) => {
         const selectedRegion = regions.find(r => r.code === e.target.value);
@@ -1210,44 +1808,114 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
     );
 };
 
-// Reusable Input Field Component
-const FormField = ({ label, name, type, value, onChange, disabled }) => (
-    <div className="mb-3">
-        <label className="form-label small">{label}</label>
-        <input
-            type={type}
-            name={name}
-            value={value || ''}
-            onChange={onChange}
-            className="form-control"
-            disabled={disabled}
-            maxLength={label === "Contact Number" ? 11 : undefined}
-        />
-    </div>
-);
+
+
+
+const FormField = ({ label, name, type, value, onChange, disabled }) => {
+    // ✅ Special handling for Contact Number
+    if (name === 'contactNumber') {
+        return (
+            <div className="mb-3">
+                <label className="form-label small">{label}</label>
+                <input
+                    type="text"
+                    name={name}
+                    className="form-control"
+                    value={value || ''}
+                    onChange={onChange}
+                    disabled={disabled}
+                    maxLength="13"
+                />
+                <small className="text-muted">Format: 0XXX XXX XXXX (11 digits)</small>
+            </div>
+        );
+    }
+
+    // ✅ Special handling for House Number (numbers only)
+    if (name === 'houseNo') {
+        return (
+            <div className="mb-3">
+                <label className="form-label small">{label}</label>
+                <input
+                    type="text"
+                    name={name}
+                    className="form-control"
+                    value={value || ''}
+                    onChange={onChange}
+                    disabled={disabled}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                />
+                <small className="text-muted">Numbers only</small>
+            </div>
+        );
+    }
+
+    // ✅ Regular fields
+    return (
+        <div className="mb-3">
+            <label className="form-label small">{label}</label>
+            <input
+                type={type}
+                name={name}
+                value={value || ''}
+                onChange={onChange}
+                className="form-control"
+                disabled={disabled}
+            />
+        </div>
+    );
+};
+
+
+
 
 // Reusable Section Component
 const FormSection = ({ title, fields, values, onChange, disabled, parentType }) => (
     <div className="mb-4">
         {title && <h3 className="h6 fw-semibold mb-3">{title}</h3>}
         <div className="row">
-            {fields.map(field => (
-                <div key={field.name} className="col-md-6 mb-3">
-                    <label className="form-label small">{field.label}</label>
-                    <input
-                        type={field.type}
-                        name={field.name}
-                        value={values?.[field.name] || ''}
-                        onChange={(e) => onChange(e, parentType)}
-                        className="form-control"
-                        disabled={disabled}
-                        maxLength={field.label === "Contact Number" ? 11 : undefined}
-                    />
-                </div>
-            ))}
+            {fields.map(field => {
+                // ✅ Special handling for Contact Number
+                if (field.name === 'contactNumber') {
+                    return (
+                        <div key={field.name} className="col-md-6 mb-3">
+                            <label className="form-label small">{field.label}</label>
+                            <input
+                                type="text"
+                                name={field.name}
+                                className="form-control"
+                                value={values?.[field.name] || ''}
+                                onChange={(e) => onChange(e, parentType)}
+                                disabled={disabled}
+                                maxLength="13"
+                            />
+                            <small className="text-muted">Format: 0XXX XXX XXXX (11 digits)</small>
+                        </div>
+                    );
+                }
+
+                // ✅ Regular fields
+                return (
+                    <div key={field.name} className="col-md-6 mb-3">
+                        <label className="form-label small">{field.label}</label>
+                        <input
+                            type={field.type}
+                            name={field.name}
+                            value={values?.[field.name] || ''}
+                            onChange={(e) => onChange(e, parentType)}
+                            className="form-control"
+                            disabled={disabled}
+                        />
+                    </div>
+                );
+            })}
         </div>
     </div>
 );
+
+
+
 
 export const Step2 = () => {
     const { formData, setFormData, role } = useContext(globalContext);
@@ -1257,6 +1925,12 @@ export const Step2 = () => {
     const [viewOnly, setViewOnly] = useState(false);
     const hasLoadedData = useRef(false);
     const hasAutoFilled = useRef(false);
+
+
+    const [errorMessage, setErrorMessage] = useState('');
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
 
     // Access control check
     useEffect(() => {
@@ -1344,11 +2018,14 @@ export const Step2 = () => {
         }));
     }, [formData.address?.permanent?.sameAsCurrent, setFormData]);
 
+
+
+
     // Validation logic
     const checkExtraSections = useCallback(() => {
         const { address, parentGuardianInfo, schoolHistory, seniorHigh } = formData;
 
-        if (!address || !parentGuardianInfo || !schoolHistory || !seniorHigh) return false;
+        if (!address || !parentGuardianInfo || !seniorHigh) return false;
 
         // Check current address
         const cur = address.current;
@@ -1362,17 +2039,14 @@ export const Step2 = () => {
             if (requiredPermFields.some(field => !perm?.[field])) return false;
         }
 
-        // Check parent/guardian info
-        const { father, mother, guardian } = parentGuardianInfo;
-        const requiredParentFields = ['lastName', 'firstName'];
-        if (
-            requiredParentFields.some(field => !father?.[field]) ||
-            requiredParentFields.some(field => !mother?.[field]) ||
-            requiredParentFields.some(field => !guardian?.[field])
-        ) return false;
 
-        // Check school history for returning learners
-        if (schoolHistory?.returningLearner) {
+        // Guardian is REQUIRED
+        const { guardian } = parentGuardianInfo;
+        const requiredGuardianFields = ['lastName', 'firstName'];
+        if (requiredGuardianFields.some(field => !guardian?.[field])) return false;
+
+        // ✅ Check school history ONLY if isReturning is "Yes"
+        if (formData.isReturning === 'Yes' && schoolHistory?.returningLearner) {
             if (!formData.studentType || (formData.studentType !== 'transferee' && formData.studentType !== 'returnee')) {
                 return false;
             }
@@ -1386,11 +2060,17 @@ export const Step2 = () => {
         return true;
     }, [formData]);
 
+
+
+
     useLayoutEffect(() => {
         setAllFilled(checkExtraSections());
     }, [checkExtraSections]);
 
-    // Event Handlers
+
+
+
+
     const handleAddressChange = useCallback((e, addressType) => {
         const { name, value, checked } = e.target;
 
@@ -1403,7 +2083,51 @@ export const Step2 = () => {
                     permanent: { ...prev.address.permanent, sameAsCurrent: checked }
                 }
             }));
-        } else {
+        } 
+        else if (name === 'contactNumber') {
+            // ✅ Contact Number formatting (existing code)
+            let cleaned = value.replace(/\D/g, '');
+            cleaned = cleaned.substring(0, 11);
+            
+            let formatted = '';
+            if (cleaned.length > 0) {
+                formatted = cleaned.substring(0, 4);
+                if (cleaned.length > 4) {
+                    formatted += ' ' + cleaned.substring(4, 7);
+                }
+                if (cleaned.length > 7) {
+                    formatted += ' ' + cleaned.substring(7, 11);
+                }
+            }
+            
+            setFormData(prev => ({
+                ...prev,
+                address: {
+                    ...prev.address,
+                    [addressType]: { 
+                        ...prev.address[addressType], 
+                        [name]: formatted 
+                    }
+                }
+            }));
+        }
+        // ✅ NEW: House Number validation (numbers only)
+        else if (name === 'houseNo') {
+            // Remove all non-digit characters
+            const cleaned = value.replace(/\D/g, '');
+            
+            setFormData(prev => ({
+                ...prev,
+                address: {
+                    ...prev.address,
+                    [addressType]: { 
+                        ...prev.address[addressType], 
+                        [name]: cleaned 
+                    }
+                }
+            }));
+        }
+        else {
             setFormData(prev => ({
                 ...prev,
                 address: {
@@ -1414,16 +2138,59 @@ export const Step2 = () => {
         }
     }, [setFormData]);
 
+
+
+
+
+
     const handleParentGuardianChange = useCallback((e, parentType) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            parentGuardianInfo: {
-                ...prev.parentGuardianInfo,
-                [parentType]: { ...prev.parentGuardianInfo[parentType], [name]: value }
+        
+        // ✅ Same formatting logic for parent/guardian contact numbers
+        if (name === 'contactNumber') {
+            let cleaned = value.replace(/\D/g, '');
+        
+            // ✅ Limit to 11 digits
+            cleaned = cleaned.substring(0, 11);
+            
+            // ✅ Format as 0XXX XXX XXXX
+            let formatted = '';
+            if (cleaned.length > 0) {
+                formatted = cleaned.substring(0, 4);  // 0XXX
+                if (cleaned.length > 4) {
+                    formatted += ' ' + cleaned.substring(4, 7);  // XXX
+                }
+                if (cleaned.length > 7) {
+                    formatted += ' ' + cleaned.substring(7, 11);  // XXXX
+                }
             }
-        }));
+            
+            setFormData(prev => ({
+                ...prev,
+                parentGuardianInfo: {
+                    ...prev.parentGuardianInfo,
+                    [parentType]: { 
+                        ...prev.parentGuardianInfo[parentType], 
+                        [name]: formatted 
+                    }
+                }
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                parentGuardianInfo: {
+                    ...prev.parentGuardianInfo,
+                    [parentType]: { ...prev.parentGuardianInfo[parentType], [name]: value }
+                }
+            }));
+        }
     }, [setFormData]);
+
+
+
+
+
+
 
     const handleSchoolHistoryChange = useCallback((e) => {
         const { name, value, type, checked } = e.target;
@@ -1455,20 +2222,98 @@ export const Step2 = () => {
         }));
     }, [setFormData]);
 
-    const handleNext = useCallback(() => {
-        const scrollContainer = document.getElementById("scrollContainer");
+
+
+
+    
+
+    // const handleNext = useCallback(() => {
+    //     const scrollContainer = document.getElementById("scrollContainer");
         
+    //     if (role === "admin" || role === "staff") {
+    //         scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
+    //         navigate(`/${role}/applicant_form/step3`, { 
+    //             state: { allowed: true, applicant: location?.state.applicant } 
+    //         });
+    //     } else {
+    //         window.scrollTo({ top: 0, behavior: "auto" });
+    //         navigate("/enrollment/step3", { state: { allowed: true } });
+    //         sessionStorage.setItem("myForm", JSON.stringify(formData));
+    //     }
+    // }, [role, navigate, location, formData]);
+
+
+
+    const handleNext = useCallback(async () => {
+        setErrorMessage('');
+        setShowErrorModal(false);
+        
+
+
+        // ✅ For admin/staff, no API call needed
         if (role === "admin" || role === "staff") {
+            const scrollContainer = document.getElementById("scrollContainer");
             scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
             navigate(`/${role}/applicant_form/step3`, { 
                 state: { allowed: true, applicant: location?.state.applicant } 
             });
-        } else {
+            return;
+        }
+
+
+        // ✅ Check if already saved
+        const enrollmentId = sessionStorage.getItem("enrollmentId");
+
+        // If step2 already saved, just navigate
+        const step2Saved = sessionStorage.getItem("step2Saved");
+
+
+        if (step2Saved === "true") {
             window.scrollTo({ top: 0, behavior: "auto" });
             navigate("/enrollment/step3", { state: { allowed: true } });
+            return;
+        }
+
+        // ✅ Show loading
+        setIsLoading(true);
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    step: "step2",
+                    enrollmentId: enrollmentId,
+                    address: JSON.stringify(formData.address),
+                    parentGuardianInfo: JSON.stringify(formData.parentGuardianInfo),
+                    schoolHistory: JSON.stringify(formData.schoolHistory),
+                    seniorHigh: JSON.stringify(formData.seniorHigh),
+                    studentType: formData.studentType
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            // ✅ Mark step2 as saved
             sessionStorage.setItem("myForm", JSON.stringify(formData));
+            sessionStorage.setItem("step2Saved", data.step2);
+            
+            window.scrollTo({ top: 0, behavior: "auto" });
+            navigate("/enrollment/step3", { state: { allowed: true } });
+        } catch (error) {
+            setErrorMessage(error.message);
+            setShowErrorModal(true);
+        } finally {
+            setIsLoading(false);
         }
     }, [role, navigate, location, formData]);
+
+
+
+
+
 
     const handleBack = useCallback(() => {
         if (role) {
@@ -1479,12 +2324,64 @@ export const Step2 = () => {
         navigate(-1, { state: { allowed: true } });
     }, [role, navigate]);
 
+
+
+
+    // ✅ Error Modal Component (add bago return)
+    const ErrorModal = () => {
+        if (!showErrorModal) return null;
+
+        return (
+            <>
+                <div 
+                    className="modal-backdrop fade show" 
+                    style={{ zIndex: 1040 }}
+                    onClick={() => setShowErrorModal(false)}
+                ></div>
+                
+                <div 
+                    className="modal fade show d-block" 
+                    tabIndex="-1" 
+                    style={{ zIndex: 1050 }}
+                >
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-body text-center pt-5 pb-4">
+                                <div className="mb-3">
+                                    <i className="fa-solid fa-circle-xmark text-danger" style={{ fontSize: '4rem' }}></i>
+                                </div>
+                                <h5 className="fw-bold mb-3">Oops! Something went wrong</h5>
+                                <p className="text-muted mb-0">{errorMessage}</p>
+                            </div>
+                            
+                            <div className="modal-footer border-0 justify-content-center pb-4">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-danger px-4" 
+                                    onClick={() => setShowErrorModal(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    };
+
+
     return (
-        <div className="container bg-light">
-            <div className={`row justify-content-center `}
+        <div className="container bg-light d-flex">
+            <div className={`row  justify-content-center w-100 g-0`}
             style={{marginTop: "120px"}}
             >
-                <div className="col-12">
+                <div className="col-12 ">
+
+                    {!viewOnly && (
+                        <ProgressStepper currentStep={2} />
+                    )}
+
                     <div className="p-0 p-md-4">
                         {/* Address Section */}
                         <div className="row mb-4">
@@ -1643,7 +2540,7 @@ export const Step2 = () => {
                                 />
 
                                 <FormSection
-                                    title="Guardian's Information (if applicable)"
+                                    title="Guardian's Information (Required)"
                                     fields={FORM_FIELDS.parentInfo}
                                     values={formData.parentGuardianInfo?.guardian}
                                     onChange={handleParentGuardianChange}
@@ -1653,77 +2550,79 @@ export const Step2 = () => {
                             </div>
                         </div>
 
-                        {/* School History */}
-                        <div className="card border-0 mb-4">
-                            <div className="card-body">
-                                <h2 className="h5 fw-bold mb-3">
-                                    FOR RETURNING LEARNER (BALIK-ARAL) AND THOSE WHO WILL TRANSFER/MOVE IN
-                                </h2>
-                                
-                                <div className="mb-4">
-                                    <div className="form-check">
-                                        <input 
-                                            className="form-check-input" 
-                                            type="checkbox" 
-                                            name="returningLearner"
-                                            checked={formData.schoolHistory?.returningLearner || false}
-                                            onChange={handleSchoolHistoryChange}
-                                            id="returningLearner"
-                                            disabled={viewOnly}
-                                        />
-                                        <label className="form-check-label" htmlFor="returningLearner">
-                                            I am a Returning Learner or Transferee
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div className="d-flex gap-4 my-2">
-                                    <div className="form-check">
-                                        <input 
-                                            className="form-check-input" 
-                                            type="checkbox" 
-                                            checked={formData.studentType === 'transferee'}
-                                            onChange={() => handleAcademicStatusChange('transferee')}
-                                            disabled={!formData.schoolHistory?.returningLearner || viewOnly}
-                                            id="transferee"
-                                        />
-                                        <label className="form-check-label" htmlFor="transferee">
-                                            Transferee
-                                        </label>
-                                    </div>
+                        {/* School History - ✅ Only show if isReturning is "Yes" */}
+                        {formData.isReturning === 'Yes' && (
+                            <div className="card border-0 mb-4">
+                                <div className="card-body">
+                                    <h2 className="h5 fw-bold mb-3">
+                                        FOR RETURNING LEARNER (BALIK-ARAL) AND THOSE WHO WILL TRANSFER/MOVE IN
+                                    </h2>
                                     
-                                    <div className="form-check">
-                                        <input 
-                                            className="form-check-input" 
-                                            type="checkbox" 
-                                            checked={formData.studentType === 'returnee'}
-                                            onChange={() => handleAcademicStatusChange('returnee')}
-                                            disabled={!formData.schoolHistory?.returningLearner || viewOnly}
-                                            id="returnee"
-                                        />
-                                        <label className="form-check-label" htmlFor="returnee">
-                                            Returning Learner (Balik-Aral)
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div className="row">
-                                    {FORM_FIELDS.schoolHistory.map(field => (
-                                        <div key={field.name} className="col-md-6 mb-3">
-                                            <label className="form-label small">{field.label}</label>
-                                            <input
-                                                type={field.type}
-                                                name={field.name}
-                                                value={formData.schoolHistory?.[field.name] || ''}
+                                    <div className="mb-4">
+                                        <div className="form-check">
+                                            <input 
+                                                className="form-check-input" 
+                                                type="checkbox" 
+                                                name="returningLearner"
+                                                checked={formData.schoolHistory?.returningLearner || false}
                                                 onChange={handleSchoolHistoryChange}
-                                                className="form-control"
-                                                disabled={!formData.schoolHistory?.returningLearner || viewOnly}
+                                                id="returningLearner"
+                                                disabled={viewOnly}
                                             />
+                                            <label className="form-check-label" htmlFor="returningLearner">
+                                                I am a Returning Learner or Transferee
+                                            </label>
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    <div className="d-flex gap-4 my-2">
+                                        <div className="form-check">
+                                            <input 
+                                                className="form-check-input" 
+                                                type="checkbox" 
+                                                checked={formData.studentType === 'transferee'}
+                                                onChange={() => handleAcademicStatusChange('transferee')}
+                                                disabled={!formData.schoolHistory?.returningLearner || viewOnly}
+                                                id="transferee"
+                                            />
+                                            <label className="form-check-label" htmlFor="transferee">
+                                                Transferee
+                                            </label>
+                                        </div>
+                                        
+                                        <div className="form-check">
+                                            <input 
+                                                className="form-check-input" 
+                                                type="checkbox" 
+                                                checked={formData.studentType === 'returnee'}
+                                                onChange={() => handleAcademicStatusChange('returnee')}
+                                                disabled={!formData.schoolHistory?.returningLearner || viewOnly}
+                                                id="returnee"
+                                            />
+                                            <label className="form-check-label" htmlFor="returnee">
+                                                Returning Learner (Balik-Aral)
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="row">
+                                        {FORM_FIELDS.schoolHistory.map(field => (
+                                            <div key={field.name} className="col-md-6 mb-3">
+                                                <label className="form-label small">{field.label}</label>
+                                                <input
+                                                    type={field.type}
+                                                    name={field.name}
+                                                    value={formData.schoolHistory?.[field.name] || ''}
+                                                    onChange={handleSchoolHistoryChange}
+                                                    className="form-control"
+                                                    disabled={!formData.schoolHistory?.returningLearner || viewOnly}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Senior High School */}
                         <div className="card border-0 mb-4">
@@ -1741,8 +2640,8 @@ export const Step2 = () => {
                                             disabled={viewOnly}
                                         >
                                             <option value="">Select Semester</option>
-                                            <option value="1st">1st Semester</option>
-                                            <option value="2nd">2nd Semester</option>
+                                            <option value="1st">First</option>
+                                            <option value="2nd">Second</option>
                                         </select>
                                     </div>
 
@@ -1794,27 +2693,36 @@ export const Step2 = () => {
                             >
                                 back
                             </button>
-                            <button 
+                            {/* <button 
                                 className="btn btn-primary text-white text-capitalize px-5"
                                 onClick={handleNext}
                                 // disabled={!allFilled}
                             >
                                 next
+                            </button> */}
+
+                            <button 
+                                className="btn btn-primary text-white text-capitalize px-5"
+                                onClick={handleNext}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        Submitting...
+                                    </>
+                                ) : (
+                                    'next'
+                                )}
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+            <ErrorModal />
         </div>
     );
 };
-
-
-
-
-
-
-
 
 
 
@@ -1856,6 +2764,12 @@ export const Step3 = () => {
     });
     
     const [viewOnly, setViewOnly] = useState(false);
+    const [successModal, setSuccessModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+
+
+
 
 
     useEffect(() => {
@@ -2010,8 +2924,7 @@ export const Step3 = () => {
     if (
         !hasPsaBirthCert ||
         !hasReportCard ||
-        !hasIdPicture ||
-        !c.dateSigned
+        !hasIdPicture
     ) {
         return false;
     }
@@ -2045,7 +2958,28 @@ export const Step3 = () => {
 
     const handleFileUpload = (e, fieldName) => {
         const file = e.target.files[0];
+        
         if (file) {
+            // ✅ Validate file type on frontend
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+            
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension)) {
+                alert('Only JPG and PNG files are allowed!');
+                e.target.value = ''; // Clear input
+                return;
+            }
+            
+            // ✅ Optional: Check file size (e.g., max 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (file.size > maxSize) {
+                alert('File size must not exceed 5MB!');
+                e.target.value = '';
+                return;
+            }
+            
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData(prev => ({
@@ -2061,6 +2995,10 @@ export const Step3 = () => {
             reader.readAsDataURL(file);
         }
     };
+
+
+
+
 
     const handleRemoveFile = (fieldName) => {
 
@@ -2089,187 +3027,280 @@ export const Step3 = () => {
 
     const handleCloseModal = () => {
         setShowModal(false);
+        window.scrollTo({ top: 0, behavior: "auto"});
+
     };
 
 
 
 
-const handleNext = async() => {
+   //const handleNext = async() => {
 
-    // localStorage.setItem("myForm", JSON.stringify(formData));
+//     // localStorage.setItem("myForm", JSON.stringify(formData));
 
 
-    if(role === "admin" || role === "staff"){
-        setApproveShowModal((prev) => ({...prev, isShow: true, data: prev.data }));
-        return
-    }
+//     if(role === "admin" || role === "staff"){
+//         setApproveShowModal((prev) => ({...prev, isShow: true, data: prev.data }));
+//         return
+//     }
     
-    try {
-        // Create FormData instance
-        const submitData = new FormData();
+//     try {
+//         // Create FormData instance
+//         const submitData = new FormData();
 
-        // Add basic fields
-        submitData.append('schoolYear', formData.schoolYear || 'n/a');
-        submitData.append('gradeLevelToEnroll', formData.gradeLevelToEnroll || '');
-        submitData.append('isReturning', formData.isReturning === "Yes" || 
-            formData.isReturning === true
-        );
-        submitData.append('studentType', formData.studentType || 'regular');
-        submitData.append('withLRN', formData.withLRN === "Yes" ||  formData.withLRN === true );
+//         // Add basic fields
+//         submitData.append('schoolYear', formData.schoolYear || 'n/a');
+//         submitData.append('gradeLevelToEnroll', formData.gradeLevelToEnroll || '');
+//         submitData.append('isReturning', formData.isReturning === "Yes" || 
+//             formData.isReturning === true
+//         );
+//         submitData.append('studentType', formData.studentType || 'regular');
+//         submitData.append('withLRN', formData.withLRN === "Yes" ||  formData.withLRN === true );
 
         
 
-        // Add learnerInfo as JSON string
-        submitData.append('learnerInfo', JSON.stringify({
-            email: formData.learnerInfo.email || 'n/a',
-            lrn: formData.learnerInfo.lrn || 'n/a',
-            psaNo: formData.learnerInfo.psaNo || 'n/a',
-            lastName: formData.learnerInfo.lastName || 'n/a',
-            firstName: formData.learnerInfo.firstName || 'n/a',
-            middleName: formData.learnerInfo.middleName || 'n/a',
-            extensionName: formData.learnerInfo.extensionName || 'n/a',
-            birthDate: formData.learnerInfo.birthDate || 'n/a',
-            age: formData.learnerInfo.age || 0,
-            sex: formData.learnerInfo.sex || 'n/a',
-            placeOfBirth: formData.learnerInfo.placeOfBirth || 'n/a',
-            motherTongue: formData.learnerInfo.motherTongue || 'n/a',
-            learnerWithDisability: {
-                isDisabled: formData.learnerInfo.learnerWithDisability?.isDisabled === 'Yes' || 
-                           formData.learnerInfo.learnerWithDisability?.isDisabled === true,
-                disabilityType: formData.learnerInfo.learnerWithDisability?.disabilityType || []
-            },
-            indigenousCommunity: {
-                isMember: formData.learnerInfo.indigenousCommunity?.isMember === 'Yes' || 
-                         formData.learnerInfo.indigenousCommunity?.isMember === true,
-                name: formData.learnerInfo.indigenousCommunity?.name || 'n/a'
-            },
-            fourPs: {
-                isBeneficiary: formData.learnerInfo.fourPs?.isBeneficiary === 'Yes' || 
-                              formData.learnerInfo.fourPs?.isBeneficiary === true,
-                householdId: formData.learnerInfo.fourPs?.householdId || 'n/a'
-            }
-        }));
+//         // Add learnerInfo as JSON string
+//         submitData.append('learnerInfo', JSON.stringify({
+//             email: formData.learnerInfo.email || 'n/a',
+//             lrn: formData.learnerInfo.lrn || 'n/a',
+//             psaNo: formData.learnerInfo.psaNo || 'n/a',
+//             lastName: formData.learnerInfo.lastName || 'n/a',
+//             firstName: formData.learnerInfo.firstName || 'n/a',
+//             middleName: formData.learnerInfo.middleName || 'n/a',
+//             extensionName: formData.learnerInfo.extensionName || 'n/a',
+//             birthDate: formData.learnerInfo.birthDate || 'n/a',
+//             age: formData.learnerInfo.age || 0,
+//             sex: formData.learnerInfo.sex || 'n/a',
+//             placeOfBirth: formData.learnerInfo.placeOfBirth || 'n/a',
+//             motherTongue: formData.learnerInfo.motherTongue || 'n/a',
+//             learnerWithDisability: {
+//                 isDisabled: formData.learnerInfo.learnerWithDisability?.isDisabled === 'Yes' || 
+//                            formData.learnerInfo.learnerWithDisability?.isDisabled === true,
+//                 disabilityType: formData.learnerInfo.learnerWithDisability?.disabilityType || []
+//             },
+//             indigenousCommunity: {
+//                 isMember: formData.learnerInfo.indigenousCommunity?.isMember === 'Yes' || 
+//                          formData.learnerInfo.indigenousCommunity?.isMember === true,
+//                 name: formData.learnerInfo.indigenousCommunity?.name || 'n/a'
+//             },
+//             fourPs: {
+//                 isBeneficiary: formData.learnerInfo.fourPs?.isBeneficiary === 'Yes' || 
+//                               formData.learnerInfo.fourPs?.isBeneficiary === true,
+//                 householdId: formData.learnerInfo.fourPs?.householdId || 'n/a'
+//             }
+//         }));
 
-        // Add address as JSON string
-        submitData.append('address', JSON.stringify({
-            current: {
-                houseNo: formData.address?.current?.houseNo || 'n/a',
-                street: formData.address?.current?.street || 'n/a',
-                barangay: formData.address?.current?.barangay || 'n/a',
-                municipality: formData.address?.current?.municipality || 'n/a',
-                province: formData.address?.current?.province || 'n/a',
-                country: formData.address?.current?.country || 'n/a',
-                zipCode: formData.address?.current?.zipCode || 'n/a',
-                contactNumber: formData.address?.current?.contactNumber || 'n/a'
-            },
-            permanent: {
-                sameAsCurrent: formData.address?.permanent?.sameAsCurrent === 'Yes' || 
-                              formData.address?.permanent?.sameAsCurrent === true,
-                houseNo: formData.address?.permanent?.houseNo || 'n/a',
-                street: formData.address?.permanent?.street || 'n/a',
-                barangay: formData.address?.permanent?.barangay || 'n/a',
-                municipality: formData.address?.permanent?.municipality || 'n/a',
-                province: formData.address?.permanent?.province || 'n/a',
-                country: formData.address?.permanent?.country || 'n/a',
-                zipCode: formData.address?.permanent?.zipCode || 'n/a'
-            }
-        }));
+//         // Add address as JSON string
+//         submitData.append('address', JSON.stringify({
+//             current: {
+//                 houseNo: formData.address?.current?.houseNo || 'n/a',
+//                 street: formData.address?.current?.street || 'n/a',
+//                 barangay: formData.address?.current?.barangay || 'n/a',
+//                 municipality: formData.address?.current?.municipality || 'n/a',
+//                 province: formData.address?.current?.province || 'n/a',
+//                 country: formData.address?.current?.country || 'n/a',
+//                 zipCode: formData.address?.current?.zipCode || 'n/a',
+//                 contactNumber: formData.address?.current?.contactNumber || 'n/a'
+//             },
+//             permanent: {
+//                 sameAsCurrent: formData.address?.permanent?.sameAsCurrent === 'Yes' || 
+//                               formData.address?.permanent?.sameAsCurrent === true,
+//                 houseNo: formData.address?.permanent?.houseNo || 'n/a',
+//                 street: formData.address?.permanent?.street || 'n/a',
+//                 barangay: formData.address?.permanent?.barangay || 'n/a',
+//                 municipality: formData.address?.permanent?.municipality || 'n/a',
+//                 province: formData.address?.permanent?.province || 'n/a',
+//                 country: formData.address?.permanent?.country || 'n/a',
+//                 zipCode: formData.address?.permanent?.zipCode || 'n/a'
+//             }
+//         }));
 
-        // Add parentGuardianInfo as JSON string
-        submitData.append('parentGuardianInfo', JSON.stringify({
-            father: {
-                lastName: formData.parentGuardianInfo.father?.lastName || 'n/a',
-                firstName: formData.parentGuardianInfo.father?.firstName || 'n/a',
-                middleName: formData.parentGuardianInfo.father?.middleName || 'n/a',
-                contactNumber: formData.parentGuardianInfo.father?.contactNumber || 'n/a'
-            },
-            mother: {
-                contactNumber: formData.parentGuardianInfo.mother?.contactNumber || 'n/a',
-                firstName: formData.parentGuardianInfo.mother?.firstName || 'n/a',
-                lastName: formData.parentGuardianInfo.mother?.lastName || 'n/a',
-                middleName: formData.parentGuardianInfo.mother?.middleName || 'n/a'
-            },
-            guardian: {
-                lastName: formData.parentGuardianInfo.guardian?.lastName || 'n/a',
-                firstName: formData.parentGuardianInfo.guardian?.firstName || 'n/a',
-                middleName: formData.parentGuardianInfo.guardian?.middleName || 'n/a',
-                contactNumber: formData.parentGuardianInfo.guardian?.contactNumber || 'n/a'
-            }
-        }));
+//         // Add parentGuardianInfo as JSON string
+//         submitData.append('parentGuardianInfo', JSON.stringify({
+//             father: {
+//                 lastName: formData.parentGuardianInfo.father?.lastName || 'n/a',
+//                 firstName: formData.parentGuardianInfo.father?.firstName || 'n/a',
+//                 middleName: formData.parentGuardianInfo.father?.middleName || 'n/a',
+//                 contactNumber: formData.parentGuardianInfo.father?.contactNumber || 'n/a'
+//             },
+//             mother: {
+//                 contactNumber: formData.parentGuardianInfo.mother?.contactNumber || 'n/a',
+//                 firstName: formData.parentGuardianInfo.mother?.firstName || 'n/a',
+//                 lastName: formData.parentGuardianInfo.mother?.lastName || 'n/a',
+//                 middleName: formData.parentGuardianInfo.mother?.middleName || 'n/a'
+//             },
+//             guardian: {
+//                 lastName: formData.parentGuardianInfo.guardian?.lastName || 'n/a',
+//                 firstName: formData.parentGuardianInfo.guardian?.firstName || 'n/a',
+//                 middleName: formData.parentGuardianInfo.guardian?.middleName || 'n/a',
+//                 contactNumber: formData.parentGuardianInfo.guardian?.contactNumber || 'n/a'
+//             }
+//         }));
 
-        // Add schoolHistory as JSON string
-        submitData.append('schoolHistory', JSON.stringify({
-            returningLearner: formData.schoolHistory?.returningLearner === 'Yes' || 
-                             formData.schoolHistory?.returningLearner === true,
-            lastGradeLevelCompleted: formData.schoolHistory?.lastGradeLevelCompleted || 'n/a',
-            lastSchoolYearCompleted: formData.schoolHistory?.lastSchoolYearCompleted || 'n/a',
-            lastSchoolAttended: formData.schoolHistory?.lastSchoolAttended || 'n/a',
-            schoolId: formData.schoolHistory?.schoolId || 'n/a'
-        }));
-
-
-        // Add seniorHigh as JSON string
-        submitData.append('seniorHigh', JSON.stringify({
-            semester: formData.seniorHigh?.semester || 'n/a',
-            strand: formData.seniorHigh?.strand || 'n/a',
-            track: formData.seniorHigh?.track || 'n/a'
-        }));
+//         // Add schoolHistory as JSON string
+//         submitData.append('schoolHistory', JSON.stringify({
+//             returningLearner: formData.schoolHistory?.returningLearner === 'Yes' || 
+//                              formData.schoolHistory?.returningLearner === true,
+//             lastGradeLevelCompleted: formData.schoolHistory?.lastGradeLevelCompleted || 'n/a',
+//             lastSchoolYearCompleted: formData.schoolHistory?.lastSchoolYearCompleted || 'n/a',
+//             lastSchoolAttended: formData.schoolHistory?.lastSchoolAttended || 'n/a',
+//             schoolId: formData.schoolHistory?.schoolId || 'n/a'
+//         }));
 
 
-        // Add certification as JSON string (without files)
-        submitData.append('certification', JSON.stringify({
-            dateSigned: formData.certification?.dateSigned || new Date().toISOString()
-        }));
+//         // Add seniorHigh as JSON string
+//         submitData.append('seniorHigh', JSON.stringify({
+//             semester: formData.seniorHigh?.semester || 'n/a',
+//             strand: formData.seniorHigh?.strand || 'n/a',
+//             track: formData.seniorHigh?.track || 'n/a'
+//         }));
 
 
-        // Add file uploads (IMPORTANT: These must be File objects, not base64 strings)
-        if (formData.certification?.psaBirthCertFile instanceof File) {
-            submitData.append('psaBirthCertFile', formData.certification.psaBirthCertFile);
-        }
+//         // Add certification as JSON string (without files)
+//         submitData.append('certification', JSON.stringify({
+//             dateSigned: formData.certification?.dateSigned || new Date().toISOString()
+//         }));
+
+
+//         // Add file uploads (IMPORTANT: These must be File objects, not base64 strings)
+//         if (formData.certification?.psaBirthCertFile instanceof File) {
+//             submitData.append('psaBirthCertFile', formData.certification.psaBirthCertFile);
+//         }
         
-        if (formData.certification?.reportCardFile instanceof File) {
-            submitData.append('reportCardFile', formData.certification.reportCardFile);
-        }
+//         if (formData.certification?.reportCardFile instanceof File) {
+//             submitData.append('reportCardFile', formData.certification.reportCardFile);
+//         }
         
-        if (formData.certification?.idPictureFile instanceof File) {
-            submitData.append('idPictureFile', formData.certification.idPictureFile);
-        }
+//         if (formData.certification?.idPictureFile instanceof File) {
+//             submitData.append('idPictureFile', formData.certification.idPictureFile);
+//         }
         
-        if (formData.certification?.goodMoralFile instanceof File) {
-            submitData.append('goodMoralFile', formData.certification.goodMoralFile);
-        }
+//         if (formData.certification?.goodMoralFile instanceof File) {
+//             submitData.append('goodMoralFile', formData.certification.goodMoralFile);
+//         }
 
 
 
 
-        // Send to backend
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
-            method: "POST",
-            credentials: "include",
-            body: submitData
-            // DON'T set Content-Type header - browser will set it automatically with boundary
-        });
+//         // Send to backend
+//         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
+//             method: "POST",
+//             credentials: "include",
+//             body: submitData
+//             // DON'T set Content-Type header - browser will set it automatically with boundary
+//         });
 
-        const data = await res.json();
+//         const data = await res.json();
         
-        if (!res.ok) {
-            throw new Error(data.message || 'Failed to submit enrollment');
-        }
+//         if (!res.ok) {
+//             throw new Error(data.message || 'Failed to submit enrollment');
+//         }
 
-        if(data.success) {
-            setFormData({});
-            sessionStorage.clear();
-            alert(data.message);
-            navigate('/', { replace: true , state: { allowed: false }});
-            window.scrollTo({ top: 0, behavior: "auto"});
+//         if(data.success) {
+//             setFormData({});
+//             sessionStorage.clear();
+//             alert(data.message);
+//             navigate('/', { replace: true , state: { allowed: false }});
+//             window.scrollTo({ top: 0, behavior: "auto"});
+//             return
+//         }
+        
+//     } catch (error) {
+//         console.error("Error: ", error.message);
+//         alert(`Error: ${error.message}`);
+//     }
+// };
+
+
+
+    // Add this helper function sa top ng Step3.jsx component
+    
+
+
+    const truncateFilename = (filename, maxLength = 20) => {
+        if (!filename) return '';
+        
+        if (filename.length <= maxLength) return filename;
+        
+        const extension = filename.split('.').pop();
+        const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+        const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4);
+        
+        return `${truncatedName}...${extension}`;
+    };
+
+
+
+    const handleNext = async() => {
+        if(role === "admin" || role === "staff"){
+            setApproveShowModal((prev) => ({...prev, isShow: true, data: prev.data }));
             return
         }
+
+        setIsSubmitting(true);
         
-    } catch (error) {
-        console.error("Error: ", error.message);
-        alert(`Error: ${error.message}`);
-    }
-};
+        try {
+            // Create FormData instance
+            const submitData = new FormData();
+
+            // ✅ Add step identifier
+            submitData.append('step', 'step3');
+            
+            // ✅ Add enrollmentId (from Step 1 response)
+            const enrollmentId = sessionStorage.getItem('enrollmentId'); // or from context/state
+            if (!enrollmentId) {
+                throw new Error('Enrollment ID not found. Please start from Step 1.');
+            }
+            submitData.append('enrollmentId', enrollmentId);
+
+            // ✅ Add file uploads only (4 files)
+            if (formData.certification?.psaBirthCertFile instanceof File) {
+                submitData.append('psaBirthCertFile', formData.certification.psaBirthCertFile);
+            }
+            
+            if (formData.certification?.reportCardFile instanceof File) {
+                submitData.append('reportCardFile', formData.certification.reportCardFile);
+            }
+            
+            if (formData.certification?.idPictureFile instanceof File) {
+                submitData.append('idPictureFile', formData.certification.idPictureFile);
+            }
+            
+            if (formData.certification?.goodMoralFile instanceof File) {
+                submitData.append('goodMoralFile', formData.certification.goodMoralFile);
+            }
+
+            // ❌ REMOVE: No need for certification JSON (dateSigned auto-generated as createdAt)
+
+            // Send to backend
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
+                method: "POST",
+                credentials: "include",
+                body: submitData
+            });
+
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.message || 'Failed to submit enrollment');
+            }
+
+            if(data.success) {
+                setFormData({});
+                sessionStorage.clear();
+                setSuccessModal(true); // Show success modal instead of alert
+                setIsSubmitting(false); 
+                return
+            }
+            
+        } catch (error) {
+            console.error("Error: ", error.message);
+            alert(`Error: ${error.message}`);
+            setIsSubmitting(false); 
+        }
+    };
+
+
 
 
     const handleBack = () => {
@@ -2288,11 +3319,17 @@ const handleNext = async() => {
     };
 
     return (
-        <div className="container bg-light">
-            <div className={`row justify-content-center ${viewOnly ? "mt-2" : "mt-5"}`}>
+        <div className="container bg-light d-flex ">
+            <div className={`row justify-content-center w-100 g-0`}
+            style={{marginTop: "120px"}}
+            >
                 <div className="col-12 col-md-12 col-lg-12">
-                    <div className="p-0 p-md-4">
 
+                    {!viewOnly && (
+                        <ProgressStepper currentStep={3} />
+                    )}
+                    
+                    <div className="p-0 p-md-4">
                         {/* Certification */}
                         <div className="card border-0 my-4">
                             <div className="card-body">
@@ -2315,19 +3352,26 @@ const handleNext = async() => {
                                     {/* Right Column - Upload Required Documents */}
                                     <div className="col-md-6">
                                         <h3 className="h6 fw-semibold mb-3">Upload Required Documents</h3>
-
+                                        
                                         {/* PSA Birth Certificate */}
                                         <div className="mb-3">
-                                            <label className="form-label small fw-semibold text-muted">PSA BIRTH CERTIFICATE</label>
+                                            <label className="form-label small fw-semibold text-muted">
+                                                PSA BIRTH CERTIFICATE
+                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                    (JPG, PNG only)
+                                                </span>
+                                            </label>
+                                            
+                                            
+                                            
                                             <div className="input-group">
                                                 <input
                                                     ref={(el) => (fileRef.current['psaBirthCert'] = el)}
                                                     type="file"
-                                                    accept="image/*,application/pdf"
+                                                    accept=".jpg,.jpeg,.png"
                                                     onChange={(e) => handleFileUpload(e, 'psaBirthCert')}
                                                     className="form-control"
                                                     disabled={viewOnly}
-
                                                 />
                                             </div>
                                             {formData.certification?.psaBirthCertFileName && (
@@ -2336,37 +3380,42 @@ const handleNext = async() => {
                                                         type="button"
                                                         className="btn btn-link btn-sm p-0 text-decoration-none"
                                                         onClick={() => handleViewImage(formData.certification.psaBirthCertPreview)}
+                                                        title={formData.certification.psaBirthCertFileName} 
                                                     >
-                                                        📄 {formData.certification.psaBirthCertFileName}
+                                                        📄 {truncateFilename(formData.certification.psaBirthCertFileName, 25)} 
                                                     </button>
-                                                    { !role &&
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-danger rounded-circle p-0"
-                                                        style={{ width: '24px', height: '24px' }}
-                                                        onClick={() => handleRemoveFile('psaBirthCert')}
-                                                        title="Remove file"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                    }
-
+                                                    {!role && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-danger rounded-circle p-0"
+                                                            style={{ width: '24px', height: '24px' }}
+                                                            onClick={() => handleRemoveFile('psaBirthCert')}
+                                                            title="Remove file"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Report Card (Form 138) */}
                                         <div className="mb-3">
-                                            <label className="form-label small fw-semibold text-muted">REPORT CARD (FORM 138)</label>
+                                            
+                                            <label className="form-label small fw-semibold text-muted">
+                                                REPORT CARD (FORM 138)
+                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                    (JPG, PNG only)
+                                                </span>
+                                            </label>
                                             <div className="input-group">
                                                 <input
                                                     ref={(el) => (fileRef.current['reportCard'] = el)}
                                                     type="file"
-                                                    accept="image/*,application/pdf"
+                                                    accept=".jpg,.jpeg,.png"
                                                     onChange={(e) => handleFileUpload(e, 'reportCard')}
                                                     className="form-control"
                                                     disabled={viewOnly}
-
                                                 />
                                             </div>
                                             {formData.certification?.reportCardFileName && (
@@ -2375,38 +3424,42 @@ const handleNext = async() => {
                                                         type="button"
                                                         className="btn btn-link btn-sm p-0 text-decoration-none"
                                                         onClick={() => handleViewImage(formData.certification.reportCardPreview)}
+                                                        title={formData.certification.reportCardFileName}  
                                                     >
-                                                        📄 {formData.certification.reportCardFileName}
+                                                        📄 {truncateFilename(formData.certification.reportCardFileName, 25)} 
                                                     </button>
-                                                    { !role &&
-                                                    
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-danger rounded-circle p-0"
-                                                        style={{ width: '24px', height: '24px' }}
-                                                        onClick={() => handleRemoveFile('reportCard')}
-                                                        title="Remove file"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                    }
+                                                    {!role && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-danger rounded-circle p-0"
+                                                            style={{ width: '24px', height: '24px' }}
+                                                            onClick={() => handleRemoveFile('reportCard')}
+                                                            title="Remove file"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Good Moral */}
                                         <div className="mb-3">
-                                            <label className="form-label small fw-semibold text-muted">GOOD MORAL</label>
-                                            <small className="text-muted ms">{"(optional)"}</small>
+                                            <label className="form-label small fw-semibold text-muted">
+                                                GOOD MORAL
+                                                <small className="text-muted ms-2">{"(optional)"}</small>
+                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                    (JPG, PNG only)
+                                                </span>
+                                            </label>
                                             <div className="input-group">
                                                 <input
                                                     ref={(el) => (fileRef.current['goodMoral'] = el)}
                                                     type="file"
-                                                    accept="image/*,application/pdf"
+                                                    accept=".jpg,.jpeg,.png"
                                                     onChange={(e) => handleFileUpload(e, 'goodMoral')}
                                                     className="form-control"
                                                     disabled={viewOnly}
-
                                                 />
                                             </div>
                                             {formData.certification?.goodMoralFileName && (
@@ -2415,37 +3468,43 @@ const handleNext = async() => {
                                                         type="button"
                                                         className="btn btn-link btn-sm p-0 text-decoration-none"
                                                         onClick={() => handleViewImage(formData.certification.goodMoralPreview)}
+                                                        title={formData.certification.goodMoralFileName}  
                                                     >
-                                                        📄 {formData.certification.goodMoralFileName}
+                                                        📄 {truncateFilename(formData.certification.goodMoralFileName, 25)}  
                                                     </button>
-                                                    { !role &&
-
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-danger rounded-circle p-0"
-                                                        style={{ width: '24px', height: '24px' }}
-                                                        onClick={() => handleRemoveFile('goodMoral')}
-                                                        title="Remove file"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                    }
+                                                    {!role && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-danger rounded-circle p-0"
+                                                            style={{ width: '24px', height: '24px' }}
+                                                            onClick={() => handleRemoveFile('goodMoral')}
+                                                            title="Remove file"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* 2x2 ID Picture */}
                                         <div className="mb-3">
-                                            <label className="form-label small fw-semibold text-muted">2X2 ID PICTURE</label>
+                                            <label className="form-label small fw-semibold text-muted">
+                                                2X2 ID PICTURE
+                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                    (JPG, PNG only)
+                                                </span>
+                                            </label>
+
+                                            
                                             <div className="input-group">
                                                 <input
                                                     ref={(el) => (fileRef.current['idPicture'] = el)}
                                                     type="file"
-                                                    accept="image/*"
+                                                    accept=".jpg,.jpeg,.png"
                                                     onChange={(e) => handleFileUpload(e, 'idPicture')}
                                                     className="form-control"
                                                     disabled={viewOnly}
-
                                                 />
                                             </div>
                                             {formData.certification?.idPictureFileName && (
@@ -2454,43 +3513,25 @@ const handleNext = async() => {
                                                         type="button"
                                                         className="btn btn-link btn-sm p-0 text-decoration-none"
                                                         onClick={() => handleViewImage(formData.certification.idPicturePreview)}
+                                                        title={formData.certification.idPictureFileName}  
                                                     >
-                                                        📄 {formData.certification.idPictureFileName}
+                                                        📄 {truncateFilename(formData.certification.idPictureFileName, 25)}  
                                                     </button>
-                                                    { !role &&
-
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-danger rounded-circle p-0"
-                                                        style={{ width: '24px', height: '24px' }}
-                                                        onClick={() => handleRemoveFile('idPicture')}
-                                                        title="Remove file"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                    }
+                                                    {!role && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-danger rounded-circle p-0"
+                                                            style={{ width: '24px', height: '24px' }}
+                                                            onClick={() => handleRemoveFile('idPicture')}
+                                                            title="Remove file"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
-                                    </div>
-                                        {/* Left Column - Signature & Date */}
-                                    <div className="col-md-6 mt-4 mt-md-0">
-
-                                        {/* Date */}
-                                        <div style={{marginTop: "12px"}}>
-                                            <label className="form-label small fw-semibold text-muted mt-4">Date</label>
-                                            <input
-                                                type="date"
-                                                name="dateSigned"
-                                                value={formData.certification?.dateSigned || ''}
-                                                onChange={handleCertificationChange}
-                                                className="form-control"
-                                                required
-                                                disabled={viewOnly}
-
-                                            />
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2505,13 +3546,22 @@ const handleNext = async() => {
                                 back
                             </button>
                             <button 
-                                className="btn btn-success text-white text-capitalize px-5 "
+                                className="btn btn-success text-white text-capitalize px-5"
                                 onClick={handleNext}
                                 disabled={
-                                    !role ? !allFilled : formData?.status === "approved"
+                                    !role 
+                                        ? (!allFilled || isSubmitting) 
+                                        : (formData?.status === "approved" || isSubmitting)
                                 }
                             >
-                                {!role ? "submit" : formData?.status === "approved" ? "Approved" : "approve" }
+                                {isSubmitting ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        Submitting...
+                                    </>
+                                ) : (
+                                    !role ? "submit" : formData?.status === "approved" ? "Approved" : "approve"
+                                )}
                             </button>
                         </div>
                     </div>
@@ -2632,6 +3682,42 @@ const handleNext = async() => {
                                     type="button" 
                                     className="btn btn-secondary" 
                                     onClick={handleCloseModal}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {/* Success Modal */}
+            {successModal && (
+                <div 
+                    className="modal fade show d-block" 
+                    tabIndex="-1" 
+                    style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+                >
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-body text-center py-5">
+                                <div className="mb-4">
+                                    <i className="fa-solid fa-circle-check text-success" style={{ fontSize: '5rem' }}></i>
+                                </div>
+                                <h4 className="fw-bold mb-3">Admission Successful!</h4>
+                                <p className="text-muted mb-4">
+                                    Your enrollment application has been submitted successfully.<br/>
+                                    wait for approval.
+                                </p>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-success px-5"
+                                    onClick={() => {
+                                        setSuccessModal(false);
+                                        navigate('/', { replace: true, state: { allowed: false }});
+                                        window.scrollTo({ top: 0, behavior: "auto"});
+                                    }}
                                 >
                                     Close
                                 </button>

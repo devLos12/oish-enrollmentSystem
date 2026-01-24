@@ -2,36 +2,37 @@ import Staff from "../model/staff.js";
 import Student from "../model/student.js";
 import AccessCode from "../model/accessCode.js"
 import bcrypt from "bcrypt";
+import Admin from "../model/admin.js";
 
 
 
-const validateAccessCode = async (res, code) => {
-    try {
-        const access = await AccessCode.findOne({ code });
 
-        if (!access) return res.status(400).json({ message: "Invalid Verification Code" });
-        if (access.isUsed) return res.status(400).json({ message: "Code already used" });
-        if (access.expiresAt < new Date()) return res.status(400).json({ message: "Code expired" });
-        return
+const validateAccessCode = async (code) => {
+    const access = await AccessCode.findOne({ code });
 
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+    if (!access) throw new Error("Invalid Verification Code");
+    if (access.isUsed) throw new Error("Code already used");
+    if (access.expiresAt < new Date()) throw new Error("Code expired");
+    
+    return access; // return the access code if valid
 };
 
 
 
-export const StaffRegistration = async (req, res) => {
 
+export const StaffRegistration = async (req, res) => {
     try {
-        const { verificationCode, firstName,  lastName, email, password } = req.body;
+        const { verificationCode, firstName, middleName, lastName, email, password } = req.body;
+
+        // Validate access code
+        await validateAccessCode(verificationCode);
         
-        
-        await validateAccessCode(res, verificationCode);
         const student = await Student.findOne({ email });
         const staff = await Staff.findOne({ email });
+        const admin = await Admin.findOne({ email })
         
-        if(staff || student ) {
+
+        if(admin || staff || student) {
             return res.status(409).json({ message: "Account already exists"});
         }
 
@@ -39,13 +40,22 @@ export const StaffRegistration = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         await Staff.create({
-            firstName, lastName, email, 
-            password: hashedPassword });
+            firstName, 
+            middleName,  // don't forget to add this!
+            lastName, 
+            email, 
+            password: hashedPassword 
+        });
         
-        await AccessCode.findOneAndUpdate( { code: verificationCode }, { isUsed: true }, { new: true });
+        await AccessCode.findOneAndUpdate(
+            { code: verificationCode }, 
+            { isUsed: true }, 
+            { new: true }
+        );
 
-        res.status(200).json({ message: "Registered successfully."});
+        return res.status(200).json({ message: "Registered successfully."});
+        
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message});
     }
 }

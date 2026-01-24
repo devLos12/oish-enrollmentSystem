@@ -232,8 +232,7 @@ const Dashboard = () => {
                 <div className="col-12 col-lg-6 mb-4">
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-body">
-                            <h5 className="card-title fw-bold mb-1 text-capitalize">pie </h5>
-                            <p className="text-muted small mb-4 text-capitalize">student statistics</p>
+                            <h5 className="card-title fw-bold mb-1 text-capitalize">student statistics</h5>
                             {loading ? (
                                 <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
                                     <div className="spinner-border text-danger" role="status">

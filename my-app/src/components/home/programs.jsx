@@ -106,7 +106,7 @@ const Programs = () => {
                         </div>
 
                         {/* Enroll Button */}
-                        <div className="text-center text-md-end pe-0 pe-md-5 mt-4">
+                        {/* <div className="text-center text-md-end pe-0 pe-md-5 mt-4">
                             <button 
                                 className="btn fw-bold text-white px-4 px-md-5 py-2 py-md-3 rounded-0 position-relative"
                                 style={{ 
@@ -131,7 +131,7 @@ const Programs = () => {
                                     NOW
                                 </span>
                             </button>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>

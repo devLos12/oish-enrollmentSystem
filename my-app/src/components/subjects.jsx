@@ -49,6 +49,9 @@ const SubjectManagement = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success'); // 'success' or 'error'
 
+    const [modalLoading, setModalLoading] = useState(false); // ✅ ADD THIS
+
+
 
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -79,6 +82,8 @@ const SubjectManagement = () => {
 
     // After existing states (around line 40)
     const [manualRows, setManualRows] = useState([]);
+
+
 
 
 
@@ -269,7 +274,6 @@ const SubjectManagement = () => {
     };
 
 
-
     const handleSubmitSubject = async () => {
 
         if (
@@ -277,21 +281,18 @@ const SubjectManagement = () => {
             !selectedSubject.subjectCode.trim() ||
             !selectedSubject.gradeLevel ||
             !selectedSubject.strand.trim() ||
-            // !selectedSubject.section.trim() || 
             !selectedSubject.semester ||
             !selectedSubject.subjectType.trim() ||
             !selectedSubject.track.trim() ||
             !selectedSubject.teacher.trim()
-            // !selectedSubject.scheduleDay ||  // ✅ ADD
-            // !selectedSubject.scheduleStartTime ||  // ✅ ADD
-            // !selectedSubject.scheduleEndTime  ||// ✅ ADD
-            // !selectedSubject.room
         ) {
             showAlert("Input Field Required!", 'error');
             return;
         }
 
         try {
+            setModalLoading(true); // ✅ START LOADING
+            
             const url = modalType === 'add' 
                 ? `${import.meta.env.VITE_API_URL}/api/addSubjects`
                 : `${import.meta.env.VITE_API_URL}/api/updateSubjects/${selectedSubject._id}`;
@@ -309,13 +310,8 @@ const SubjectManagement = () => {
                     subjectType: selectedSubject.subjectType,
                     track: selectedSubject.track,
                     strand: selectedSubject.strand,
-                    // section: selectedSubject.section,
                     teacherId: selectedSubject.teacherId,
                     teacherName: selectedSubject.teacher,
-                    // scheduleDay: selectedSubject.scheduleDay,  // ✅ ADD
-                    // scheduleStartTime: selectedSubject.scheduleStartTime,  // ✅ ADD
-                    // scheduleEndTime: selectedSubject.scheduleEndTime,  // ✅ ADD
-                    // room: selectedSubject.room || ''  // ✅ ADD
                 }),
                 credentials: "include",
             });
@@ -328,12 +324,19 @@ const SubjectManagement = () => {
         } catch (error) {
             console.error(`Error ${modalType === 'add' ? 'adding' : 'updating'} subject:`, error.message);
             showAlert(`Failed to ${modalType === 'add' ? 'add' : 'update'} subject: ${error.message}`, 'error');
-        
+        } finally {
+            setModalLoading(false); // ✅ STOP LOADING
         }
     };
 
+
+
+
+
     const confirmDelete = async () => {
         try {
+            setModalLoading(true); // ✅ START LOADING
+            
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deleteSubject/${selectedSubject._id}`, {
                 method: "DELETE",
                 credentials: "include",
@@ -347,9 +350,16 @@ const SubjectManagement = () => {
         } catch (error) {
             console.error("Error deleting subject:", error.message);
             showAlert("Failed to delete subject", 'error');
+        } finally {
+            setModalLoading(false); // ✅ STOP LOADING
         }
     };
     
+
+
+
+
+
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -504,6 +514,8 @@ const SubjectManagement = () => {
                 const rowNum = index + 2;
                 const rowErrors = [];
                 
+
+
                 // ✅ NORMALIZE KEYS - handle spaces and case variations
                 const normalizedRow = {};
                 Object.keys(row).forEach(key => {
@@ -532,6 +544,37 @@ const SubjectManagement = () => {
                     gradeLevel = parseInt(gradeLevel.replace(/\D/g, ''));
                 }
                 normalizedRow.gradeLevel = gradeLevel;
+                
+
+
+                // ✅ Parse Semester (handle "First", "1st", "1" -> 1)
+                let semester = normalizedRow.semester;
+                if (typeof semester === 'string') {
+                    const semesterLower = semester.toLowerCase().trim();
+                    if (semesterLower === 'first' || semesterLower === '1st') {
+                        semester = 1;
+                    } else if (semesterLower === 'second' || semesterLower === '2nd') {
+                        semester = 2;
+                    } else {
+                        semester = parseInt(semester);
+                    }
+                } else {
+                    semester = parseInt(semester);
+                }
+                normalizedRow.semester = semester;
+
+
+                // ✅ Normalize Track (capitalize first letter)
+                if (normalizedRow.track) {
+                    const track = normalizedRow.track.toString().trim();
+                    normalizedRow.track = track.charAt(0).toUpperCase() + track.slice(1).toLowerCase();
+                }
+
+                // ✅ Normalize Strand (uppercase)
+                if (normalizedRow.strand) {
+                    normalizedRow.strand = normalizedRow.strand.toString().trim().toUpperCase();
+                }
+
                 
                 // Required field validation
                 if (!normalizedRow.subjectCode?.toString().trim()) {
@@ -588,11 +631,11 @@ const SubjectManagement = () => {
                     } else {
                         validatedData.push({
                             subjectCode: normalizedRow.subjectCode.toString().trim().toUpperCase(),
-                            subjectName: normalizedRow.subjectName.toString().trim(),
+                            subjectName: normalizedRow.subjectName.toString().trim().replace(/\b\w/g, char => char.toUpperCase()),
                             gradeLevel: parseInt(normalizedRow.gradeLevel),
                             semester: parseInt(normalizedRow.semester),
-                            track: normalizedRow.track.toString().trim(),
-                            strand: normalizedRow.strand.toString().trim(),
+                            track: normalizedRow.track.toString().trim().charAt(0).toUpperCase() + normalizedRow.track.toString().trim().slice(1).toLowerCase(),
+                            strand: normalizedRow.strand.toString().trim().toUpperCase(),
                             subjectType: subjectType,
                             teacherId: teacher._id,
                             teacherName: teacher.fullName
@@ -612,8 +655,6 @@ const SubjectManagement = () => {
             setIsProcessingExcel(false);
         }
     };
-
-
 
 
 
@@ -807,7 +848,7 @@ const SubjectManagement = () => {
                         >
                             <option value="">All Semesters</option>
                             {semesterOptions.map(sem => (
-                                <option key={sem} value={sem}>Semester {sem}</option>
+                                <option key={sem} value={sem}>{sem === 1 ? "First" : "Second"}</option>
                             ))}
                         </select>
                     </div>
@@ -895,8 +936,8 @@ const SubjectManagement = () => {
                                                                 {subject.section || 'N/A'}
                                                             </span>
                                                         </td> */}
-                                                        <td className="align-middle">
-                                                            {subject.semester}
+                                                        <td className="align-middle small">
+                                                            {subject.semester === 1 ? "First" : "Second"}
                                                         </td>
                                                         <td className="align-middle">
                                                             <span className={`badge ${getSubjectTypeBadge(subject.subjectType)} text-capitalize`}>
@@ -1169,44 +1210,6 @@ const SubjectManagement = () => {
                                             </div>
 
                                         </div>
-                                        {/* ✅ SECTION ROW - ILAGAY DITO! */}
-                                        {/* <div className="row mb-3">
-                                            <div className="col-12">
-                                                <label className="form-label text-capitalize fw-bold">
-                                                    Section
-                                                    {loadingSections && (
-                                                        <span className="spinner-border spinner-border-sm ms-2" role="status">
-                                                            <span className="visually-hidden">Loading...</span>
-                                                        </span>
-                                                    )}
-                                                </label>
-                                                <select 
-                                                    className="form-select"
-                                                    value={selectedSubject?.section || ''}
-                                                    onChange={(e) => setSelectedSubject({...selectedSubject, section: e.target.value})}
-                                                    disabled={!selectedSubject?.gradeLevel || !selectedSubject?.strand || !selectedSubject?.track || loadingSections}
-                                                >
-                                                    <option value="">Select Section</option>
-                                                    {availableSections.map(section => (
-                                                        <option key={section._id} value={section.name}>
-                                                            {section.name} ({section.students?.length || 0}/{section.maxCapacity})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                {(!selectedSubject?.gradeLevel || !selectedSubject?.strand || !selectedSubject?.track) && (
-                                                    <small className="text-muted d-block mt-1">
-                                                        <i className="fa fa-info-circle me-1"></i>
-                                                        Select Grade Level, Track, Strand, and Semester first
-                                                    </small>
-                                                )}
-                                                {availableSections.length === 0 && selectedSubject?.strand && !loadingSections && (
-                                                    <small className="text-warning d-block mt-1">
-                                                        <i className="fa fa-exclamation-triangle me-1"></i>
-                                                        No sections available for this combination
-                                                    </small>
-                                                )}
-                                            </div>
-                                        </div> */}
 
                                         
 
@@ -1303,70 +1306,19 @@ const SubjectManagement = () => {
                                                     onChange={(e) => setSelectedSubject({...selectedSubject, semester: parseInt(e.target.value)})}
                                                 >
                                                     {semesterOptions.map(sem => (
-                                                        <option key={sem} value={sem}>Semester {sem}</option>
+                                                        <option key={sem} value={sem}>{sem === 1 ? "First" : "Second"}</option>
                                                     ))}
                                                 </select>
                                             </div>
                                         </div>
-
-
-
-                                        {/* ✅ SCHEDULE SECTION */}
-                                        {/* <div className="row mb-3">
-                                            <div className="col-12">
-                                                <label className="form-label text-capitalize fw-bold">Schedule & Room</label>
-                                            </div>
-                                            <div className="col-6">
-                                                <label className="form-label small">Day</label>
-                                                <select 
-                                                    className="form-select"
-                                                    value={selectedSubject?.scheduleDay || ''}
-                                                    onChange={(e) => setSelectedSubject({...selectedSubject, scheduleDay: e.target.value})}
-                                                >
-                                                    <option value="">Select Day</option>
-                                                    {dayOptions.map(day => (
-                                                        <option key={day} value={day}>{day}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="col-6">
-                                                <label className="form-label small">Start Time</label>
-                                                <input 
-                                                    type="time"
-                                                    className="form-control"
-                                                    value={selectedSubject?.scheduleStartTime || ''}
-                                                    onChange={(e) => setSelectedSubject({...selectedSubject, scheduleStartTime: e.target.value})}
-                                                />
-                                            </div>
-                                            <div className="col-6">
-                                                <label className="form-label small">End Time</label>
-                                                <input 
-                                                    type="time"
-                                                    className="form-control"
-                                                    value={selectedSubject?.scheduleEndTime || ''}
-                                                    onChange={(e) => setSelectedSubject({...selectedSubject, scheduleEndTime: e.target.value})}
-                                                />
-                                            </div>
-                                            <div className="col-6">
-                                                <label className="form-label small">Room (Optional)</label>
-                                                <input 
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder="e.g. Room 101"
-                                                    value={selectedSubject?.room || ''}
-                                                    onChange={(e) => setSelectedSubject({...selectedSubject, room: e.target.value})}
-                                                />
-                                            </div>
-                                        </div> */}
-
                                     </div>
-
 
                                     <div className="modal-footer">
                                         <button 
                                             type="button" 
                                             className="btn btn-secondary"
                                             onClick={() => setShowModal(false)}
+                                            disabled={modalLoading}
                                         >
                                             Cancel
                                         </button>
@@ -1374,9 +1326,19 @@ const SubjectManagement = () => {
                                             type="button"
                                             className="btn btn-danger"
                                             onClick={handleSubmitSubject}
+                                            disabled={modalLoading}
                                         >
-                                            <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
-                                            {modalType === 'add' ? 'Add Subject' : 'Update Subject'}
+                                            {modalLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                                    {modalType === 'add' ? 'Adding...' : 'Updating...'}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
+                                                    {modalType === 'add' ? 'Add Subject' : 'Update Subject'}
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </>
@@ -1397,6 +1359,7 @@ const SubjectManagement = () => {
                                             type="button" 
                                             className="btn btn-secondary"
                                             onClick={() => setShowModal(false)}
+                                            disabled={modalLoading}
                                         >
                                             Cancel
                                         </button>
@@ -1404,9 +1367,19 @@ const SubjectManagement = () => {
                                             type="button" 
                                             className="btn btn-danger"
                                             onClick={confirmDelete}
+                                            disabled={modalLoading}
                                         >
-                                            <i className="fa fa-trash me-2"></i>
-                                            Yes, Delete
+                                            {modalLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                                    Deleting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-trash me-2"></i>
+                                                    Yes, Delete
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </>
@@ -1416,9 +1389,13 @@ const SubjectManagement = () => {
                 </div>
             )}
 
+
+
+
+
             {/* Alert Modal - Success/Error Messages */}
             {showAlertModal && (
-                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999999999}}>
                     <div className="modal-dialog modal-dialog-centered ">
                         <div className="modal-content border-0 shadow-lg">
                             <div className="modal-body text-center p-4">
@@ -1478,16 +1455,6 @@ const SubjectManagement = () => {
                                     </small>
                                 </div>
                                 
-                                {/* Processing Indicator */}
-                                {isProcessingExcel && (
-                                    <div className="text-center py-4">
-                                        <div className="spinner-border text-danger" role="status">
-                                            <span className="visually-hidden">Processing...</span>
-                                        </div>
-                                        <p className="text-muted mt-2">Processing Excel file...</p>
-                                    </div>
-                                )}
-                                
                                 {/* Errors Display */}
                                 {importErrors.length > 0 && (
                                     <div className="alert alert-danger">
@@ -1537,7 +1504,7 @@ const SubjectManagement = () => {
                                                             <td>{subject.semester}</td>
                                                             <td>{subject.track}</td>
                                                             <td>{subject.strand}</td>
-                                                            <td className="text-capitalize">{subject.subjectType}</td>
+                                                            <td>{subject.subjectType}</td>
                                                             <td>{subject.teacherName}</td>
                                                         </tr>
                                                     ))}
@@ -1622,8 +1589,8 @@ const SubjectManagement = () => {
                                                                     }}
                                                                 
                                                                 >
-                                                                    <option value="1">1</option>
-                                                                    <option value="2">2</option>
+                                                                    <option value="1">First</option>
+                                                                    <option value="2">Second</option>
                                                                 </select>
                                                             </td>
                                                             
@@ -1775,14 +1742,23 @@ const SubjectManagement = () => {
                                 >
                                     Cancel
                                 </button>
-                              <button 
+                               <button 
                                     type="button"
                                     className="btn btn-success"
                                     onClick={handleBulkImport}
-                                    disabled={excelData.length === 0 && manualRows.length === 0}
+                                    disabled={excelData.length === 0 && manualRows.length === 0 || isProcessingExcel}
                                 >
-                                    <i className="fa fa-upload me-2"></i>
-                                    Import {excelData.length + manualRows.length} Subject(s)
+                                    {isProcessingExcel ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2"></span>
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fa fa-upload me-2"></i>
+                                            Import {excelData.length + manualRows.length} Subject(s)
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>

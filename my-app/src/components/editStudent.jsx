@@ -20,6 +20,9 @@ const EditStudent = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success'); // 'success' or 'error'
 
+
+    const [isUpdating, setIsUpdating] = useState(false);
+
     const gradeOptions = [11, 12];
     const statusOptions = ['pending', 'enrolled', 'unenrolled'];
     
@@ -128,6 +131,17 @@ const EditStudent = () => {
             showAlert("Please select a section first", 'error');
             return;
         }
+        
+
+        // Validate contact number (only if provided)
+        const cleanedContact = selectedStudent?.contactNumber?.replace(/\D/g, '') || '';
+        if (cleanedContact.length > 0 && (cleanedContact.length !== 11 || !cleanedContact.startsWith('0'))) {
+            showAlert("Contact number must be 11 digits and start with 0", 'error');
+            return;
+        }
+
+
+        setIsUpdating(true);
 
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/updateStudent/${selectedStudent._id}`, {
@@ -158,6 +172,8 @@ const EditStudent = () => {
             setTimeout(() => navigate(-1), 1500);
         } catch (error) {
             showAlert(error.message, 'error');
+        }finally {
+            setIsUpdating(false);
         }
     };
 
@@ -226,7 +242,30 @@ const EditStudent = () => {
                                             type="text" 
                                             className="form-control"
                                             value={selectedStudent?.contactNumber || ''}
-                                            onChange={(e) => setSelectedStudent({...selectedStudent, contactNumber: e.target.value})}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                let cleaned = value.replace(/\D/g, '');
+                                                
+                                                // Limit to 11 digits
+                                                cleaned = cleaned.substring(0, 11);
+                                                
+                                                // Format as 0XXX XXX XXXX
+                                                let formatted = '';
+                                                if (cleaned.length > 0) {
+                                                    formatted = cleaned.substring(0, 4);
+                                                    if (cleaned.length > 4) {
+                                                        formatted += ' ' + cleaned.substring(4, 7);
+                                                    }
+                                                    if (cleaned.length > 7) {
+                                                        formatted += ' ' + cleaned.substring(7, 11);
+                                                    }
+                                                }
+                                                
+                                                setSelectedStudent({...selectedStudent, contactNumber: formatted});
+                                            }}                            
+                                                                                    
+                                        
+                                        
                                         />
                                     </div>
                                 </div>
@@ -278,8 +317,8 @@ const EditStudent = () => {
                                             value={selectedStudent?.semester || 1}
                                             onChange={(e) => setSelectedStudent({...selectedStudent, semester: parseInt(e.target.value)})}
                                         >
-                                            <option value={1}>1st Semester</option>
-                                            <option value={2}>2nd Semester</option>
+                                            <option value={1}>First</option>
+                                            <option value={2}>Second</option>
                                         </select>
                                     </div>
                                 </div>
@@ -439,8 +478,8 @@ const EditStudent = () => {
                                                                                         onChange={(e) => handleRepeatedSubjectChange(index, 'semester', parseInt(e.target.value))}
                                                                                     >
                                                                                         <option value="">Select</option>
-                                                                                        <option value={1}>1st</option>
-                                                                                        <option value={2}>2nd</option>
+                                                                                        <option value={1}>First</option>
+                                                                                        <option value={2}>Second</option>
                                                                                     </select>
                                                                                 </div>
                                                                                 <div className="col-md-2">
@@ -498,14 +537,23 @@ const EditStudent = () => {
                                             <i className="fa fa-arrow-left me-2"></i>
                                             Back
                                         </button>
-                                        <button 
+                                       <button 
                                             type="button"
                                             className="btn btn-danger"
                                             onClick={handleUpdateStudent}
-                                            disabled={!isRepeatedSubjectsValid()}
+                                            disabled={!isRepeatedSubjectsValid() || isUpdating}
                                         >
-                                            <i className="fa fa-save me-2"></i>
-                                            Update Student
+                                            {isUpdating ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                                    Updating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-save me-2"></i>
+                                                    Update Student
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </div>

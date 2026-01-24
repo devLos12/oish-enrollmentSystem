@@ -155,8 +155,6 @@ const RegistrationViewForm = () => {
                                     <p className="m-0">Track: </p>
                                     <p className="m-0 fw-bold">{student?.track || ""}</p>
                                 </div>
-
-                              
                             </div>
                             <div className="col-12 col-md-6 d-flex flex-column gap-2 mt-2 mt-md-0">
                                 <div className="d-flex gap-2">
@@ -173,7 +171,7 @@ const RegistrationViewForm = () => {
                                 </div>
                                 <div className="d-flex gap-2">
                                     <p className="m-0">Semester: </p>
-                                    <p className="m-0 fw-bold">{student?.semester || ""}</p>
+                                    <p className="m-0 fw-bold">{student?.semester === 1 ? "First" : "Second" || ""}</p>
                                 </div>
                             </div>
                         </div>

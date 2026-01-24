@@ -421,7 +421,7 @@ const SectionManagement = () => {
                               <span className="badge bg-danger">{sec.strand || 'N/A'}</span>
                             </td>
                             <td className="align-middle">Grade {sec.gradeLevel}</td>
-                            <td className="align-middle">{sec.semester}</td>
+                            <td className="align-middle small">{sec.semester === 1 ? "First" : "Second"}</td>
                             <td className="align-middle">{getStudentCount(sec)}</td>
                             <td className="align-middle">
                               {getStudentCount(sec)} / {sec.maxCapacity || 35}
@@ -625,7 +625,7 @@ const SectionManagement = () => {
                         >
                           {semesterOptions.map((s) => (
                             <option key={s} value={s}>
-                              Semester {s}
+                              {s === 1 ? "First" : "Second"}
                             </option>
                           ))}
                         </select>

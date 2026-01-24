@@ -101,6 +101,8 @@ const Header = () => {
                             ></i>
                             
                             <div className="d-flex gap-2 align-items-center cursor d-none d-lg-flex"
+                                onClick={() => navigate('/')}
+                                style={{ cursor: 'pointer' }}
                             > 
                                 <div 
                                     className="bg-white rounded-circle d-flex border border-white border-2"
@@ -109,13 +111,13 @@ const Header = () => {
                                     <img src={logo} alt={logo} style={{objectFit:" cover"}}/>
                                 
                                 </div>
-                                <p className="m-0 text-white fw-bold d-flex flex-column text-capitalize"
-            
-                                style={{lineHeight: "1.2"   }}>
-                                fransisco osorio integrated SHS                                
-                                <span className="m-0 text-white fw-bold text-capitalize">trece martires city.</span>
+                                <p className="m-0 text-white fw-semibold d-flex flex-column text-capitalize"
+                                    style={{lineHeight: "1.2"}}
+                                >
+                                    fransisco osorio integrated SHS                                
+                                    <span className="m-0 text-white fw-semibold text-capitalize">trece martires city.</span>
                                 </p>
-                           </div>
+                            </div>
                         </div>
                         <div className="d-flex align-items-center gap-3">
                             <nav className="d-none d-md-block me-5">

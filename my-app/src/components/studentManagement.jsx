@@ -2,6 +2,12 @@ import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 
+
+
+
+
+
+
 const StudentManagement = () => {
     const { role, setTextHeader, studentList, setStudentList } = useContext(globalContext);
     const [filteredStudents, setFilteredStudents] = useState([]);
@@ -17,6 +23,11 @@ const StudentManagement = () => {
     const [modalType, setModalType] = useState('');
     const [openDropdown, setOpenDropdown] = useState(null);
     
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -31,6 +42,46 @@ const StudentManagement = () => {
     const gradeOptions = [11, 12];
     const statusOptions = ['pending','enrolled','unenrolled', 'dropped', 'graduated'];
     const semesterOptions = [1, 2];
+
+
+    const STRAND_OPTIONS = {
+        'Academic': [
+            { value: 'STEM', label: 'STEM (Science, Technology, Engineering, and Mathematics)' },
+            { value: 'ABM', label: 'ABM (Accountancy, Business, and Management)' },
+            { value: 'HUMSS', label: 'HUMSS (Humanities and Social Sciences)' },
+            { value: 'GAS', label: 'GAS (General Academic Strand)' }
+        ],
+        'TVL': [
+            { value: 'HE', label: 'HE (Home Economics)' },
+            { value: 'ICT', label: 'ICT (Information and Communications Technology)' },
+            { value: 'IA', label: 'IA (Industrial Arts)' },
+            { value: 'Agri-Fishery', label: 'Agri-Fishery Arts' }
+        ]
+    };
+
+
+
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [addFormData, setAddFormData] = useState({
+        lrn: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        extensionName: 'N/A',
+        birthDate: '',
+        sex: '',
+        contactNumber: '',
+        email: '',
+        gradeLevel: '',
+        track: '',
+        strand: '',
+        semester: '',
+        studentType: 'regular',
+        password: '',        
+        confirmPassword: ''
+    });
+
+
     
     // Dynamic strand options from actual student data
     const strandOptions = [...new Set(
@@ -152,6 +203,11 @@ const StudentManagement = () => {
         setShowModal(true);
     };
 
+
+
+
+
+
     const confirmDelete = async () => {
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deleteStudent/${selectedStudent._id}`, {
@@ -169,6 +225,179 @@ const StudentManagement = () => {
             showAlert("Failed to delete student", 'error');
         }
     };
+
+
+    const handleAddStudent = () => {
+        setShowAddModal(true);
+    };
+
+
+
+
+    const handleAddFormChange = (e) => {
+        const { name, value } = e.target;
+        
+        // ✅ Special handling for Contact Number
+        if (name === 'contactNumber') {
+            let cleaned = value.replace(/\D/g, '');
+            cleaned = cleaned.substring(0, 11);
+            
+            let formatted = '';
+            if (cleaned.length > 0) {
+                formatted = cleaned.substring(0, 4);
+                if (cleaned.length > 4) {
+                    formatted += ' ' + cleaned.substring(4, 7);
+                }
+                if (cleaned.length > 7) {
+                    formatted += ' ' + cleaned.substring(7, 11);
+                }
+            }
+            
+            setAddFormData(prev => ({
+                ...prev,
+                [name]: formatted
+            }));
+        } 
+
+        else if (name === 'lrn') {
+            let cleaned = value.replace(/\D/g, '');
+            cleaned = cleaned.substring(0, 12); // Limit to 12 digits
+            
+            setAddFormData(prev => ({
+                ...prev,
+                [name]: cleaned
+        }));
+    }
+
+
+
+        // ✅ Reset strand when track changes
+        else if (name === 'track') {
+            setAddFormData(prev => ({
+                ...prev,
+                track: value,
+                strand: '' // Reset strand
+            }));
+        } 
+        else {
+            setAddFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
+    };
+
+
+
+
+
+    const handleAddSubmit = async (e) => {
+        e.preventDefault();
+
+        
+
+        // ✅ Validate LRN length
+        if (addFormData.lrn.length !== 12) {
+            showAlert("LRN must be exactly 12 digits", 'error');
+            return;
+        }
+
+        // ✅ Validate Contact Number length
+        const cleanedContact = addFormData.contactNumber.replace(/\s/g, '');
+        if (cleanedContact.length !== 11) {
+            showAlert("Contact Number must be exactly 11 digits", 'error');
+            return;
+        }
+
+        // ✅ ADD PASSWORD VALIDATION
+        if (!addFormData.password || addFormData.password.length < 6) {
+            showAlert("Password must be at least 6 characters", 'error');
+            return;
+        }
+
+        if (addFormData.password !== addFormData.confirmPassword) {
+            showAlert("Passwords do not match", 'error');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/createStudent`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify(addFormData)
+            });
+
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.message);
+
+            setShowAddModal(false);
+            showAlert("Student created successfully!", 'success');
+            fetchStudentsData();
+            
+            // Reset form
+            setAddFormData({
+                lrn: '',
+                firstName: '',
+                middleName: '',
+                lastName: '',
+                extensionName: 'N/A',
+                birthDate: '',
+                sex: '',
+                contactNumber: '',
+                email: '',
+                gradeLevel: '',
+                track: '',
+                strand: '',
+                semester: '',
+                studentType: 'regular',
+                password: '',         // ✅ ADD THIS
+                confirmPassword: '', // ✅ ADD THIS
+            });
+
+        } catch (error) {
+            console.error("Error creating student:", error.message);
+            showAlert(error.message || "Failed to create student", 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
+
+
+    const handleCloseAddModal = () => {
+       // ✅ ADD THIS
+        setShowAddModal(false);
+        setShowPassword(false);         // ✅ ADD THIS
+        setShowConfirmPassword(false);
+        setAddFormData({
+            lrn: '',
+            firstName: '',
+            middleName: '',
+            lastName: '',
+            extensionName: 'N/A',
+            birthDate: '',
+            sex: '',
+            contactNumber: '',
+            email: '',
+            gradeLevel: '',
+            track: '',
+            strand: '',
+            semester: '',
+            studentType: 'regular',
+            password: '',         // ✅ ADD THIS
+            confirmPassword: '', // ✅ ADD THIS
+        });
+    };
+
+
 
     const getStatusBadge = (status) => {
         const badges = {
@@ -294,35 +523,13 @@ const StudentManagement = () => {
                                 <h4 className="text-capitalize fw-bold mb-1">student management</h4>
                                 <p className="text-muted small mb-0">Manage enrolled students and their information</p>
                             </div>
-                            <div className="btn-group" role="group">
-                                <button 
-                                    type="button" 
-                                    className={`btn ${studentType === 'all' ? 'btn-secondary' : 'btn-outline-secondary'}`}
-                                    onClick={() => setStudentType('all')}
-                                >
-                                    <i className="fa fa-users me-2"></i>All
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className={`btn ${studentType === 'regular' ? 'btn-danger' : 'btn-outline-danger'}`}
-                                    onClick={() => setStudentType('regular')}
-                                >
-                                    <i className="fa fa-user me-2"></i>Regular
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className={`btn ${studentType === 'repeater' ? 'btn-warning' : 'btn-outline-warning'}`}
-                                    onClick={() => setStudentType('repeater')}
-                                >
-                                    <i className="fa fa-redo me-2"></i>Repeater
-                                </button>
-                            </div>
+                         
                         </div>
                     </div>
                 </div>
 
                 <div className="row mb-4">
-                    <div className="col-12">
+                    <div className="col-12 col-md-6">
                         <div className="input-group">
                             <span className="input-group-text bg-white">
                                 <i className="fa fa-search text-muted"></i>
@@ -336,9 +543,40 @@ const StudentManagement = () => {
                             />
                         </div>
                     </div>
+                    <div className="col-12 col-md-6 mt-2 mt-md-0 d-flex justify-content-start justify-content-md-end">
+                        <button 
+                            type="button" 
+                            className="btn btn-success btn-sm"
+                            onClick={handleAddStudent}
+                        >
+                            <i className="fa fa-plus me-2"></i>Add Student
+                        </button>
+                    </div>
                 </div>
 
                 <div className="row mb-3">
+                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                        <select 
+                            className="form-select"
+                            value={studentType}
+                            onChange={(e) => setStudentType(e.target.value)}
+                        >
+                            <option value="all">All Students</option>
+                            <option value="regular">Regular</option>
+                            <option value="repeater">Repeater</option>
+                        </select>
+                    </div>
+                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                        <select 
+                            className="form-select"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="enrolled">Enrolled</option>
+                        </select>
+                    </div>
                     <div className="col-12 col-md-2 mt-2 mt-md-0">
                         <FilterSelect
                             value={filterGrade}
@@ -350,19 +588,7 @@ const StudentManagement = () => {
                             )}
                         />
                     </div>
-                    <div className="col-12 col-md-2 mt-2 mt-md-0">
-                        <select 
-                            className="form-select"
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="all">All Status ({statusCounts.all})</option>
-                            <option value="pending">Pending ({statusCounts.pending})</option>
-                            <option value="enrolled">Enrolled ({statusCounts.enrolled})</option>
-                            <option value="dropped">Dropped ({statusCounts.dropped})</option>
-                            <option value="graduated">Graduated ({statusCounts.graduated})</option>
-                        </select>
-                    </div>
+                 
                     <div className="col-12 col-md-2 mt-2 mt-md-0">
                         <FilterSelect
                             value={filterSemester}
@@ -370,7 +596,7 @@ const StudentManagement = () => {
                             options={semesterOptions}
                             placeholder="All Semesters"
                             renderOption={(semester) => (
-                                <option key={semester} value={semester}>Semester {semester}</option>
+                                <option key={semester} value={semester}>{semester === 1 ? "First" : "Second"}</option>
                             )}
                         />
                     </div>
@@ -386,12 +612,14 @@ const StudentManagement = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="col-12 col-md-4 mt-2 mt-md-0 d-flex justify-content-end align-items-center gap-3">
+                    <div className="col-12 col-md-2 mt-2 mt-md-0 d-flex justify-content-end align-items-center">
                         <p className="text-muted mb-0 text-capitalize">
-                            total: <strong>{filteredStudents.length}</strong>
+                            Total: <strong>{filteredStudents.length}</strong>
                         </p>
                     </div>
                 </div>
+
+
 
                 <div className="row">
                     <div className="col-12">
@@ -441,7 +669,7 @@ const StudentManagement = () => {
                                                                 ${(student.extensionName === "N/A") || (student.extensionName === "n/a") ? "" : student.extensionName }`.trim()}
                                                             </td>
                                                             <td className="align-middle">Grade {student.gradeLevel}</td>
-                                                            <td className="align-middle">{student.semester}</td>
+                                                            <td className="align-middle small">{student.semester === 1 ? "First" : "Second"}</td>
                                                             <td className="align-middle">
                                                                 <span className="badge bg-danger">
                                                                     {student.strand || 'N/A'}
@@ -570,7 +798,7 @@ const StudentManagement = () => {
 
             {/* Alert Modal - Success/Error Messages */}
             {showAlertModal && (
-                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999999}}>
                     <div className="modal-dialog modal-dialog-centered">
                         <div className="modal-content border-0 shadow-lg">
                             <div className="modal-body text-center p-4">
@@ -591,9 +819,324 @@ const StudentManagement = () => {
                     </div>
                 </div>
             )}
+
+
+            {/* Add Student Modal */}
+            {showAddModal && (
+                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog modal-dialog-centered modal-lg">
+                        <div className="modal-content">
+                            <div className="modal-header bg-success text-white">
+                                <h5 className="modal-title">
+                                    <i className="fa fa-user-plus me-2"></i>Add New Student
+                                </h5>
+                                <button type="button" className="btn-close btn-close-white" onClick={handleCloseAddModal}></button>
+                            </div>
+                            <form onSubmit={handleAddSubmit}>
+                                <div className="modal-body" style={{maxHeight: '70vh', overflowY: 'auto'}}>
+                                    {/* Personal Information */}
+                                    <div className="mb-4">
+                                        <h6 className="text-success fw-bold mb-3">Personal Information</h6>
+                                        <div className="row">
+                                            <div className="col-md-6 mb-3">
+                                                <label className="form-label">LRN <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    name="lrn"
+                                                    value={addFormData.lrn}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-6 mb-3">
+                                                <label className="form-label">Email <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="email"
+                                                    className="form-control"
+                                                    name="email"
+                                                    value={addFormData.email}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="row">
+                                            <div className="col-md-3 mb-3">
+                                                <label className="form-label">First Name <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    name="firstName"
+                                                    value={addFormData.firstName}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-3 mb-3">
+                                                <label className="form-label">Middle Name</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    name="middleName"
+                                                    value={addFormData.middleName}
+                                                    onChange={handleAddFormChange}
+                                                />
+                                            </div>
+                                            <div className="col-md-3 mb-3">
+                                                <label className="form-label">Last Name <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    name="lastName"
+                                                    value={addFormData.lastName}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-3 mb-3">
+                                                <label className="form-label">Ext.</label>
+                                                <select
+                                                    className="form-select"
+                                                    name="extensionName"
+                                                    value={addFormData.extensionName}
+                                                    onChange={handleAddFormChange}
+                                                >
+                                                    <option value="N/A">N/A</option>
+                                                    <option value="Jr.">Jr.</option>
+                                                    <option value="Sr.">Sr.</option>
+                                                    <option value="II">II</option>
+                                                    <option value="III">III</option>
+                                                    <option value="IV">IV</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="row">
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Birth Date <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control"
+                                                    name="birthDate"
+                                                    value={addFormData.birthDate}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Sex <span className="text-danger">*</span></label>
+                                                <select
+                                                    className="form-select"
+                                                    name="sex"
+                                                    value={addFormData.sex}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                >
+                                                    <option value="">Select Sex</option>
+                                                    <option value="Male">Male</option>
+                                                    <option value="Female">Female</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Contact Number</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    name="contactNumber"
+                                                    value={addFormData.contactNumber}
+                                                    onChange={handleAddFormChange}
+                                                    maxLength="13"
+                                                />
+                                                <small className="text-muted">Format: 0XXX XXX XXXX (11 digits)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+
+                                    {/* Academic Information */}
+                                    <div className="mb-3">
+                                        <h6 className="text-success fw-bold mb-3">Academic Information</h6>
+                                        <div className="row">
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Student Type <span className="text-danger">*</span></label>
+                                                <select
+                                                    className="form-select"
+                                                    name="studentType"
+                                                    value={addFormData.studentType}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                >
+                                                    <option value="regular">Regular</option>
+                                                    <option value="repeater">Repeater</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Grade Level <span className="text-danger">*</span></label>
+                                                <select
+                                                    className="form-select"
+                                                    name="gradeLevel"
+                                                    value={addFormData.gradeLevel}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                >
+                                                    <option value="">Select Grade</option>
+                                                    <option value="11">Grade 11</option>
+                                                    <option value="12">Grade 12</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Semester <span className="text-danger">*</span></label>
+                                                <select
+                                                    className="form-select"
+                                                    name="semester"
+                                                    value={addFormData.semester}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                >
+                                                    <option value="">Select Semester</option>
+                                                    <option value={1}>First </option>
+                                                    <option value={2}>Second </option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+
+
+                                        <div className="row">
+                                            <div className="col-md-6 mb-3">
+                                                <label className="form-label">Track <span className="text-danger">*</span></label>
+                                                <select
+                                                    className="form-select"
+                                                    name="track"
+                                                    value={addFormData.track}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                >
+                                                    <option value="">Select Track</option>
+                                                    <option value="Academic">Academic</option>
+                                                    <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-6 mb-3">
+                                                <label className="form-label">Strand <span className="text-danger">*</span></label>
+                                                <select
+                                                    className="form-select"
+                                                    name="strand"
+                                                    value={addFormData.strand}
+                                                    onChange={handleAddFormChange}
+                                                    disabled={!addFormData.track}
+                                                    required
+                                                >
+                                                    <option value="">
+                                                        {!addFormData.track ? 'Select Track First' : 'Select Strand'}
+                                                    </option>
+                                                    {addFormData.track && 
+                                                        STRAND_OPTIONS[addFormData.track]?.map(option => (
+                                                            <option key={option.value} value={option.value}>
+                                                                {option.label}
+                                                            </option>
+                                                        ))
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    {/* Password and security */}
+                                    <div className="mb-3">
+                                        <h6 className="text-success fw-bold mb-3  text-capitalize">paswword & security</h6>
+                                        
+                                    {/* ✅ Row 4: Password & Confirm Password */}
+                                        <div className="row">
+                                            <div className="col-md-6 mb-3">
+                                                <label className="form-label">Password <span className="text-danger">*</span></label>
+                                                <div className="input-group">
+                                                    <input
+                                                        type={showPassword ? "text" : "password"}
+                                                        className="form-control"
+                                                        name="password"
+                                                        value={addFormData.password}
+                                                        onChange={handleAddFormChange}
+                                                        required
+                                                        minLength="6"
+                                                    />
+                                                    <button 
+                                                        className="btn btn-outline-secondary" 
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                    >
+                                                        <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                                    </button>
+                                                </div>
+                                                <small className="text-muted">Minimum 6 characters</small>
+                                            </div>
+                                            <div className="col-md-6 mb-3">
+                                                <label className="form-label">Confirm Password <span className="text-danger">*</span></label>
+                                                <div className="input-group">
+                                                    <input
+                                                        type={showConfirmPassword ? "text" : "password"}
+                                                        className="form-control"
+                                                        name="confirmPassword"
+                                                        value={addFormData.confirmPassword}
+                                                        onChange={handleAddFormChange}
+                                                        required
+                                                    />
+                                                    <button 
+                                                        className="btn btn-outline-secondary" 
+                                                        type="button"
+                                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                    >
+                                                        <i className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+
+
+
+
+
+
+
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" onClick={handleCloseAddModal}>
+                                        <i className="fa fa-times me-2"></i>Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-success" disabled={loading}>
+                                        {loading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Creating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fa fa-save me-2"></i>Create Student
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
+
+
+
+
+
 
 const DropdownItem = ({ icon, text, color, onClick, danger = false }) => (
     <button 

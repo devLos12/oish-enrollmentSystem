@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+
 
 const StaffRegistration = () => {
-    const location = useLocation();
     const navigate = useNavigate();
     const [verificationCode, setVerificationCode] = useState('');
     const [firstName, setFirstName] = useState('');
@@ -13,9 +14,41 @@ const StaffRegistration = () => {
     const [passwordError, setPasswordError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    
+    // Modal states
+    const [showModal, setShowModal] = useState(false);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [modalMessage, setModalMessage] = useState('');
+    const [modalType, setModalType] = useState('success');
+
+    const [middleName, setMiddleName] = useState('');
 
 
+    // Handle modal animation
+    useEffect(() => {
+        if (showModal) {
+            setTimeout(() => setIsModalVisible(true), 10);
+            
+            const timer = setTimeout(() => {
+                setIsModalVisible(false);
+                setTimeout(() => {
+                    setShowModal(false);
+                    if (modalType === 'success') {
+                        navigate("/login", { replace: true });
+                    }
+                }, 300);
+            }, 2000);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [showModal, modalType, navigate]);
 
+    const showNotification = (message, type = "success") => {
+        setModalMessage(message);
+        setModalType(type);
+        setShowModal(true);
+    };
 
     const validatePassword = (pwd) => {
         const minLength = 8;
@@ -51,20 +84,35 @@ const StaffRegistration = () => {
 
     const handleForm = async (e) => {
         e.preventDefault();
+        setLoading(true);
+
+
+        const data = {
+            verificationCode, 
+            firstName, 
+            middleName,
+            lastName, 
+            email, 
+            password 
+
+        }
 
         const passwordValidationError = validatePassword(password);
         if (passwordValidationError) {
-            alert(passwordValidationError);
+            showNotification(passwordValidationError, "error");
+            setLoading(false);
             return;
         }
 
         if (password !== confirmPassword) {
-            alert("Passwords do not match!");
+            showNotification("Passwords do not match!", "error");
+            setLoading(false);
             return;
         }
 
         if (!email.endsWith('@gmail.com')) {
-            alert("Please use a Gmail address!");
+            showNotification("Please use a Gmail address!", "error");
+            setLoading(false);
             return;
         }
 
@@ -75,6 +123,7 @@ const StaffRegistration = () => {
                 body: JSON.stringify({ 
                     verificationCode, 
                     firstName, 
+                    middleName,
                     lastName, 
                     email, 
                     password 
@@ -83,170 +132,262 @@ const StaffRegistration = () => {
             });
 
             const data = await res.json();
-            if(!res.ok) throw new Error(data.message);
-            alert(data.message);
             
-            navigate("/login/admin-staff", { state: "admin staff", replace: true });
+            if(!res.ok) {
+                showNotification(data.message, "error");
+                setLoading(false);
+                return;
+            }
+            
+            showNotification(data.message || 'Registration successful!', 'success');
 
         } catch (error) {
-            alert(error.message);
+            showNotification(error.message || 'Network error occurred', 'error');
             console.log("Error: ", error.message);
+        } finally {
+            setLoading(false);
         }
     }    
 
     return (
-        <div className="container">
-            <div className="row my-5 py-5 justify-content-center">
-                <div className="col-12 col-md-5 col-lg-7 d-none d-md-block">
-                    <div className="px-2 px-md-2 px-lg-5 d-flex align-items-center gap-2 cursor"
-                    onClick={()=> navigate(-1)}
-                    >
-                        <i className="fa fa-arrow-left text-danger"></i>
-                        <p className="m-0 text-capitalize fw-bold text-danger">back</p>
-                    </div>
-                    <div className="p-2 p-md-2 p-lg-5">
-                        <p className="m-0 text-capitalize fs-1 fw-bold">admin staff registration</p>
-                        <p className="m-0 text-capitalize">create your account to become a faculty staff member.</p>
-                    </div>
-                </div>
-                <div className="col-12 col-md-7 col-lg-5">
-                    <div className="card-body bg-light p-5 rounded-4 shadow">
-                        <p className="text-capitalize fs-5 fw-bold text-center text-danger">register as staff</p>
+        <>
+            <div className="container bg-light min-vh-100">
+                <div className="row justify-content-center">
+                    <div className="col-12 col-md-12 col-lg-10">
+                        <div className="p-0 p-md-4 mt-5 ">
+                            {/* Main Form Card */}
+                            <div className="card border-0 rounded-0 shadow-sm my-5">
+                                <div className="card-body p-4">
+                                    <h2 className="h5 fw-bold text-danger text-uppercase text-center mb-4">register as faculty member</h2>
 
-                        <form action="#" onSubmit={handleForm}>
-                            {/* Verification Code */}
-                            <div className="mt-4">
-                                <div className="d-flex align-items-center gap-1 my-2">
-                                    <i className="fa fa-shield text-muted"></i>
-                                    <label className="m-0 text-capitalize fw-bold text-muted">verification code:</label>
-                                    <p className="small m-0 text-danger fw-semibold ms-1">*  Required</p>
+                                    <form onSubmit={handleForm}>
+                                        <div className="row">
+                                            {/* Left Column */}
+                                            <div className="col-md-6">
+                                                {/* Verification Code */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-shield text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">verification code:</label>
+                                                        <span className="small text-danger fw-semibold ms-1">* Required</span>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Enter verification code" 
+                                                        value={verificationCode}
+                                                        onChange={(e) => setVerificationCode(e.target.value)}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={loading}
+                                                    />
+                                                    <small className="text-muted">*Requested from IT Admin.</small>
+                                                </div>
+
+                                                {/* First Name */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-user text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">first name:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Enter first name" 
+                                                        value={firstName}
+                                                        onChange={(e) => setFirstName(e.target.value)}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={loading}
+                                                    />
+                                                </div>
+
+                                                {/* Middle Name */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-user text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">middle name:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Enter middle name" 
+                                                        value={middleName}
+                                                        onChange={(e) => setMiddleName(e.target.value)}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={loading}
+                                                    />
+                                                </div>
+
+                                                {/* Last Name */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-user text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">last name:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Enter last name" 
+                                                        value={lastName}
+                                                        onChange={(e) => setLastName(e.target.value)}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={loading}
+                                                    />
+                                                </div>
+
+                                               
+                                            </div>
+
+                                            {/* Right Column */}
+                                            <div className="col-md-6 border-start">
+                                                 {/* Email */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-envelope text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">email address:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="email" 
+                                                        placeholder="yourname@gmail.com" 
+                                                        value={email}
+                                                        onChange={(e) => setEmail(e.target.value)}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={loading}
+                                                    />
+                                                </div>
+                                                {/* Password */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-lock text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">password:</label>
+                                                    </div>
+                                                    <div className="position-relative">
+                                                        <input 
+                                                            type={showPassword ? "text" : "password"}
+                                                            placeholder="Enter password" 
+                                                            value={password}
+                                                            onChange={handlePasswordChange}
+                                                            required
+                                                            className="form-control shadow-sm"
+                                                            disabled={loading}
+                                                        />
+                                                        <i 
+                                                            className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                            style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
+                                                            onClick={() => setShowPassword(!showPassword)}
+                                                        ></i>
+                                                    </div>
+                                                    {passwordError && (
+                                                        <small className="text-danger d-block mt-1">{passwordError}</small>
+                                                    )}
+                                                    <small className="text-muted d-block mt-1">
+                                                        Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+                                                    </small>
+                                                </div>
+
+                                                {/* Confirm Password */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-lock text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">confirm password:</label>
+                                                    </div>
+                                                    <div className="position-relative">
+                                                        <input 
+                                                            type={showConfirmPassword ? "text" : "password"}
+                                                            placeholder="Re-enter password" 
+                                                            value={confirmPassword}
+                                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                                            required
+                                                            className="form-control shadow-sm"
+                                                            disabled={loading}
+                                                        />
+                                                        <i 
+                                                            className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                            style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
+                                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                        ></i>
+                                                    </div>
+                                                </div>
+
+                                                {/* Submit Button */}
+                                                <button 
+                                                    className="btn btn-danger text-capitalize mt-3 w-100 shadow-sm"
+                                                    disabled={loading}
+                                                >
+                                                    {loading ? (
+                                                        <>
+                                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                            Registering...
+                                                        </>
+                                                    ) : (
+                                                        'Register'
+                                                    )}
+                                                </button>
+
+                                                {/* Login Link */}
+                                                <div className="mt-3 d-flex justify-content-center align-items-center gap-2 small">
+                                                    <p className="m-0 text-capitalize">already have an account?</p>
+                                                    <p 
+                                                        className="m-0 text-capitalize text-danger fw-bold"
+                                                        style={{cursor: 'pointer'}}
+                                                        onClick={() => navigate("/login")}
+                                                    >
+                                                        login now.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
                                 </div>
-                                <input type="text" 
-                                placeholder="Enter verification code" 
-                                value={verificationCode}
-                                onChange={(e)=>setVerificationCode(e.target.value)}
-                                className="form-control shadow-sm"
-                                required
-                                />
-                                <small className="text-muted">*Requested from IT Admin.</small>
-
                             </div>
-
-                            {/* First Name */}
-                            <div className="mt-2">
-                                <div className="d-flex align-items-center gap-1 my-2">
-                                    <i className="fa fa-user text-muted"></i>
-                                    <label className="m-0 text-capitalize fw-bold text-muted">first name:</label>
-                                </div>
-                                <input type="text" 
-                                placeholder="Enter first name" 
-                                value={firstName}
-                                onChange={(e)=>setFirstName(e.target.value)}
-                                className="form-control shadow-sm"
-                                required
-                                />
-                            </div>
-
-
-                            {/* Last Name */}
-                            <div className="mt-2">
-                                <div className="d-flex align-items-center gap-1 my-2">
-                                    <i className="fa fa-user text-muted"></i>
-                                    <label className="m-0 text-capitalize fw-bold text-muted">last name:</label>
-                                </div>
-                                <input type="text" 
-                                placeholder="Enter last name" 
-                                value={lastName}
-                                onChange={(e)=>setLastName(e.target.value)}
-                                className="form-control shadow-sm"
-                                required
-                                />
-                            </div>
-
-
-                            {/* Email */}
-                            <div className="mt-2">
-                                <div className="d-flex align-items-center gap-1 my-2">
-                                    <i className="fa fa-envelope text-muted"></i>
-                                    <label className="m-0 text-capitalize fw-bold text-muted">email address:</label>
-                                </div>
-                                <input type="email" 
-                                placeholder="yourname@gmail.com" 
-                                value={email}
-                                onChange={(e)=>setEmail(e.target.value)}
-                                className="form-control shadow-sm"
-                                required
-                                />
-                                <small className="text-muted">*Should be a Gmail account.</small>
-                            </div>
-
-
-                            {/* Password */}
-                            <div className="mt-2">
-                                <div className="d-flex align-items-center gap-1 my-2" 
-                                >
-                                    <i className="fa fa-lock text-muted"></i>
-                                    <label className="m-0 text-capitalize fw-bold text-muted">password:</label>
-                                </div>
-                                <div className="position-relative "
-                                style={{zIndex: 1}}
-                                >
-                                    <input type={showPassword ? "text" : "password"}
-                                    placeholder="Enter password" 
-                                    value={password}
-                                    onChange={handlePasswordChange}
-                                    required
-                                    className="form-control shadow-sm"/>
-                                    <i 
-                                        className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted cursor`}
-                                        style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
-                                        onClick={() => setShowPassword(!showPassword)}
-                                    ></i>
-                                </div>
-                                {passwordError && (
-                                    <small className="text-danger d-block mt-1">{passwordError}</small>
-                                )}
-                                <small className="text-muted d-block mt-1">
-                                    Password must contain: 8+ characters, uppercase, lowercase, number, and special character
-                                </small>
-                            </div>
-
-                            {/* Confirm Password */}
-                            <div className="mt-2">
-                                <div className="d-flex align-items-center gap-1 my-2">
-                                    <i className="fa fa-lock text-muted"></i>
-                                    <label className="m-0 text-capitalize fw-bold text-muted">confirm password:</label>
-                                </div>
-                                <div className="position-relative">
-                                    <input type={showConfirmPassword ? "text" : "password"}
-                                    placeholder="Re-enter password" 
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    required
-                                    className="form-control shadow-sm"/>
-                                    <i 
-                                        className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted cursor`}
-                                        style={{right: '15px', top: '50%', transform: 'translateY(-50%)', 
-                                        }}
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    ></i>
-                                </div>
-                            </div>
-                            
-                            <button className="btn btn-danger text-capitalize mt-4 w-100 shadow-lg">register</button>
-                        </form>
-                        
-                        <div className="mt-3 d-flex justify-content-center align-items-center gap-2 small">
-                            <p className="m-0 text-capitalize">already have an account?</p>
-                            <p className="m-0 text-capitalize text-danger fw-bold cursor"
-                            onClick={()=> navigate("/login/admin-staff", { state: "staff" })}
-                            >login now.</p>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    )
+
+            {/* Success/Error Modal with Animation */}
+            {showModal && (
+                <div
+                    className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                    style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 10000 }}
+                >
+                    <div
+                        className="bg-white rounded-4 shadow-lg text-center"
+                        style={{
+                            maxWidth: "350px",
+                            width: "90%",
+                            transform: isModalVisible ? "scale(1)" : "scale(0.7)",
+                            opacity: isModalVisible ? 1 : 0,
+                            transition: "all 0.3s ease-in-out",
+                            padding: "2rem 1.5rem"
+                        }}
+                    >
+                        <div className="mb-3">
+                            {modalType === "success" ? (
+                                <div 
+                                    className="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    style={{ width: "80px", height: "80px" }}
+                                >
+                                    <i className="fa fa-check-circle text-success" style={{ fontSize: "50px" }}></i>
+                                </div>
+                            ) : (
+                                <div 
+                                    className="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    style={{ width: "80px", height: "80px" }}
+                                >
+                                    <i className="fa fa-exclamation-circle text-danger" style={{ fontSize: "50px" }}></i>
+                                </div>
+                            )}
+                        </div>
+                        <h5 className={`fw-bold mb-2 ${modalType === "success" ? "text-success" : "text-danger"}`}>
+                            {modalType === "success" ? "Registration Successful!" : "Registration Failed"}
+                        </h5>
+                        <p className="text-muted mb-0" style={{ fontSize: "14px" }}>{modalMessage}</p>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }
 
 export default StaffRegistration;

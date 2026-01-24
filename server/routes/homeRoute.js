@@ -12,7 +12,8 @@ const HomeRouter = express.Router();
 
 HomeRouter.get("/urlAuthentication", UrlAuthentication);
 HomeRouter.post('/staff_registration', StaffRegistration);
-HomeRouter.post('/enrollment',enrollmentUpload, EnrollmentRegistration);
+HomeRouter.post('/enrollment', enrollmentUpload, EnrollmentRegistration);
+
 HomeRouter.get('/getHomeAnnouncement', getAnnouncements);
 HomeRouter.post('/requestCode', requestCode);
 HomeRouter.post('/verifyCode', verifyCode);

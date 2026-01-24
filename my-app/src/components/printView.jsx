@@ -176,7 +176,7 @@ const EnrollmentFormPDF = () => {
       }
     ],
     seniorHigh: [
-      { label: 'SEMESTER', value: enrollmentData.seniorHigh?.semester, col: 12, colSm: 4 },
+      { label: 'SEMESTER', value: enrollmentData.seniorHigh?.semester === "1st" ? "First" : "Second", col: 12, colSm: 4 },
       { label: 'TRACK', value: enrollmentData.seniorHigh?.track, col: 12, colSm: 4 },
       { label: 'STRAND', value: enrollmentData.seniorHigh?.strand, col: 12, colSm: 4 }
     ],
@@ -508,32 +508,49 @@ const EnrollmentFormPDF = () => {
               <div className="border border-2 border-dark mb-2 mb-md-3">
                 <SectionHeader title="TO BE FILLED OUT BY THE REGISTRAR" bgClass="bg-dark" />
                 <div className="p-2 p-md-3">
-                  <div className="row mb-2 mb-md-3 g-2">
-                    <div className="col-12 col-sm-6">
+                  <div className="row mb-2 mb-md-3 g-2 align-items-end">
+                    <div className="col-12 col-sm-4">
                       <div className="small fw-bold mb-1">STATUS</div>
-                      <div className="border-bottom border-dark pb-1 small text-uppercase" style={{ minHeight: '20px' }}>
+                      <div className="border-bottom border-dark pb-1 small text-capitalize" style={{ minHeight: '20px' }}>
                         {enrollmentData.status || ''}
                       </div>
                     </div>
-                    <div className="col-12 col-sm-6">
+                    <div className="col-12 col-sm-4">
                       <div className="small fw-bold mb-1">STUDENT TYPE</div>
                       <div className="border-bottom border-dark pb-1 small text-capitalize" style={{ minHeight: '20px' }}>
                         {enrollmentData.studentType || ''}
                       </div>
                     </div>
+                    <div className="col-12 col-sm-4">
+                      <div className="small fw-bold mb-1">DATE & TIME</div>
+                      <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
+                        {new Date().toLocaleString('en-US', {
+                          month: '2-digit',
+                          day: '2-digit', 
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-center mt-4 mt-md-5">
-                    <div className="border-top border-2 border-dark mx-auto" style={{ width: '250px', paddingTop: '30px' }}></div>
-                    <div className="small fw-bold mt-2">Signature of Registrar</div>
+                  <div className="text-center d-flex gap-2 flex-column " 
+                  style={{marginTop:"100px"}}
+                  >
+                    <div className="border-top border-2 border-dark mx-auto" 
+                    style={{ width: '250px',}}
+                    
+                    ></div>
+                    <div className="small fw-bold ">Signature of Registrar</div>
                   </div>
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="text-center text-muted mt-3 mt-md-4" style={{ fontSize: '9px' }}>
+              <div className="text-center text-muted mt-3 mt-md-4 small">
                 <p className="mb-1">FRANCISCO OSORIO INTEGRATED SENIOR HIGH SCHOOL</p>
                 <p className="mb-1">Trece Martires City</p>
-                <p className="mb-0">Generated on: {new Date().toLocaleDateString()}</p>
               </div>
 
             </div>

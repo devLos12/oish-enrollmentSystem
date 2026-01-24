@@ -15,6 +15,24 @@ const StaffManagement = () => {
     const [showModal, setShowModal] = useState(false);
     const [modalType, setModalType] = useState(''); // 'view', 'edit', 'delete'
 
+
+    // Add Faculty states - ilagay mo to after const [modalType, setModalType] = useState('');
+    const [newStaff, setNewStaff] = useState({
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+    });
+    const [passwordError, setPasswordError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [submitLoading, setSubmitLoading] = useState(false);
+
+
+
+
     // Alert Modal states
     const [showAlertModal, setShowAlertModal] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
@@ -75,6 +93,119 @@ const StaffManagement = () => {
         }
     };
 
+
+    const validatePassword = (pwd) => {
+        const minLength = 8;
+        const hasUpperCase = /[A-Z]/.test(pwd);
+        const hasLowerCase = /[a-z]/.test(pwd);
+        const hasNumber = /\d/.test(pwd);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+
+        if (pwd.length < minLength) {
+            return "Password must be at least 8 characters long";
+        }
+        if (!hasUpperCase) {
+            return "Password must contain at least one uppercase letter";
+        }
+        if (!hasLowerCase) {
+            return "Password must contain at least one lowercase letter";
+        }
+        if (!hasNumber) {
+            return "Password must contain at least one number";
+        }
+        if (!hasSpecialChar) {
+            return "Password must contain at least one special character";
+        }
+        return "";
+    };
+
+
+
+    const handlePasswordChange = (e) => {
+        const newPassword = e.target.value;
+        setNewStaff({...newStaff, password: newPassword});
+        const error = validatePassword(newPassword);
+        setPasswordError(error);
+    };
+
+    const handleAddStaff = () => {
+        setNewStaff({
+            firstName: '',
+            middleName: '',
+            lastName: '',
+            email: '',
+            password: '',
+            confirmPassword: ''
+        });
+        setPasswordError('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setModalType('add');
+        setShowModal(true);
+    };
+
+    const handleSubmitNewStaff = async (e) => {
+        e.preventDefault();
+        setSubmitLoading(true);
+
+        const passwordValidationError = validatePassword(newStaff.password);
+        if (passwordValidationError) {
+            showAlert(passwordValidationError, "error");
+            setSubmitLoading(false);
+            return;
+        }
+
+        if (newStaff.password !== newStaff.confirmPassword) {
+            showAlert("Passwords do not match!", "error");
+            setSubmitLoading(false);
+            return;
+        }
+
+        if (!newStaff.email.endsWith('@gmail.com')) {
+            showAlert("Please use a Gmail address!", "error");
+            setSubmitLoading(false);
+            return;
+        }
+
+        const dataPost = {
+            firstName: newStaff.firstName,
+            middleName: newStaff.middleName,
+            lastName: newStaff.lastName,
+            email: newStaff.email,
+            password: newStaff.password
+        }
+
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/create_facultyAccount`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(dataPost),
+                credentials: "include", 
+            });
+
+            const data = await res.json();
+            
+            if(!res.ok) {
+                showAlert(data.message, "error");
+                setSubmitLoading(false);
+                return;
+            }
+            
+            setShowModal(false);
+            showAlert(data.message || 'Faculty member added successfully!', 'success');
+            fetchStaffData();
+
+        } catch (error) {
+            showAlert(error.message || 'Network error occurred', 'error');
+            console.log("Error: ", error.message);
+        } finally {
+            setSubmitLoading(false);
+        }
+    };
+
+
+
     const handleViewStaff = (staff) => {
         setSelectedStaff(staff);
         setModalType('view');
@@ -113,12 +244,15 @@ const StaffManagement = () => {
 
     const handleUpdateStaff = async (e) => {
         e.preventDefault();
+
+
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/staff_update/${selectedStaff._id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     firstName: selectedStaff.firstName,
+                    middleName: selectedStaff.middleName,  // Add this line
                     lastName: selectedStaff.lastName,
                     email: selectedStaff.email
                 }),
@@ -242,9 +376,19 @@ const StaffManagement = () => {
                                 <h4 className="text-capitalize fw-bold mb-1">faculty member</h4>
                                 <p className="text-muted small mb-0">Manage all faculty members</p>
                             </div>
+                            <button 
+                                className="btn btn-danger btn-sm d-flex align-items-center gap-2"
+                                onClick={handleAddStaff}
+                            >
+                                <i className="fa fa-plus"></i>
+                                <span className="d-none d-md-inline">Add Faculty Member</span>
+                            </button>
                         </div>
                     </div>
                 </div>
+
+
+
 
                 {/* Search Bar */}
                 <div className="row mb-3">
@@ -305,7 +449,9 @@ const StaffManagement = () => {
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
                                                             <td className="align-middle">
                                                                 <span className="text-capitalize fw-semibold">
-                                                                    {staff.firstName} {staff.lastName}
+                                                                    {staff.firstName}
+                                                                     {`${staff.middleName ? ` ${staff.middleName.charAt(0)}. ` : " "}`} 
+                                                                     {staff.lastName}
                                                                 </span>
                                                             </td>
                                                             <td className="align-middle">{staff.email}</td>
@@ -367,7 +513,7 @@ const StaffManagement = () => {
             {/* View/Edit/Delete Modal */}
             {showModal && (
                 <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
-                    <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-dialog modal-dialog-centered modal-lg">
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title text-capitalize">
@@ -394,9 +540,10 @@ const StaffManagement = () => {
                                     <div className="mb-3">
                                         <label className="text-muted small text-uppercase">Full Name</label>
                                         <p className="fw-semibold text-capitalize">
-                                            {selectedStaff?.firstName} {selectedStaff?.lastName}
+                                            {selectedStaff?.firstName} {selectedStaff?.middleName} {selectedStaff?.lastName}
                                         </p>
                                     </div>
+
                                     <div className="mb-3">
                                         <label className="text-muted small text-uppercase">Email Address</label>
                                         <p className="fw-semibold">{selectedStaff?.email}</p>
@@ -422,6 +569,18 @@ const StaffManagement = () => {
                                                 required
                                             />
                                         </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label text-capitalize fw-bold">Middle Name</label>
+                                            <input 
+                                                type="text" 
+                                                className="form-control"
+                                                value={selectedStaff?.middleName || ''}
+                                                onChange={(e) => setSelectedStaff({...selectedStaff, middleName: e.target.value})}
+                                                required
+                                            />
+                                        </div>
+                                        
                                         <div className="mb-3">
                                             <label className="form-label text-capitalize fw-bold">Last Name</label>
                                             <input 
@@ -489,6 +648,179 @@ const StaffManagement = () => {
                                         </button>
                                     </div>
                                 </>
+                            )}
+
+
+
+
+                            {/* Add Modal */}
+                            {modalType === 'add' && (
+                                <form onSubmit={handleSubmitNewStaff}>
+                                    
+                                    <div className="modal-body">
+                                     
+                                        <h6 className="text-danger text-uppercase fw-bold mb-3 text-center">
+                                            Register as faculty member
+                                        </h6>
+                                        
+                                        <div className="row">
+                                            {/* Left Column */}
+                                            <div className="col-md-6">
+                                                {/* First Name */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-user text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">first name:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Enter first name" 
+                                                        value={newStaff.firstName}
+                                                        onChange={(e) => setNewStaff({...newStaff, firstName: e.target.value})}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={submitLoading}
+                                                    />
+                                                </div>
+
+                                                {/* Middle Name */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-user text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">middle name:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Enter middle name" 
+                                                        value={newStaff.middleName}
+                                                        onChange={(e) => setNewStaff({...newStaff, middleName: e.target.value})}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={submitLoading}
+                                                    />
+                                                </div>
+
+                                                {/* Last Name */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-user text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">last name:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Enter last name" 
+                                                        value={newStaff.lastName}
+                                                        onChange={(e) => setNewStaff({...newStaff, lastName: e.target.value})}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={submitLoading}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Right Column */}
+                                            <div className="col-md-6 border-start">
+                                                {/* Email */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-envelope text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">email address:</label>
+                                                    </div>
+                                                    <input 
+                                                        type="email" 
+                                                        placeholder="yourname@gmail.com" 
+                                                        value={newStaff.email}
+                                                        onChange={(e) => setNewStaff({...newStaff, email: e.target.value})}
+                                                        className="form-control shadow-sm"
+                                                        required
+                                                        disabled={submitLoading}
+                                                    />
+                                                </div>
+
+                                                {/* Password */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-lock text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">password:</label>
+                                                    </div>
+                                                    <div className="position-relative">
+                                                        <input 
+                                                            type={showPassword ? "text" : "password"}
+                                                            placeholder="Enter password" 
+                                                            value={newStaff.password}
+                                                            onChange={handlePasswordChange}
+                                                            required
+                                                            className="form-control shadow-sm"
+                                                            disabled={submitLoading}
+                                                        />
+                                                        <i 
+                                                            className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                            style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
+                                                            onClick={() => setShowPassword(!showPassword)}
+                                                        ></i>
+                                                    </div>
+                                                    {passwordError && (
+                                                        <small className="text-danger d-block mt-1">{passwordError}</small>
+                                                    )}
+                                                    <small className="text-muted d-block mt-1">
+                                                        Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+                                                    </small>
+                                                </div>
+
+                                                {/* Confirm Password */}
+                                                <div className="mb-3">
+                                                    <div className="d-flex align-items-center gap-1 mb-2">
+                                                        <i className="fa fa-lock text-muted"></i>
+                                                        <label className="m-0 text-capitalize fw-bold text-muted small">confirm password:</label>
+                                                    </div>
+                                                    <div className="position-relative">
+                                                        <input 
+                                                            type={showConfirmPassword ? "text" : "password"}
+                                                            placeholder="Re-enter password" 
+                                                            value={newStaff.confirmPassword}
+                                                            onChange={(e) => setNewStaff({...newStaff, confirmPassword: e.target.value})}
+                                                            required
+                                                            className="form-control shadow-sm"
+                                                            disabled={submitLoading}
+                                                        />
+                                                        <i 
+                                                            className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                            style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
+                                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                        ></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-secondary"
+                                            onClick={() => setShowModal(false)}
+                                            disabled={submitLoading}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            className="btn btn-danger"
+                                            disabled={submitLoading}
+                                        >
+                                            {submitLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                    Registering...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-save me-2"></i>
+                                                    Register Faculty
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
                             )}
                         </div>
                     </div>

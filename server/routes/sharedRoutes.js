@@ -1,13 +1,13 @@
 import express from "express";
 import { Logout } from "../controller/logout.js";
 import { accessGeneratedCode, accessGmailCode } from "../controller/admin/accessCode.js";
-import { deleteStaff, getStaffList, updateStaff } from "../controller/stafffManagement.js";
+import { createFacultyMember, deleteStaff, getStaffList, updateStaff } from "../controller/stafffManagement.js";
 import { createSubject, bulkAddSubjects,
 deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection,
 getSubjectDetails, addSubjectSection, updateSubjectSection, deleteSubjectSection  
 } from "../controller/subject.js";
 import { ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant } from "../controller/enrollment.js";
-import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending } from "../controller/student.js";
+import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent } from "../controller/student.js";
 import { createSection, deleteSection, getSections, updateEnrollmentStatus, updateSection } from "../controller/sectionManagement.js";
 import { getEnrollmentStats, getEnrollmentStatsByGrade } from "../controller/dashboard.js";
 import { getEnrollmentStatsByStrand, getEnrollmentStatsByTrack } from "../controller/dashboard.js";
@@ -25,11 +25,11 @@ SharedRouter.get('/generate_code', accessGeneratedCode);
 SharedRouter.get('/getApplicants', GetAllEnrollments);
 SharedRouter.post('/gmail_code', accessGmailCode);
 SharedRouter.get('/staff_list', getStaffList);
+SharedRouter.post("/create_facultyAccount", verifyAuth, createFacultyMember);
 SharedRouter.patch('/staff_update/:id', updateStaff);
 SharedRouter.delete('/staff_delete/:id', deleteStaff);
 SharedRouter.post('/addSubjects', createSubject);
 SharedRouter.post('/bulkAddSubjects', bulkAddSubjects);
-
 
 SharedRouter.get('/getSubjects', verifyAuth, getAllSubjects);
 SharedRouter.get('/getTeachers',verifyAuth, getAllTeachers);
@@ -44,8 +44,9 @@ SharedRouter.delete('/deleteSubject/:id', deleteSubject);
 SharedRouter.patch('/approveApplicant', ApplicantApproval);
 SharedRouter.patch('/rejectApplicant/:id', rejectApplicant);
 SharedRouter.delete('/removeApplicant/:id', deleteApplicant);
-SharedRouter.get('/getStudents/', getStudents);
+SharedRouter.get('/getStudents', getStudents);
 SharedRouter.get('/getSections', verifyAuth, getAssignSections);
+SharedRouter.post('/createStudent', verifyAuth, createStudent);
 SharedRouter.patch('/updateStudent/:id', updateStudent);
 SharedRouter.delete('/deleteStudent/:id', deleteStudent);
 SharedRouter.get('/sections', getSections);

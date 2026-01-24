@@ -1,23 +1,23 @@
 import mongoose from "mongoose";
 
 const enrollmentSchema = new mongoose.Schema({
-  schoolYear: { type: String, required: true },
-  gradeLevelToEnroll: { type: String, required: true },
+  schoolYear: { type: String, required: false },
+  gradeLevelToEnroll: { type: String, required: false },
   
-  withLRN: { type: Boolean, required: true },
-  isReturning: { type: Boolean, required: true },
+  withLRN: { type: Boolean, required: false },
+  isReturning: { type: Boolean, required: false },
 
   learnerInfo: {
     email: { type: String, unique: true},
     psaNo: { type: String},
-    lrn: { type: String, unique: true },
-    lastName: { type: String, required: true },
-    firstName: { type: String, required: true },
+    lrn: { type: String, unique: false },
+    lastName: { type: String, required: false },
+    firstName: { type: String, required: false },
     middleName: { type: String },
     extensionName: { type: String },
-    birthDate: { type: Date, required: true },
+    birthDate: { type: Date, required: false },
     age: { type: Number },
-    sex: { type: String, enum: ["Male", "Female"], required: true },
+    sex: { type: String, enum: ["Male", "Female"], required: false },
     placeOfBirth: { type: String },
     motherTongue: { type: String },
     learnerWithDisability: {
@@ -59,7 +59,7 @@ const enrollmentSchema = new mongoose.Schema({
 
   parentGuardianInfo: {
     father: {
-      lastName: { type: String },
+      lastName: { type: String},
       firstName: { type: String },
       middleName: { type: String },
       contactNumber: { type: String }
@@ -100,11 +100,11 @@ const enrollmentSchema = new mongoose.Schema({
    // Required Documents - File paths
   requiredDocuments: {
     psaBirthCert: {
-      filePath: { type: String, required: true },
+      filePath: { type: String, required: false },
       uploadedAt: { type: Date, default: Date.now }
     },
     reportCard: {
-      filePath: { type: String, required: true },
+      filePath: { type: String, required: false },
       uploadedAt: { type: Date, default: Date.now }
     },
     goodMoral: {
@@ -112,7 +112,7 @@ const enrollmentSchema = new mongoose.Schema({
       uploadedAt: { type: Date, default: Date.now }
     },
     idPicture: {
-      filePath: { type: String, required: true },
+      filePath: { type: String, required: false },
       uploadedAt: { type: Date, default: Date.now }
     },
  
@@ -122,13 +122,18 @@ const enrollmentSchema = new mongoose.Schema({
   },
 
   status: { type: String, default: "pending"},
-  
+
   studentType: { 
     type: String, 
     enum:["regular", "returnee", "transferee"], 
     default: "regular"
   },
-  createdAt: { type: Date, default: Date.now }
+
+  createdAt: { type: Date, default: Date.now },
+
+
+  statusRegistration: { type: String },
+
 });
 
 const Enrollment = new mongoose.model("Enrollment", enrollmentSchema);
