@@ -18,7 +18,7 @@ const startServer = async () => {
         
         
         const corsOption = {
-            origin: true,
+            origin: process.env.ALLOWED_ORIGINS?.split(",") || true,
             credentials: true
         }
 
@@ -32,8 +32,6 @@ const startServer = async () => {
         app.use("/api", SharedRouter);
         app.use("/api", StaffRouter);
         app.use('/api', StudentRouter);
-
-
 
 
         app.listen(port, "0.0.0.0", () => {
