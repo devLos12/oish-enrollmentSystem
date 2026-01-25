@@ -33,6 +33,10 @@ const announcementSchema = new mongoose.Schema(
         size: {
           type: Number, // File size in bytes
         },
+        publicId: {  // ✅ ADD THIS
+          type: String,
+          required: false, // False kasi may existing data na walang publicId
+        },
       },
     ],
     postedBy: { 

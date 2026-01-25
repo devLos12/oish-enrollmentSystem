@@ -101,21 +101,25 @@ const enrollmentSchema = new mongoose.Schema({
   requiredDocuments: {
     psaBirthCert: {
       filePath: { type: String, required: false },
-      uploadedAt: { type: Date, default: Date.now }
+      uploadedAt: { type: Date, default: Date.now },
+      publicId: { type: String, required: false },
     },
     reportCard: {
       filePath: { type: String, required: false },
-      uploadedAt: { type: Date, default: Date.now }
+      uploadedAt: { type: Date, default: Date.now },
+      publicId: { type: String, required: false },
+
     },
     goodMoral: {
       filePath: { type: String, required: false },
+      publicId: { type: String, required: false },
       uploadedAt: { type: Date, default: Date.now }
     },
     idPicture: {
       filePath: { type: String, required: false },
+      publicId: { type: String, required: false },
       uploadedAt: { type: Date, default: Date.now }
     },
- 
   },
   signature: {
     dateSigned: { type: Date }

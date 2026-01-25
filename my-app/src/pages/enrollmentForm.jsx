@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { globalContext } from "../context/global";
-
+import imageCompression from 'browser-image-compression';
 
 
 const ProgressStepper = ({ currentStep }) => {
@@ -1869,7 +1869,6 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
 
 
 
-
 // Reusable Section Component
 const FormSection = ({ title, fields, values, onChange, disabled, parentType }) => (
     <div className="mb-4">
@@ -1913,7 +1912,6 @@ const FormSection = ({ title, fields, values, onChange, disabled, parentType }) 
         </div>
     </div>
 );
-
 
 
 
@@ -2370,7 +2368,7 @@ export const Step2 = () => {
         );
     };
 
-
+    
     return (
         <div className="container bg-light d-flex">
             <div className={`row  justify-content-center w-100 g-0`}
@@ -2895,45 +2893,33 @@ export const Step3 = () => {
     }, [location?.state?.applicant, approveModal?.data, role, viewOnly]);
 
 
+    
     const checkPreferredAndCert = () => {
-    const r = formData;
+        const r = formData;
 
-    // 🛑 Guard: kung wala pang preferredLearningModality o certification, return false
-    if (!r.certification) {
-        return false;
+        if (!r.certification) {
+            return false;
         }
 
-    // -------------------------------------
-    // PREFERRED LEARNING MODALITY
-    // At least one must be true
-    // -------------------------------------
-    // if (!selectedModality) return false;
+        const c = r.certification;
 
-    // -------------------------------------
-    // CERTIFICATION UPLOADS
-    // For VIEWING mode: accept either File OR existing preview
-    // For NEW submission: require File objects
-    // -------------------------------------
-    const c = r.certification;
+        // ✅ For new submissions: check if File objects exist
+        // ✅ For viewing mode: check if preview exists
+        const hasPsaBirthCert = (c.psaBirthCertFile instanceof File) || c.psaBirthCertPreview;
+        const hasReportCard = (c.reportCardFile instanceof File) || c.reportCardPreview;
+        const hasIdPicture = (c.idPictureFile instanceof File) || c.idPicturePreview;
 
-    // Check if file exists (either new upload OR existing from backend)
-    const hasPsaBirthCert = c.psaBirthCertFile || c.psaBirthCertPreview;
-    const hasReportCard = c.reportCardFile || c.reportCardPreview;
-    const hasIdPicture = c.idPictureFile || c.idPicturePreview;
+        if (!hasPsaBirthCert || !hasReportCard || !hasIdPicture) {
+            return false;
+        }
 
-    if (
-        !hasPsaBirthCert ||
-        !hasReportCard ||
-        !hasIdPicture
-    ) {
-        return false;
-    }
+        return true;
+    };
 
-    // -------------------------------------
-    // PASSED ALL CHECKS
-    // -------------------------------------
-    return true;
-};
+
+
+
+
 
 
     useLayoutEffect(() => {
@@ -2945,6 +2931,8 @@ export const Step3 = () => {
     const [showModal, setShowModal] = React.useState(false);
     const [previewImage, setPreviewImage] = React.useState(null);
 
+
+    
     const handleCertificationChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -2956,67 +2944,110 @@ export const Step3 = () => {
         }));
     };
 
-    const handleFileUpload = (e, fieldName) => {
+
+    const handleFileUpload = async (e, fieldName) => {
         const file = e.target.files[0];
         
-        if (file) {
-            // ✅ Validate file type on frontend
-            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-            const allowedExtensions = ['.jpg', '.jpeg', '.png'];
-            
-            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-            
-            if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension)) {
-                alert('Only JPG and PNG files are allowed!');
-                e.target.value = ''; // Clear input
-                return;
-            }
-            
-            // ✅ Optional: Check file size (e.g., max 5MB)
-            const maxSize = 5 * 1024 * 1024; // 5MB
-            if (file.size > maxSize) {
-                alert('File size must not exceed 5MB!');
-                e.target.value = '';
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({
-                    ...prev,
-                    certification: {
-                        ...prev.certification,
-                        [`${fieldName}File`]: file,
-                        [`${fieldName}FileName`]: file.name,
-                        [`${fieldName}Preview`]: reader.result
-                    }
-                }));
+        if (!file) return;
+
+        // ✅ Validate file type FIRST
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+        
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension)) {
+            alert('Only JPG and PNG files are allowed!');
+            e.target.value = '';
+            return;
+        }
+        
+        try {
+            // ✅ Compression options
+            const options = {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+                fileType: file.type
             };
-            reader.readAsDataURL(file);
+
+            // ✅ Compress the image
+            const compressedBlob = await imageCompression(file, options);
+            
+            
+            // ✅ Convert Blob to File with original filename
+            const compressedFile = new File([compressedBlob], file.name, {
+                type: compressedBlob.type,
+                lastModified: Date.now()
+            });
+            
+            // ✅ Create preview URL (not base64)
+            const previewUrl = URL.createObjectURL(compressedFile);
+            
+            setFormData(prev => ({
+                ...prev,
+                certification: {
+                    ...prev.certification,
+                    [`${fieldName}File`]: compressedFile, // ✅ Now it's a proper File object
+                    [`${fieldName}FileName`]: file.name,
+                    [`${fieldName}Preview`]: previewUrl // ✅ Use object URL instead of base64
+                }
+            }));
+            
+        } catch (error) {
+            console.error('Error compressing image:', error);
+            alert('Failed to compress image. Please try again.');
+            e.target.value = '';
         }
     };
+
+
 
 
 
 
 
     const handleRemoveFile = (fieldName) => {
-
         const inputRef = fileRef.current[fieldName];
 
-        if(inputRef) {
+        if (inputRef) {
             inputRef.value = "";
+        }
+
+        // ✅ Revoke object URL to prevent memory leaks
+        const previewUrl = formData.certification?.[`${fieldName}Preview`];
+        if (previewUrl && previewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(previewUrl);
         }
 
         setFormData(prev => ({
             ...prev,
             certification: {
                 ...prev.certification,
+                [`${fieldName}File`]: null,
                 [`${fieldName}FileName`]: null,
                 [`${fieldName}Preview`]: null
             }
         }));
     };
+
+    useEffect(() => {
+        // Cleanup function to revoke all object URLs when component unmounts
+        return () => {
+            const cert = formData.certification;
+            if (cert) {
+                ['psaBirthCertPreview', 'reportCardPreview', 'goodMoralPreview', 'idPicturePreview'].forEach(field => {
+                    const url = cert[field];
+                    if (url && url.startsWith('blob:')) {
+                        URL.revokeObjectURL(url);
+                    }
+                });
+            }
+        };
+    }, []);
+
+
+
 
     const handleViewImage = (preview) => {
         if (preview) {
@@ -3033,190 +3064,6 @@ export const Step3 = () => {
 
 
 
-
-   //const handleNext = async() => {
-
-//     // localStorage.setItem("myForm", JSON.stringify(formData));
-
-
-//     if(role === "admin" || role === "staff"){
-//         setApproveShowModal((prev) => ({...prev, isShow: true, data: prev.data }));
-//         return
-//     }
-    
-//     try {
-//         // Create FormData instance
-//         const submitData = new FormData();
-
-//         // Add basic fields
-//         submitData.append('schoolYear', formData.schoolYear || 'n/a');
-//         submitData.append('gradeLevelToEnroll', formData.gradeLevelToEnroll || '');
-//         submitData.append('isReturning', formData.isReturning === "Yes" || 
-//             formData.isReturning === true
-//         );
-//         submitData.append('studentType', formData.studentType || 'regular');
-//         submitData.append('withLRN', formData.withLRN === "Yes" ||  formData.withLRN === true );
-
-        
-
-//         // Add learnerInfo as JSON string
-//         submitData.append('learnerInfo', JSON.stringify({
-//             email: formData.learnerInfo.email || 'n/a',
-//             lrn: formData.learnerInfo.lrn || 'n/a',
-//             psaNo: formData.learnerInfo.psaNo || 'n/a',
-//             lastName: formData.learnerInfo.lastName || 'n/a',
-//             firstName: formData.learnerInfo.firstName || 'n/a',
-//             middleName: formData.learnerInfo.middleName || 'n/a',
-//             extensionName: formData.learnerInfo.extensionName || 'n/a',
-//             birthDate: formData.learnerInfo.birthDate || 'n/a',
-//             age: formData.learnerInfo.age || 0,
-//             sex: formData.learnerInfo.sex || 'n/a',
-//             placeOfBirth: formData.learnerInfo.placeOfBirth || 'n/a',
-//             motherTongue: formData.learnerInfo.motherTongue || 'n/a',
-//             learnerWithDisability: {
-//                 isDisabled: formData.learnerInfo.learnerWithDisability?.isDisabled === 'Yes' || 
-//                            formData.learnerInfo.learnerWithDisability?.isDisabled === true,
-//                 disabilityType: formData.learnerInfo.learnerWithDisability?.disabilityType || []
-//             },
-//             indigenousCommunity: {
-//                 isMember: formData.learnerInfo.indigenousCommunity?.isMember === 'Yes' || 
-//                          formData.learnerInfo.indigenousCommunity?.isMember === true,
-//                 name: formData.learnerInfo.indigenousCommunity?.name || 'n/a'
-//             },
-//             fourPs: {
-//                 isBeneficiary: formData.learnerInfo.fourPs?.isBeneficiary === 'Yes' || 
-//                               formData.learnerInfo.fourPs?.isBeneficiary === true,
-//                 householdId: formData.learnerInfo.fourPs?.householdId || 'n/a'
-//             }
-//         }));
-
-//         // Add address as JSON string
-//         submitData.append('address', JSON.stringify({
-//             current: {
-//                 houseNo: formData.address?.current?.houseNo || 'n/a',
-//                 street: formData.address?.current?.street || 'n/a',
-//                 barangay: formData.address?.current?.barangay || 'n/a',
-//                 municipality: formData.address?.current?.municipality || 'n/a',
-//                 province: formData.address?.current?.province || 'n/a',
-//                 country: formData.address?.current?.country || 'n/a',
-//                 zipCode: formData.address?.current?.zipCode || 'n/a',
-//                 contactNumber: formData.address?.current?.contactNumber || 'n/a'
-//             },
-//             permanent: {
-//                 sameAsCurrent: formData.address?.permanent?.sameAsCurrent === 'Yes' || 
-//                               formData.address?.permanent?.sameAsCurrent === true,
-//                 houseNo: formData.address?.permanent?.houseNo || 'n/a',
-//                 street: formData.address?.permanent?.street || 'n/a',
-//                 barangay: formData.address?.permanent?.barangay || 'n/a',
-//                 municipality: formData.address?.permanent?.municipality || 'n/a',
-//                 province: formData.address?.permanent?.province || 'n/a',
-//                 country: formData.address?.permanent?.country || 'n/a',
-//                 zipCode: formData.address?.permanent?.zipCode || 'n/a'
-//             }
-//         }));
-
-//         // Add parentGuardianInfo as JSON string
-//         submitData.append('parentGuardianInfo', JSON.stringify({
-//             father: {
-//                 lastName: formData.parentGuardianInfo.father?.lastName || 'n/a',
-//                 firstName: formData.parentGuardianInfo.father?.firstName || 'n/a',
-//                 middleName: formData.parentGuardianInfo.father?.middleName || 'n/a',
-//                 contactNumber: formData.parentGuardianInfo.father?.contactNumber || 'n/a'
-//             },
-//             mother: {
-//                 contactNumber: formData.parentGuardianInfo.mother?.contactNumber || 'n/a',
-//                 firstName: formData.parentGuardianInfo.mother?.firstName || 'n/a',
-//                 lastName: formData.parentGuardianInfo.mother?.lastName || 'n/a',
-//                 middleName: formData.parentGuardianInfo.mother?.middleName || 'n/a'
-//             },
-//             guardian: {
-//                 lastName: formData.parentGuardianInfo.guardian?.lastName || 'n/a',
-//                 firstName: formData.parentGuardianInfo.guardian?.firstName || 'n/a',
-//                 middleName: formData.parentGuardianInfo.guardian?.middleName || 'n/a',
-//                 contactNumber: formData.parentGuardianInfo.guardian?.contactNumber || 'n/a'
-//             }
-//         }));
-
-//         // Add schoolHistory as JSON string
-//         submitData.append('schoolHistory', JSON.stringify({
-//             returningLearner: formData.schoolHistory?.returningLearner === 'Yes' || 
-//                              formData.schoolHistory?.returningLearner === true,
-//             lastGradeLevelCompleted: formData.schoolHistory?.lastGradeLevelCompleted || 'n/a',
-//             lastSchoolYearCompleted: formData.schoolHistory?.lastSchoolYearCompleted || 'n/a',
-//             lastSchoolAttended: formData.schoolHistory?.lastSchoolAttended || 'n/a',
-//             schoolId: formData.schoolHistory?.schoolId || 'n/a'
-//         }));
-
-
-//         // Add seniorHigh as JSON string
-//         submitData.append('seniorHigh', JSON.stringify({
-//             semester: formData.seniorHigh?.semester || 'n/a',
-//             strand: formData.seniorHigh?.strand || 'n/a',
-//             track: formData.seniorHigh?.track || 'n/a'
-//         }));
-
-
-//         // Add certification as JSON string (without files)
-//         submitData.append('certification', JSON.stringify({
-//             dateSigned: formData.certification?.dateSigned || new Date().toISOString()
-//         }));
-
-
-//         // Add file uploads (IMPORTANT: These must be File objects, not base64 strings)
-//         if (formData.certification?.psaBirthCertFile instanceof File) {
-//             submitData.append('psaBirthCertFile', formData.certification.psaBirthCertFile);
-//         }
-        
-//         if (formData.certification?.reportCardFile instanceof File) {
-//             submitData.append('reportCardFile', formData.certification.reportCardFile);
-//         }
-        
-//         if (formData.certification?.idPictureFile instanceof File) {
-//             submitData.append('idPictureFile', formData.certification.idPictureFile);
-//         }
-        
-//         if (formData.certification?.goodMoralFile instanceof File) {
-//             submitData.append('goodMoralFile', formData.certification.goodMoralFile);
-//         }
-
-
-
-
-//         // Send to backend
-//         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
-//             method: "POST",
-//             credentials: "include",
-//             body: submitData
-//             // DON'T set Content-Type header - browser will set it automatically with boundary
-//         });
-
-//         const data = await res.json();
-        
-//         if (!res.ok) {
-//             throw new Error(data.message || 'Failed to submit enrollment');
-//         }
-
-//         if(data.success) {
-//             setFormData({});
-//             sessionStorage.clear();
-//             alert(data.message);
-//             navigate('/', { replace: true , state: { allowed: false }});
-//             window.scrollTo({ top: 0, behavior: "auto"});
-//             return
-//         }
-        
-//     } catch (error) {
-//         console.error("Error: ", error.message);
-//         alert(`Error: ${error.message}`);
-//     }
-// };
-
-
-
-    // Add this helper function sa top ng Step3.jsx component
-    
-
-
     const truncateFilename = (filename, maxLength = 20) => {
         if (!filename) return '';
         
@@ -3231,48 +3078,49 @@ export const Step3 = () => {
 
 
 
-    const handleNext = async() => {
+        const handleNext = async() => {
         if(role === "admin" || role === "staff"){
             setApproveShowModal((prev) => ({...prev, isShow: true, data: prev.data }));
             return
         }
 
         setIsSubmitting(true);
-        
+
         try {
-            // Create FormData instance
             const submitData = new FormData();
 
-            // ✅ Add step identifier
             submitData.append('step', 'step3');
             
-            // ✅ Add enrollmentId (from Step 1 response)
-            const enrollmentId = sessionStorage.getItem('enrollmentId'); // or from context/state
+            const enrollmentId = sessionStorage.getItem('enrollmentId');
             if (!enrollmentId) {
                 throw new Error('Enrollment ID not found. Please start from Step 1.');
             }
             submitData.append('enrollmentId', enrollmentId);
 
-            // ✅ Add file uploads only (4 files)
-            if (formData.certification?.psaBirthCertFile instanceof File) {
-                submitData.append('psaBirthCertFile', formData.certification.psaBirthCertFile);
-            }
+            // ✅ Simplified file appending
+            const fileFields = ['psaBirthCert', 'reportCard', 'idPicture', 'goodMoral'];
             
-            if (formData.certification?.reportCardFile instanceof File) {
-                submitData.append('reportCardFile', formData.certification.reportCardFile);
-            }
-            
-            if (formData.certification?.idPictureFile instanceof File) {
-                submitData.append('idPictureFile', formData.certification.idPictureFile);
-            }
-            
-            if (formData.certification?.goodMoralFile instanceof File) {
-                submitData.append('goodMoralFile', formData.certification.goodMoralFile);
+            fileFields.forEach(fieldName => {
+                const file = formData.certification?.[`${fieldName}File`];
+                if (file instanceof File) {
+                    submitData.append(`${fieldName}File`, file);
+                }
+            });
+
+            // ✅ Debug: Check what's being sent
+            console.log("=== FormData Contents ===");
+            for (let [key, value] of submitData.entries()) {
+                if (value instanceof File) {
+                    console.log(`${key}:`, {
+                        name: value.name,
+                        size: value.size,
+                        type: value.type
+                    });
+                } else {
+                    console.log(`${key}:`, value);
+                }
             }
 
-            // ❌ REMOVE: No need for certification JSON (dateSigned auto-generated as createdAt)
-
-            // Send to backend
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
                 method: "POST",
                 credentials: "include",
@@ -3288,7 +3136,7 @@ export const Step3 = () => {
             if(data.success) {
                 setFormData({});
                 sessionStorage.clear();
-                setSuccessModal(true); // Show success modal instead of alert
+                setSuccessModal(true);
                 setIsSubmitting(false); 
                 return
             }

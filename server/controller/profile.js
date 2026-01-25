@@ -3,18 +3,31 @@ import multer from "multer";
 import bcrypt from "bcrypt";
 import Section from "../model/section.js";
 import Staff from "../model/staff.js";
+import cloudinary from "../config/cloudinary.js";
 
+// Helper function to upload to Cloudinary
+const uploadToCloudinary = (fileBuffer, originalname, folder) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        resource_type: "auto",
+        public_id: `${Date.now()}-${originalname.split('.')[0]}`,
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    uploadStream.end(fileBuffer);
+  });
+};
 
+// Configure multer storage to memory
+const storage = multer.memoryStorage();
+// Configure and export multer instance
+export const updateProfile = multer({ storage: storage });
 
-
-const storage  = multer.diskStorage({
-    destination : "./uploads/profile",
-    filename :  (req, file, cb) =>{
-        const uniqueName = `${Date.now()} - ${file.originalname}`;
-        cb(null, uniqueName)
-    }
-})
-export const updateProfile = multer({ storage : storage});
 
 
 
@@ -23,7 +36,6 @@ export const updateStudentProfile = async (req, res) => {
     try {
         const { id } = req.params;
         const {
-            profileImage,
             firstName,
             middleName,
             lastName,
@@ -35,11 +47,7 @@ export const updateStudentProfile = async (req, res) => {
             address
         } = req.body;
 
-        const imageFile = req.file?.filename ?? "";
-
         const parsedAddress = typeof address === "string" ? JSON.parse(address) : address;
-
-
 
         // Validation
         if (!firstName || !lastName || !birthDate || !sex || !email) {
@@ -72,11 +80,41 @@ export const updateStudentProfile = async (req, res) => {
             }
         }
 
+        // Handle profile image upload
+        let profileImageUrl = student.profileImage;
+        let publicId = student.publicId;
+
+        if (req.file) {
+            // Delete old image from Cloudinary if exists
+            if (student.publicId) {
+                try {
+                    await cloudinary.uploader.destroy(student.publicId);
+                } catch (err) {
+                    console.error("Error deleting old profile image from Cloudinary:", err);
+                }
+            }
+
+            // Upload new image to Cloudinary
+            try {
+                const result = await uploadToCloudinary(
+                    req.file.buffer, 
+                    req.file.originalname, 
+                    "profiles/students"
+                );
+                profileImageUrl = result.secure_url;
+                publicId = result.public_id;
+            } catch (uploadError) {
+                console.error("Error uploading to Cloudinary:", uploadError);
+                return res.status(500).json({ message: "Failed to upload profile image" });
+            }
+        }
+
         // Update student profile
         await Student.findByIdAndUpdate(
             id,
             {
-                profileImage: imageFile ? imageFile : profileImage,
+                profileImage: profileImageUrl,
+                publicId: publicId,
                 firstName,
                 middleName,
                 lastName,
@@ -99,10 +137,8 @@ export const updateStudentProfile = async (req, res) => {
                 new: true, 
                 runValidators: true 
             }
-        ).select('-password'); // Exclude password from response
+        ).select('-password');
 
-
-        
         res.status(200).json({message: "Profile updated successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message});
@@ -112,17 +148,29 @@ export const updateStudentProfile = async (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export const UpdateProfile = async (req, res) => {
     try {
         const { id } = req.account;
-        const {firstName, lastName, email } = req.body;
-        const filename = req.file?.filename ?? null;
+        const { firstName, lastName, email } = req.body;
 
-        
-        // Find the student
+        // Find the staff
         const staff = await Staff.findById(id);
         if (!staff) {
-            return res.status(404).json({ message: "Student not found" });
+            return res.status(404).json({ message: "Staff not found" });
         }
 
         // Update fields
@@ -130,11 +178,33 @@ export const UpdateProfile = async (req, res) => {
         if (lastName) staff.lastName = lastName;
         if (email) staff.email = email;
 
-        if(filename) {
-            staff.imageFile = filename
+        // Handle profile image upload
+        if (req.file) {
+            // Delete old image from Cloudinary if exists
+            if (staff.publicId) {
+                try {
+                    await cloudinary.uploader.destroy(staff.publicId);
+                } catch (err) {
+                    console.error("Error deleting old profile image from Cloudinary:", err);
+                }
+            }
+
+            // Upload new image to Cloudinary
+            try {
+                const result = await uploadToCloudinary(
+                    req.file.buffer, 
+                    req.file.originalname, 
+                    "profiles/staff"
+                );
+                staff.imageFile = result.secure_url;
+                staff.publicId = result.public_id;
+            } catch (uploadError) {
+                console.error("Error uploading to Cloudinary:", uploadError);
+                return res.status(500).json({ message: "Failed to upload profile image" });
+            }
         }
 
-        // Save updated student
+        // Save updated staff
         await staff.save();
 
         return res.status(200).json({ message: "Successfully Updated", data: staff});
@@ -142,10 +212,6 @@ export const UpdateProfile = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 }
-
-
-
-
 
 export const getStudentProfile = async (req, res) => {
     try {
@@ -172,15 +238,13 @@ export const getStudentProfile = async (req, res) => {
     }
 }
 
-
 export const getProfile = async(req, res) => {
     try {
         const { id } = req.account;
 
-
         const profile = await Staff.findOne({ _id: id });
         if(!profile){
-            return res.status(409).json({ message: "account not founnd."});
+            return res.status(409).json({ message: "account not found."});
         }
 
         return res.status(200).json(profile);
@@ -188,12 +252,6 @@ export const getProfile = async(req, res) => {
         return res.status(500).json({ message: error.message });
     }
 }
-
-
-
-
-
-
 
 export const changePassword = async (req, res) => {
     try {
@@ -209,7 +267,7 @@ export const changePassword = async (req, res) => {
         }
 
         if (!account) {
-            return res.status(404).json({ message: "Student not found" });
+            return res.status(404).json({ message: "Account not found" });
         }
 
         // Verify current password
@@ -221,10 +279,16 @@ export const changePassword = async (req, res) => {
         // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        // Update password
-        await Student.findByIdAndUpdate(id, {
-            password: hashedPassword
-        });
+        // Update password based on account type
+        if (account instanceof Student || account.constructor.modelName === 'Student') {
+            await Student.findByIdAndUpdate(id, {
+                password: hashedPassword
+            });
+        } else {
+            await Staff.findByIdAndUpdate(id, {
+                password: hashedPassword
+            });
+        }
 
         res.status(200).json({ message: "Password changed successfully" });
 
@@ -233,4 +297,39 @@ export const changePassword = async (req, res) => {
     }
 };
 
+// Optional: Delete profile image only (keep account)
+export const deleteProfileImage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userType } = req.body; // "student" or "staff"
 
+        let user;
+        if (userType === "student") {
+            user = await Student.findById(id);
+        } else if (userType === "staff") {
+            user = await Staff.findById(id);
+        }
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Delete from Cloudinary
+        if (user.publicId) {
+            try {
+                await cloudinary.uploader.destroy(user.publicId);
+            } catch (err) {
+                console.error("Error deleting from Cloudinary:", err);
+            }
+        }
+
+        // Remove from database
+        user.profileImage = "";
+        user.publicId = "";
+        await user.save();
+
+        res.status(200).json({ message: "Profile image deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

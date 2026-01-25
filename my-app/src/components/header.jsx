@@ -3,6 +3,9 @@ import { globalContext } from "../context/global";
 import { useNavigate } from "react-router-dom";
 import SideBar from "./sidebar";
 
+
+
+
 const Header = () => {
     const { textHeader, role, profile, openMenu, setOpenmenu } = useContext(globalContext);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -66,7 +69,7 @@ const Header = () => {
                             <div className="rounded-circle overflow-hidden border border-dark"
                             style={{height: "35px", width: "35px"}}
                             >
-                                <img src={`${import.meta.env.VITE_API_URL}/api/uploads/profile/${profile?.imageFile}`} 
+                                <img src={profile?.imageFile} 
                                 alt={profile?.imageFile} 
                                 className="w-100 h-100 img-fluid"
                                 style={{objectFit: "cover"}}
@@ -98,7 +101,7 @@ const Header = () => {
                         <div className="rounded-circle overflow-hidden border border-dark"
                         style={{height: "35px", width: "35px"}}
                         >
-                            <img src={`${import.meta.env.VITE_API_URL}/api/uploads/profile/${profile?.profileImage}`} 
+                            <img src={profile?.profileImage} 
                             alt={profile?.profileImage} 
                             className="w-100 h-100 img-fluid"
                             style={{objectFit: "cover"}}

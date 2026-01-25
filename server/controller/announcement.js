@@ -1,26 +1,33 @@
 import Announcement from "../model/announcement.js";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
+import cloudinary from "../config/cloudinary.js";
 
-// Create uploads directory if it doesn't exist
-const uploadDir = "uploads";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+
+
+// Helper function to upload to Cloudinary
+const uploadToCloudinary = (fileBuffer, originalname) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "announcements", // Folder sa Cloudinary
+        resource_type: "auto",
+        public_id: `${Date.now()}-${originalname.split('.')[0]}`,
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    uploadStream.end(fileBuffer);
+  });
+};
+
 
 // Configure multer storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const nameWithoutExt = path.basename(file.originalname, ext);
-    cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
-  },
-});
+const storage = multer.memoryStorage();
+
+
+
 
 // Simple validation - images only
 const fileFilter = (req, file, cb) => {
@@ -107,18 +114,27 @@ export const addAnnouncement = async (req, res) => {
     }
 
 
-    // Process uploaded images
-    const files = [];
-    if (req.files && req.files.length > 0) {
-      req.files.forEach((file) => {
+ // Upload images to Cloudinary
+  const files = [];
+  if (req.files && req.files.length > 0) {
+    for (const file of req.files) {
+      try {
+        const result = await uploadToCloudinary(file.buffer, file.originalname);
         files.push({
           name: file.originalname,
-          url: `/uploads/${file.filename}`,
+          url: result.secure_url,
+          publicId: result.public_id, // Important for deletion later
           type: file.mimetype,
           size: file.size,
         });
-      });
+      } catch (uploadError) {
+        console.error("Error uploading to Cloudinary:", uploadError);
+        // You can choose to continue or throw error
+      }
     }
+  }
+
+    
 
     // Create new announcement
     const newAnnouncement = new Announcement({
@@ -138,6 +154,8 @@ export const addAnnouncement = async (req, res) => {
 };
 
 
+
+
 // Update announcement
 export const updateAnnouncement = async (req, res) => {
   try {
@@ -154,21 +172,25 @@ export const updateAnnouncement = async (req, res) => {
     if (description) announcement.description = description;
     if (category) announcement.category = category;
 
+
+
+
     // Remove files if specified
     if (filesToRemove) {
       const filesToRemoveArray = JSON.parse(filesToRemove);
       
-      // Delete physical files from server
-      filesToRemoveArray.forEach((fileUrl) => {
+      // Delete from Cloudinary using publicId
+      for (const fileUrl of filesToRemoveArray) {
         try {
-          const filePath = path.join(process.cwd(), "uploads", path.basename(fileUrl));
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+          // Find the file in announcement.files to get publicId
+          const fileToDelete = announcement.files.find(f => f.url === fileUrl);
+          if (fileToDelete && fileToDelete.publicId) {
+            await cloudinary.uploader.destroy(fileToDelete.publicId);
           }
         } catch (err) {
-          console.error("Error deleting file:", err);
+          console.error("Error deleting from Cloudinary:", err);
         }
-      });
+      }
 
       // Remove from database
       announcement.files = announcement.files.filter(
@@ -176,19 +198,27 @@ export const updateAnnouncement = async (req, res) => {
       );
     }
 
-    // Process new uploaded images
+
+    // Upload new images to Cloudinary
     if (req.files && req.files.length > 0) {
-      const newFiles = [];
-      req.files.forEach((file) => {
-        newFiles.push({
-          name: file.originalname,
-          url: `/uploads/${file.filename}`,
-          type: file.mimetype,
-          size: file.size,
-        });
-      });
-      announcement.files = [...announcement.files, ...newFiles];
+      for (const file of req.files) {
+        try {
+          const result = await uploadToCloudinary(file.buffer, file.originalname);
+          announcement.files.push({
+            name: file.originalname,
+            url: result.secure_url,
+            publicId: result.public_id,
+            type: file.mimetype,
+            size: file.size,
+          });
+        } catch (uploadError) {
+          console.error("Error uploading to Cloudinary:", uploadError);
+        }
+      }
     }
+
+
+
 
     await announcement.save();
     await announcement.populate("postedBy", "firstName lastName email");
@@ -204,6 +234,8 @@ export const updateAnnouncement = async (req, res) => {
 };
 
 
+
+
 // Delete announcement
 export const deleteAnnouncement = async (req, res) => {
   try {
@@ -216,21 +248,21 @@ export const deleteAnnouncement = async (req, res) => {
 
     // Delete associated image files
     if (announcement.files && announcement.files.length > 0) {
-      announcement.files.forEach((file) => {
+      for (const file of announcement.files) {
         try {
-          const filePath = path.join(process.cwd(), "uploads", path.basename(file.url));
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+          if (file.publicId) {
+            cloudinary.uploader.destroy(file.publicId);1
           }
         } catch (err) {
-          console.error("Error deleting file:", err);
+          console.error("Error deleting from Cloudinary:", err);
         }
-      });
+      }
     }
 
     await Announcement.findByIdAndDelete(id);
-
     res.status(200).json({ message: "Announcement deleted successfully" });
+
+    
   } catch (error) {
     console.error("Error deleting announcement:", error);
     res.status(500).json({ message: "Failed to delete announcement", error: error.message });

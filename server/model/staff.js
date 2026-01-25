@@ -6,6 +6,10 @@ const StaffSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    publicId:{
+        type: String, 
+        required: false,
+    },
 
     firstName: {
         type: String,

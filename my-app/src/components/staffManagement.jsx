@@ -87,7 +87,6 @@ const StaffManagement = () => {
             setFilteredStaff(data);
         } catch (error) {
             console.error("Error fetching staff:", error.message);
-            showAlert("Failed to load staff data", 'error');
         } finally {
             setLoading(false);
         }

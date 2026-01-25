@@ -207,7 +207,6 @@ const createEmailTemplate = (studentName, title, description, date, time) => {
 
 
 
-
 export const getAllEmails = async (req, res) => {
     try {
         const emails = await EmailHistory.find();
@@ -290,6 +289,8 @@ export const scheduleRequirements = async (req, res) => {
                 html: htmlContent
             });
         });
+
+
 
         // Wait for all emails to be sent
         const results = await Promise.allSettled(emailPromises);

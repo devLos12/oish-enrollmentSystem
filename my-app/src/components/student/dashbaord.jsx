@@ -95,7 +95,7 @@ const Dashboard = () => {
                                 <div className="overflow-hidden rounded-3"
                                 style={{width: "100px", height: "100px"}}
                                 >
-                                    <img src={`${import.meta.env.VITE_API_URL}/api/Uploads/profile/${profile?.profileImage}`} alt="profile.jpg" 
+                                    <img src={profile?.profileImage} alt="profile.jpg" 
                                     className="image-fluid w-100 h-100"
                                     style={{objectFit: "cover"}}
                                     />

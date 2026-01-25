@@ -1,9 +1,33 @@
 import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { globalContext } from "../context/global";
+import imageCompression from 'browser-image-compression'; 
 
-// Mock context - replace with your actual global context
-const GlobalContext = React.createContext({});
+
+
+const compressionOptions = {
+  maxSizeMB: 1, // Max 1MB
+  maxWidthOrHeight: 1920, // Max dimension
+  useWebWorker: true,
+  fileType: 'image/jpeg'
+};
+
+const compressImage = async (file) => {
+  try {
+    console.log(`Original: ${file.name} - ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+    
+    const compressedFile = await imageCompression(file, compressionOptions);
+    
+    console.log(`Compressed: ${file.name} - ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+    
+    return compressedFile;
+  } catch (error) {
+    console.error('Compression error:', error);
+    return file; // Return original if fails
+  }
+};
+
+
 
 const AnnouncementManagement = () => {
   const { setTextHeader } = useContext(globalContext);
@@ -77,6 +101,9 @@ const AnnouncementManagement = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [openDropdown]);
 
+
+
+  
   const fetchAnnouncementsData = async () => {
     try {
       setLoading(true);
@@ -138,33 +165,50 @@ const AnnouncementManagement = () => {
 
 
 
-  // File handling
-  const handleFileUpload = (e) => {
+ // File handling
+  const handleFileUpload = async (e) => { 
     const files = Array.from(e.target.files);
     
-    files.forEach(file => {
-      const reader = new FileReader();
+    setModalLoading(true); 
+    
+    try {
+      for (const file of files) {
       
-      reader.onload = (event) => {
-        const fileData = {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          url: event.target.result,
-          file: file,
-          isNew: true // Mark as newly uploaded
+        const compressedFile = await compressImage(file);
+        
+        const reader = new FileReader();
+        
+        reader.onload = (event) => {
+          const fileData = {
+            name: file.name,
+            size: compressedFile.size, 
+            type: compressedFile.type,
+            url: event.target.result,
+            file: compressedFile, 
+            isNew: true
+          };
+          
+          if (modalType === "edit") {
+            setNewlyUploadedFiles(prev => [...prev, fileData]);
+          }
+          setUploadedFiles(prev => [...prev, fileData]);
+          setFilePreview(prev => [...prev, fileData]);
         };
         
-        if (modalType === "edit") {
-          setNewlyUploadedFiles(prev => [...prev, fileData]);
-        }
-        setUploadedFiles(prev => [...prev, fileData]);
-        setFilePreview(prev => [...prev, fileData]);
-      };
-      
-      reader.readAsDataURL(file);
-    });
+        reader.readAsDataURL(compressedFile); 
+      }
+    } catch (error) {
+      console.error('Error processing files:', error);
+      showAlert('Error processing images', 'error');
+    } finally {
+      setModalLoading(false);
+    }
   };
+
+
+
+
+
 
 
   // Add function to remove existing file
@@ -199,8 +243,6 @@ const AnnouncementManagement = () => {
   const handleSubmitAnnouncement = async () => {
 
 
-
-
     if (
       !selectedAnnouncement.title.trim() ||
       !selectedAnnouncement.description.trim() ||
@@ -214,9 +256,6 @@ const AnnouncementManagement = () => {
       setModalLoading(true); // ✅ START LOADING
 
 
-
-      return;
-      
       const formData = new FormData();
       formData.append("title", selectedAnnouncement.title);
       formData.append("description", selectedAnnouncement.description);
@@ -267,10 +306,11 @@ const AnnouncementManagement = () => {
 
 
 
-
   // Delete
   const confirmDelete = async () => {
     try {
+      setModalLoading(true); // ✅ START LOADING
+
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/deleteAnnouncement/${selectedAnnouncement._id}`,
         {
@@ -281,13 +321,20 @@ const AnnouncementManagement = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Delete failed");
 
-      alert(data.message);
+      showAlert(data.message, 'success'); // ✅ Gamit yung alert modal instead of alert()
       setShowModal(false);
       fetchAnnouncementsData();
     } catch (error) {
-      alert("Failed to delete announcement: " + error.message);
+      showAlert("Failed to delete announcement: " + error.message, 'error'); // ✅ Error alert modal
+    } finally {
+      setModalLoading(false); // ✅ STOP LOADING
     }
   };
+
+
+
+
+
 
   // Get category badge color
   const getCategoryBadge = (category) => {
@@ -334,8 +381,6 @@ const AnnouncementManagement = () => {
     setAlertType(type);
     setShowAlertModal(true);
   };
-
-
 
 
   return (
@@ -498,7 +543,7 @@ const AnnouncementManagement = () => {
                                   style={{ cursor: file.type?.includes("image") ? "pointer" : "default" }}
                                   onClick={() => {
                                     if (file.type?.includes("image")) {
-                                      handleImageClick(`${import.meta.env.VITE_API_URL}/api${file.url}`, file.name);
+                                      handleImageClick(file.url, file.name);
                                     }
                                   }}
                                 >
@@ -612,15 +657,24 @@ const AnnouncementManagement = () => {
                         Upload Files
                       </label>
                       <input
-                          type="file"
-                          className="form-control"
-                          multiple
-                          onChange={handleFileUpload}
-                          accept="image/png, image/jpg, image/jpeg" // ✅ PNG at JPG lang
-                        />
+                        type="file"
+                        className="form-control"
+                        multiple
+                        onChange={handleFileUpload}
+                        accept="image/png, image/jpg, image/jpeg"
+                        disabled={modalLoading} // ✅ Disable while compressing
+                      />
                       <small className="text-muted">
-                        You can upload multiple image files (PNG, JPG only)
+                        You can upload multiple image files (PNG, JPG only). Images will be automatically compressed.
                       </small>
+                      
+                      {/* ✅ ADD COMPRESSION INDICATOR */}
+                      {modalLoading && (
+                        <div className="mt-2">
+                          <div className="spinner-border spinner-border-sm text-danger me-2"></div>
+                          <small className="text-muted">Compressing images...</small>
+                        </div>
+                      )}
                     </div>
                   
                         
@@ -640,7 +694,7 @@ const AnnouncementManagement = () => {
                               <div key={idx} className="col-12">
                                 <div className="d-flex align-items-center p-2 bg-white rounded border cursor"
                                 onClick={(e) => {
-                                  handleImageClick(`${import.meta.env.VITE_API_URL}/api${file.url}`, file.name);
+                                  handleImageClick(file.name, file.name);
                                 }}
                                 >
                                   <i className={`fa ${getFileIcon(file.type)} fa-2x text-danger me-3`}></i>
@@ -784,6 +838,9 @@ const AnnouncementManagement = () => {
                 </>
               )}
 
+
+
+
               {/* Delete Mode */}
               {modalType === "delete" && (
                 <>
@@ -800,6 +857,7 @@ const AnnouncementManagement = () => {
                       type="button" 
                       className="btn btn-secondary" 
                       onClick={() => setShowModal(false)}
+                      disabled={modalLoading}
                     >
                       Cancel
                     </button>
@@ -807,9 +865,19 @@ const AnnouncementManagement = () => {
                       type="button" 
                       className="btn btn-danger" 
                       onClick={confirmDelete}
+                      disabled={modalLoading}
                     >
-                      <i className="fa fa-trash me-2"></i>
-                      Yes, Delete
+                      {modalLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa fa-trash me-2"></i>
+                          Yes, Delete
+                        </>
+                      )}
                     </button>
                   </div>
                 </>

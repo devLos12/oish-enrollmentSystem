@@ -8,25 +8,72 @@ import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
 import { error } from "console";
 import { Resend } from 'resend';
+import cloudinary from "../config/cloudinary.js";
 
+
+
+const uploadToCloudinary = (fileBuffer, originalname, folder) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        resource_type: "auto",
+        public_id: `${Date.now()}-${originalname.split('.')[0]}`,
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    uploadStream.end(fileBuffer);
+  });
+};
+
+
+const deleteFromCloudinary = async (publicId) => {
+  if (!publicId) return;
+  try {
+    await cloudinary.uploader.destroy(publicId);
+    console.log(`Deleted from Cloudinary: ${publicId}`);
+  } catch (error) {
+    console.error("Error deleting from Cloudinary:", error);
+  }
+};
 
 
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 
+
+
 export const deleteApplicant = async (req, res) => {
   try {
     const id = req.params.id;
-
-    await Enrollment.deleteOne({ _id: id});
-
-    res.status(200).json({ message: "successfully deleted"});
+    
+    // Find enrollment first to get publicIds
+    const enrollment = await Enrollment.findById(id);
+    if (!enrollment) {
+      return res.status(404).json({ message: "Enrollment not found" });
+    }
+    
+    // Delete files from Cloudinary
+    const docs = enrollment.requiredDocuments;
+    if (docs) {
+      await deleteFromCloudinary(docs.psaBirthCert?.publicId);
+      await deleteFromCloudinary(docs.reportCard?.publicId);
+      await deleteFromCloudinary(docs.goodMoral?.publicId);
+      await deleteFromCloudinary(docs.idPicture?.publicId);
+    }
+    
+    // Delete from database
+    await Enrollment.deleteOne({ _id: id });
+    
+    res.status(200).json({ message: "Successfully deleted" });
   } catch (error) {
-    res.status(500).json({ message: error.message});
+    res.status(500).json({ message: error.message });
   }
 }
-
 
 
 
@@ -413,17 +460,17 @@ export const rejectApplicant = async (req, res) => {
     }
 
     // ✅ Update enrollment status to rejected
-    // await Enrollment.findByIdAndUpdate(
-    //   enrollmentId,
-    //   { 
-    //     $set: { 
-    //       status: "rejected",
-    //       rejectionReason: reason,
-    //       rejectedAt: new Date()
-    //     }
-    //   }, 
-    //   { new: true }
-    // );
+    await Enrollment.findByIdAndUpdate(
+      enrollmentId,
+      { 
+        $set: { 
+          status: "rejected",
+          rejectionReason: reason,
+          rejectedAt: new Date()
+        }
+      }, 
+      { new: true }
+    );
 
 
     // ✅ Get student full name
@@ -455,6 +502,7 @@ export const rejectApplicant = async (req, res) => {
 
 
 
+
 export const GetAllEnrollments = async(req, res) => {
   try {
     
@@ -472,21 +520,8 @@ export const GetAllEnrollments = async(req, res) => {
 }
 
 
-// Create uploads directory if it doesn't exist
-const uploadDir = './uploads/enrollments';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
 // Multer storage configuration
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
-  }
-});
-
+const storage = multer.memoryStorage();
 
 
 
@@ -504,10 +539,13 @@ const fileFilter = (req, file, cb) => {
 };
 
 
-// Multer instance
+
 export const uploadDocuments = multer({ 
   storage: storage,
-  fileFilter: fileFilter
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max per file
+  }
 });
 
 
@@ -518,198 +556,9 @@ export const enrollmentUpload = uploadDocuments.fields([
   { name: 'reportCardFile', maxCount: 1 },
   { name: 'goodMoralFile', maxCount: 1 },
   { name: 'idPictureFile', maxCount: 1 },
-  // { name: 'medicalCertFile', maxCount: 1 },
-  // { name: 'signatureFile', maxCount: 1 },
-
 ]);
 
 
-
-
-
-// Helper function to delete uploaded files on error
-const deleteUploadedFiles = (files) => {
-  if (!files) return;
-  
-  Object.keys(files).forEach(key => {
-    files[key].forEach(file => {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-    });
-  });
-};
-
-
-
-
-// CREATE ENROLLMENT
-// export const EnrollmentRegistration = async (req, res) => {
-//   try {
-
-//     // Check if files were uploaded
-
-//     // Parse JSON strings from form data
-//     const learnerInfo = JSON.parse(req.body.learnerInfo || '{}');
-//     const address = JSON.parse(req.body.address || '{}');
-//     const parentGuardianInfo = JSON.parse(req.body.parentGuardianInfo || '{}');
-//     const schoolHistory = JSON.parse(req.body.schoolHistory || '{}');
-//     const preferredLearningModality = JSON.parse(req.body.preferredLearningModality || '{}');
-//     const seniorHigh = JSON.parse(req.body.seniorHigh || '{}');
-//     const certification = JSON.parse(req.body.certification || '{}');
-
-//     // Build required documents object1
-//     const requiredDocuments = {
-//       psaBirthCert: {
-//         filePath: req.files['psaBirthCertFile']?.[0]?.path || null,
-//         uploadedAt: new Date()
-//       },
-//       reportCard: {
-//         filePath: req.files['reportCardFile']?.[0]?.path || null,
-//         uploadedAt: new Date()
-//       },
-//       goodMoral: {
-//         filePath: req.files['goodMoralFile']?.[0]?.path || null,
-//         uploadedAt: new Date()
-//       },
-//       idPicture: {
-//         filePath: req.files['idPictureFile']?.[0]?.path || null,
-//         uploadedAt: new Date()
-//       },
-//       // medicalCert: {
-//       //   filePath: req.files['medicalCertFile']?.[0]?.path || null,
-//       //   uploadedAt: new Date()
-//       // },
-      
-//     };
-
-//     // Validate that all required documents are uploaded
-//     const missingDocs = [];
-//     if (!requiredDocuments.psaBirthCert.filePath) missingDocs.push('PSA Birth Certificate');
-//     if (!requiredDocuments.reportCard.filePath) missingDocs.push('Report Card');
-//     if (!requiredDocuments.idPicture.filePath) missingDocs.push('ID Picture');
-
-
-
-
-//     if (learnerInfo.email) {
-
-//       const existingEmailEnrollment = await Enrollment.findOne({
-//         "learnerInfo.email": learnerInfo.email
-//       });
-
-//       const existingEmailStudent = await Student.findOne({ email: learnerInfo.email });
-
-//       const existingEmailStaff = await Staff.findOne({ email: learnerInfo.email });
-
-//       if (existingEmailEnrollment || existingEmailStudent || existingEmailStaff) {
-//         deleteUploadedFiles(req.files);
-//         return res.status(409).json({ message: "Email already exists." });
-//       }
-
-//     }
-
-//     if (learnerInfo.lrn) {
-//       const existingLRN = await Enrollment.findOne({
-//         "learnerInfo.lrn": learnerInfo.lrn
-//       });
-
-//       if (existingLRN) {
-//         deleteUploadedFiles(req.files);
-//         return res.status(409).json({ message: "LRN is already registered" });
-//       }
-//     }
-
-//     if (missingDocs.length > 0) {
-//       deleteUploadedFiles(req.files);
-//       return res.status(400).json({ message: `Missing required documents: ${missingDocs.join(', ')}`});
-//     }
-
-
-//     // Build enrollment data
-//     const enrollmentData = {
-
-//       schoolYear: req.body.schoolYear,
-//       gradeLevelToEnroll: req.body.gradeLevelToEnroll,
-//       isReturning: req.body.isReturning,
-//       withLRN: req.body.withLRN,
-
-//       learnerInfo: {
-//         email: learnerInfo.email,
-//         lrn: learnerInfo.lrn,
-//         psaNo: learnerInfo.psaNo,
-//         lastName: learnerInfo.lastName,
-//         firstName: learnerInfo.firstName,
-//         middleName: learnerInfo.middleName,
-//         extensionName: learnerInfo.extensionName,
-//         birthDate: learnerInfo.birthDate,
-//         age: learnerInfo.age,
-//         sex: learnerInfo.sex,
-//         placeOfBirth: learnerInfo.placeOfBirth,
-//         motherTongue: learnerInfo.motherTongue,
-//         learnerWithDisability: learnerInfo.learnerWithDisability,
-//         indigenousCommunity: learnerInfo.indigenousCommunity,
-//         fourPs: learnerInfo.fourPs
-//       },
-
-//       address: {
-//         current: address.current,
-//         permanent: address.permanent
-//       },
-
-//       parentGuardianInfo: {
-//         father: parentGuardianInfo.father,
-//         mother: parentGuardianInfo.mother,
-//         guardian: parentGuardianInfo.guardian
-//       },
-
-//       schoolHistory: {
-//         returningLearner: schoolHistory.returningLearner,
-//         lastGradeLevelCompleted: schoolHistory.lastGradeLevelCompleted,
-//         lastSchoolYearCompleted: schoolHistory.lastSchoolYearCompleted,
-//         lastSchoolAttended: schoolHistory.lastSchoolAttended,
-//         schoolId: schoolHistory.schoolId
-//       },
-
-//       seniorHigh: {
-//         semester: seniorHigh.semester,
-//         track: seniorHigh.track,
-//         strand: seniorHigh.strand
-//       },
-
-//       // preferredLearningModality,
-//       requiredDocuments,
-//       signature: {
-//         // filePath: req.files['signatureFile']?.[0]?.path || null,
-//         dateSigned: certification.dateSigned
-//       },
-//       studentType: req.body.studentType || 'regular'
-//     };
-
-//     // Save to database
-//     const enrollment = await Enrollment.create(enrollmentData);
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Enrollment created successfully",
-//       data: enrollment
-//     });
-
-//   } catch (error) {
-//     // Delete uploaded files if error occurs
-//     deleteUploadedFiles(req.files);
-    
-//     console.error('Enrollment error:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: error.message || "Error creating enrollment"
-//     });
-//   }
-// };
-
-
-
-// SINGLE ENDPOINT: /api/enrollment
 
 
 
@@ -723,7 +572,6 @@ export const EnrollmentRegistration = async (req, res) => {
     // ==========================================
     if (step === "step1") {
       const learnerInfo = JSON.parse(req.body.learnerInfo || '{}');
-
 
 
       if (learnerInfo.psaNo && learnerInfo.psaNo !== 'N/A') {
@@ -1117,7 +965,6 @@ export const EnrollmentRegistration = async (req, res) => {
     // ==========================================
     // STEP 3: UPLOAD DOCUMENTS & FINALIZE
     // ==========================================
-    // STEP 3: UPLOAD DOCUMENTS & FINALIZE
     if (step === "step3") {
       if (!enrollmentId) {
         return res.status(400).json({ message: "Enrollment ID is required" });
@@ -1138,7 +985,6 @@ export const EnrollmentRegistration = async (req, res) => {
             const mimeType = file.mimetype;
             
             if (!allowedMimeTypes.includes(mimeType) || !allowedExtensions.includes(ext)) {
-              deleteUploadedFiles(req.files);
               return res.status(400).json({ 
                 message: `${fieldName}: Only JPG and PNG files are allowed!`
               });
@@ -1147,39 +993,90 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
-      // Build required documents object
-      const requiredDocuments = {
-        psaBirthCert: {
-          filePath: req.files['psaBirthCertFile']?.[0]?.path || null,
+      console.log("Uploaded files:", req.files);
+
+      // ✅ UPLOAD TO CLOUDINARY
+      const requiredDocuments = {};
+
+      // Upload PSA Birth Certificate
+      if (req.files['psaBirthCertFile']?.[0]) {
+        const result = await uploadToCloudinary(
+          req.files['psaBirthCertFile'][0].buffer,
+          req.files['psaBirthCertFile'][0].originalname,
+          'enrollments/documents'
+        );
+        requiredDocuments.psaBirthCert = {
+          filePath: result.secure_url,
+          publicId: result.public_id,
           uploadedAt: new Date()
-        },
-        reportCard: {
-          filePath: req.files['reportCardFile']?.[0]?.path || null,
+        };
+      }
+
+      // Upload Report Card
+      if (req.files['reportCardFile']?.[0]) {
+        const result = await uploadToCloudinary(
+          req.files['reportCardFile'][0].buffer,
+          req.files['reportCardFile'][0].originalname,
+          'enrollments/documents'
+        );
+        requiredDocuments.reportCard = {
+          filePath: result.secure_url,
+          publicId: result.public_id,
           uploadedAt: new Date()
-        },
-        goodMoral: {
-          filePath: req.files['goodMoralFile']?.[0]?.path || null,
+        };
+      }
+
+      // Upload Good Moral (optional)
+      if (req.files['goodMoralFile']?.[0]) {
+        const result = await uploadToCloudinary(
+          req.files['goodMoralFile'][0].buffer,
+          req.files['goodMoralFile'][0].originalname,
+          'enrollments/documents'
+        );
+        requiredDocuments.goodMoral = {
+          filePath: result.secure_url,
+          publicId: result.public_id,
           uploadedAt: new Date()
-        },
-        idPicture: {
-          filePath: req.files['idPictureFile']?.[0]?.path || null,
+        };
+      }
+
+      // Upload ID Picture
+      if (req.files['idPictureFile']?.[0]) {
+        const result = await uploadToCloudinary(
+          req.files['idPictureFile'][0].buffer,
+          req.files['idPictureFile'][0].originalname,
+          'enrollments/documents'
+        );
+        requiredDocuments.idPicture = {
+          filePath: result.secure_url,
+          publicId: result.public_id,
           uploadedAt: new Date()
-        }
-      };
+        };
+      }
 
       // Validate required documents (3 required, goodMoral optional)
       const missingDocs = [];
-      if (!requiredDocuments.psaBirthCert.filePath) missingDocs.push('PSA Birth Certificate');
-      if (!requiredDocuments.reportCard.filePath) missingDocs.push('Report Card');
-      if (!requiredDocuments.idPicture.filePath) missingDocs.push('ID Picture');
+      if (!requiredDocuments.psaBirthCert) missingDocs.push('PSA Birth Certificate');
+      if (!requiredDocuments.reportCard) missingDocs.push('Report Card');
+      if (!requiredDocuments.idPicture) missingDocs.push('ID Picture');
 
       if (missingDocs.length > 0) {
-        deleteUploadedFiles(req.files);
+        // ✅ DELETE from Cloudinary if validation fails
+        if (requiredDocuments.psaBirthCert?.publicId) 
+          await deleteFromCloudinary(requiredDocuments.psaBirthCert.publicId);
+        if (requiredDocuments.reportCard?.publicId) 
+          await deleteFromCloudinary(requiredDocuments.reportCard.publicId);
+        if (requiredDocuments.goodMoral?.publicId) 
+          await deleteFromCloudinary(requiredDocuments.goodMoral.publicId);
+        if (requiredDocuments.idPicture?.publicId) 
+          await deleteFromCloudinary(requiredDocuments.idPicture.publicId);
+          
         return res.status(400).json({ 
           message: `Missing required documents: ${missingDocs.join(', ')}`
         });
       }
 
+      
       // Update enrollment with documents and change status
       const enrollment = await Enrollment.findByIdAndUpdate(
         enrollmentId,
@@ -1193,10 +1090,6 @@ export const EnrollmentRegistration = async (req, res) => {
         { new: true }
       );
 
-      if (!enrollment) {
-        deleteUploadedFiles(req.files);
-        return res.status(404).json({ message: "Enrollment not found" });
-      }
 
       return res.status(200).json({
         success: true,
@@ -1208,20 +1101,14 @@ export const EnrollmentRegistration = async (req, res) => {
     // If no valid step provided
     return res.status(400).json({ message: "Invalid step provided" });
   } catch (error) {
-    // Delete uploaded files if error occurs in Step 3
-    if (req.body.step === "step3") {
-      deleteUploadedFiles(req.files);
-    }
-    
+
     console.error('Enrollment error:', error);
     return res.status(500).json({
       success: false,
       message: error.message || "Error processing enrollment"
     });
-  }
+    }
 };
-
-
 
 
 

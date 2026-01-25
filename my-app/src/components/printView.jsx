@@ -493,7 +493,7 @@ const EnrollmentFormPDF = () => {
                     </div>
                     <div className="p-2 p-md-4 d-flex justify-content-center align-items-center" style={{ minHeight: '250px' }}>
                       <img 
-                        src={`${import.meta.env.VITE_API_URL}/api/${doc.path.replace(/\\/g, '/')}`}
+                        src={doc.path}
                         alt={doc.title}
                         className="img-fluid"
                         style={{ maxHeight: '400px', objectFit: 'contain' }}

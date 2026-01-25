@@ -1,6 +1,9 @@
-import React, { useContext, useLayoutEffect, useState, useRef } from "react";
+import React, { useContext, useLayoutEffect, useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { globalContext } from "../../context/global";
+import imageCompression from 'browser-image-compression';
+
+
 
 const EditProfile = () => {
     const { setTextHeader, profile, setProfile } = useContext(globalContext);
@@ -23,11 +26,14 @@ const EditProfile = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success');
 
+    const [prevImage, setPrevImage] = useState('');
+
     const showAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setAlertType(type);
         setShowAlertModal(true);
     };
+
 
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
@@ -42,10 +48,13 @@ const EditProfile = () => {
             });
             // Set preview from existing profile image
             if (profile.imageFile) {
-                setImagePreview(`${import.meta.env.VITE_API_URL}/api/uploads/profile/${profile.imageFile}`);
+                setImagePreview(profile.imageFile);
+                setPrevImage(profile.imageFile); // 
             }
         }
     }, [location?.state?.title, profile]);
+
+
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -55,42 +64,102 @@ const EditProfile = () => {
         }));
     };
 
-    const handleImageChange = (e) => {
+
+
+
+
+    const handleImageChange = async (e) => {
         const file = e.target.files[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                showAlert("Image size should be less than 5MB", 'error');
-                return;
-            }
+        
+        if (!file) return;
+
+        // ✅ Validate file size BEFORE compression
+        if (file.size > 5 * 1024 * 1024) {
+            showAlert("Image size should be less than 5MB", 'error');
+            e.target.value = '';
+            return;
+        }
+
+        // ✅ Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            showAlert("Only JPG, PNG, or GIF images are allowed", 'error');
+            e.target.value = '';
+            return;
+        }
+
+        try {
+            // ✅ Compression options
+            const options = {
+                maxSizeMB: 1,           // Compress to max 1MB
+                maxWidthOrHeight: 1920, // Max dimension
+                useWebWorker: true,     // Use web worker for better performance
+                fileType: file.type     // Maintain original file type
+            };
+
+            
+            // ✅ Compress the image
+            const compressedBlob = await imageCompression(file, options);
+            
+            
+            // ✅ Convert Blob to File with original filename
+            const compressedFile = new File([compressedBlob], file.name, {
+                type: compressedBlob.type,
+                lastModified: Date.now()
+            });
+            
+            // ✅ Update formData with compressed file
             setFormData(prev => ({
                 ...prev,
-                imageFile: file
+                imageFile: compressedFile
             }));
             
-            // Create preview
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+            // ✅ Create preview URL (using object URL instead of base64)
+            const previewUrl = URL.createObjectURL(compressedFile);
+            setImagePreview(previewUrl);
+            
+        } catch (error) {
+            console.error('Error compressing image:', error);
+            showAlert("Failed to compress image. Please try again.", 'error');
+            e.target.value = '';
         }
     };
+
+
 
     const handleRemoveImage = () => {
         if (imageRef.current) {
             imageRef.current.value = null;
-            setFormData(prev => ({
-                ...prev,
-                imageFile: null
-            }));
-            // Reset to original profile image if exists
-            if (profile?.imageFile) {
-                setImagePreview(`${import.meta.env.VITE_API_URL}/api/uploads/profile/${profile.imageFile}`);
-            } else {
-                setImagePreview(null);
-            }
+        }
+        
+        // ✅ Revoke object URL to prevent memory leaks
+        if (imagePreview && imagePreview.startsWith('blob:')) {
+            URL.revokeObjectURL(imagePreview);
+        }
+        
+        setFormData(prev => ({
+            ...prev,
+            imageFile: null
+        }));
+        
+        // Reset to original profile image if exists
+        if (prevImage) {
+            setImagePreview(prevImage);
+        } else {
+            setImagePreview(null);
         }
     };
+
+    // ✅ Cleanup object URL on unmount to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            if (imagePreview && imagePreview.startsWith('blob:')) {
+                URL.revokeObjectURL(imagePreview);
+            }
+        };
+    }, [imagePreview]);
+
+
 
     const getInitials = (firstName, lastName) => {
         return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();

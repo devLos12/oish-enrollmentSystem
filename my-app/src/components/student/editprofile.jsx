@@ -2,6 +2,10 @@ import React, { useContext, useLayoutEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { globalContext } from "../../context/global";
+import imageCompression from 'browser-image-compression';
+
+
+
 
 //student
 const EditProfile = () => {
@@ -97,33 +101,99 @@ const EditProfile = () => {
         }));
     };
 
-    const handleImageChange = (e) => {
+
+
+
+
+
+    const handleImageChange = async (e) => {
         const file = e.target.files[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                showAlert("Image size should be less than 5MB", 'error');
-                return;
-            }
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result);
+        
+        if (!file) return;
+
+        // ✅ Validate file size BEFORE compression
+        if (file.size > 5 * 1024 * 1024) {
+            showAlert("Image size should be less than 5MB", 'error');
+            e.target.value = ''; // Reset input
+            return;
+        }
+
+        // ✅ Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            showAlert("Only JPG, PNG, or GIF images are allowed", 'error');
+            e.target.value = '';
+            return;
+        }
+
+        try {
+            // ✅ Compression options
+            const options = {
+                maxSizeMB: 1,           // Compress to max 1MB
+                maxWidthOrHeight: 1920, // Max dimension
+                useWebWorker: true,     // Use web worker for better performance
+                fileType: file.type     // Maintain original file type
             };
-            reader.readAsDataURL(file);
+
+            
+            // ✅ Compress the image
+            const compressedBlob = await imageCompression(file, options);
+            
+            // ✅ Convert Blob to File with original filename
+            const compressedFile = new File([compressedBlob], file.name, {
+                type: compressedBlob.type,
+                lastModified: Date.now()
+            });
+            
+            // ✅ Set the compressed file
+            setImageFile(compressedFile);
+            
+            // ✅ Create preview URL (using object URL instead of base64)
+            const previewUrl = URL.createObjectURL(compressedFile);
+            setImagePreview(previewUrl);
+            
+        } catch (error) {
+            console.error('Error compressing image:', error);
+            showAlert("Failed to compress image. Please try again.", 'error');
+            e.target.value = '';
         }
     };
 
+
+
+
+
     const handleRemoveImage = () => {
-        if(imageRef.current){
+        if (imageRef.current) {
             imageRef.current.value = null;
-            setImageFile(null);
-            setImagePreview(null);
-            setFormData(prev => ({
-                ...prev,
-                profileImage: prevImage
-            }));
         }
+        
+        // ✅ Revoke object URL to prevent memory leaks
+        if (imagePreview && imagePreview.startsWith('blob:')) {
+            URL.revokeObjectURL(imagePreview);
+        }
+        
+        setImageFile(null);
+        setImagePreview(null);
+        setFormData(prev => ({
+            ...prev,
+            profileImage: prevImage
+        }));
     };
+
+
+
+    // ✅ Cleanup object URL on unmount to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            if (imagePreview && imagePreview.startsWith('blob:')) {
+                URL.revokeObjectURL(imagePreview);
+            }
+        };
+    }, [imagePreview]);
+
+
+
 
     const getInitials = () => {
         const firstInitial = formData.firstName?.charAt(0)?.toUpperCase() || '';
@@ -143,6 +213,12 @@ const EditProfile = () => {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+
+
+
+
+
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -193,6 +269,11 @@ const EditProfile = () => {
         }
     };
 
+
+
+
+
+    
     if (!profile) {
         return (
             <div className="container mt-4">
@@ -235,7 +316,7 @@ const EditProfile = () => {
                                                 />
                                             ) : formData.profileImage ? (
                                                 <img
-                                                    src={`${import.meta.env.VITE_API_URL}/api/uploads/profile/${formData.profileImage}`}
+                                                    src={formData.profileImage}
                                                     alt="Profile"
                                                     className="rounded-3"
                                                     style={{ width: '120px', height: '120px', objectFit: 'cover' }}
