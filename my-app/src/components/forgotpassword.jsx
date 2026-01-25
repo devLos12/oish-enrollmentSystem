@@ -289,9 +289,9 @@ const ForgotPassword = () => {
 
                     {verifyMessage && (
                         <div className={`alert mt-3 
-                            ${verifyMessage.includes("Verified") ? "alert-success" : "alert-danger"} `}>
+                            ${verifyMessage.includes("verified") ? "alert-success" : "alert-danger"} `}>
                             <p className={`fw-bold m-0 small mt-1 text-capitalize 
-                                ${verifyMessage.includes("Verified") ? "text-success" : "text-danger"}
+                                ${verifyMessage.includes("verified") ? "text-success" : "text-danger"}
                                 `}>
                                 {verifyMessage}
                             </p>

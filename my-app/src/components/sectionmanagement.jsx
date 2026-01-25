@@ -42,8 +42,9 @@ const SectionManagement = () => {
   const [itemsPerPage] = useState(10);
 
 
+  const [submitting, setSubmitting] = useState(false);
 
-
+  
 
   // Alert function
   const showAlert = (message, type = 'success') => {
@@ -135,8 +136,15 @@ const SectionManagement = () => {
     setShowModal(true);
   };
 
+
+
+
   // submit (create / update)
   const handleSubmitSection = async () => {
+
+
+
+
     // basic validation
     if (
       !selectedSection.name.trim() ||
@@ -150,6 +158,12 @@ const SectionManagement = () => {
     }
 
     try {
+      
+      // ← START LOADING
+      setSubmitting(true); 
+
+
+
       const payload = {
         name: selectedSection.name,
         gradeLevel: parseInt(selectedSection.gradeLevel),
@@ -180,8 +194,13 @@ const SectionManagement = () => {
       fetchSectionsData();
     } catch (error) {
       showAlert(`Failed to ${modalType} section: ${error.message}`, 'error');
+    } finally {
+      setSubmitting(false); // ← STOP LOADING
     }
   };
+
+
+
 
   // delete
   const confirmDelete = async () => {
@@ -318,17 +337,29 @@ const SectionManagement = () => {
     <>
       <div className="container-fluid py-4 g-0 g-md-5 ">
         <div className="row mb-4">
-          <div className="col-12">
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <h4 className="text-capitalize fw-bold mb-1">section management</h4>
-                <p className="text-muted small mb-0">Create and manage sections for SHS</p>
-              </div>
-              <button className="btn btn-danger" onClick={handleAddSection}>
-                <i className="fa fa-plus me-2"></i>
-                Add Section
-              </button>
-            </div>
+          <div className="col-12 ">
+              <h4 className="text-capitalize fw-bold mb-1">section management</h4>
+              <p className="text-muted small mb-0">Create and manage sections for SHS</p>
+          </div>
+
+          <div className="col-12 mt-3 mt-md-0 d-flex justify-content-start justify-content-md-end gap-2">
+            <button className="btn btn-danger btn-sm" onClick={handleAddSection}>
+              <i className="fa fa-plus me-2"></i>
+              Add Section
+            </button>
+            <button 
+              type="button" 
+              className="btn btn-outline-secondary btn-sm"
+              onClick={fetchSectionsData}
+              disabled={loading}
+              title="Refresh sections data"
+            >
+              {loading ? (
+                <span className="spinner-border spinner-border-sm"></span>
+              ) : (
+                <i className="fa fa-refresh"></i>
+              )}
+            </button>
           </div>
         </div>
 
@@ -633,15 +664,35 @@ const SectionManagement = () => {
                     </div>
                   </div>
 
+                  
                   <div className="modal-footer">  
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                      Cancel
-                    </button>
-                    <button type="button" className="btn btn-danger" onClick={handleSubmitSection}>
-                      <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
-                      {modalType === 'add' ? 'Add Section' : 'Update Section'}
-                    </button>
-                  </div>
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        onClick={() => setShowModal(false)}
+                        disabled={submitting} // ← DISABLE WHEN SUBMITTING
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn btn-danger" 
+                        onClick={handleSubmitSection}
+                        disabled={submitting} // ← DISABLE WHEN SUBMITTING
+                      >
+                        {submitting ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            {modalType === 'add' ? 'Adding...' : 'Updating...'}
+                          </>
+                        ) : (
+                          <>
+                            <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
+                            {modalType === 'add' ? 'Add Section' : 'Update Section'}
+                          </>
+                        )}
+                      </button>
+                    </div>
                 </>
               )}
 

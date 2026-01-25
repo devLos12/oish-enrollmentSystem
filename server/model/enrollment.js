@@ -131,8 +131,12 @@ const enrollmentSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now },
 
-
   statusRegistration: { type: String },
+
+  rejectionReason: { 
+    type: String, 
+    default: null 
+  },
 
 });
 

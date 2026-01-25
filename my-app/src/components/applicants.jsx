@@ -22,7 +22,7 @@ const Applicants = () => {
     
     const [modalLoading, setModalLoading] = useState(false);
 
-
+    const [rejectionReason, setRejectionReason] = useState('');
 
 
     // Pagination states
@@ -121,6 +121,7 @@ const Applicants = () => {
     const handleRejectApplicant = (applicant) => {
         setSelectedApplicant(applicant);
         setModalType('reject');
+        setRejectionReason('');
         setShowModal(true);
     };
 
@@ -155,30 +156,45 @@ const Applicants = () => {
     };
 
 
-
-
+    
     const confirmReject = async (enrollmentId) => {
+        // ✅ Validate if may reason
+        if (!rejectionReason.trim()) {
+            showAlert('Please provide a reason for rejection', 'error');
+            return;
+        }
+
         try {
-            setModalLoading(true); // START LOADING
+            setModalLoading(true);
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/rejectApplicant/${enrollmentId}`, {
                 method: "PATCH",
+                headers: { "Content-Type": "application/json" }, // ✅ Add headers
+                body: JSON.stringify({ 
+                    reason: rejectionReason,
+                    email: selectedApplicant.learnerInfo?.email // ✅ Pass email for notification later
+                }),
                 credentials: "include",
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
             
             setShowModal(false);
+            setRejectionReason(''); // ✅ Clear reason after success
             showAlert(data.message, 'success');
             getAllApplicants();
         } catch (error) {
             setShowModal(false);
             showAlert(error.message, 'error');
         } finally {
-            setModalLoading(false); // STOP LOADING
+            setModalLoading(false);
         }
     };
 
     
+
+
+
+
 
     const confirmRemove = async (enrollmentId) => {
         try {
@@ -335,21 +351,19 @@ const Applicants = () => {
                         </div>
                     </div>
                     <div className="col-12 mt-2 mt-md-0">
-                        <div className="d-flex justify-content-end">
+                        <div className="d-flex justify-content-md-end">
                             <button 
-                                className="btn btn-outline-danger"
+                                className="btn btn-outline-secondary btn-sm"
                                 onClick={handleRefresh}
                                 disabled={refreshing || loading}
                             >
                                 {refreshing ? (
                                     <>
-                                        <span className="spinner-border spinner-border-sm me-2"></span>
-                                        Refreshing...
+                                        <span className="spinner-border spinner-border-sm"></span>
                                     </>
                                 ) : (
                                     <>
-                                        <i className="fa fa-refresh me-2"></i>
-                                        Refresh
+                                        <i className="fa fa-refresh "></i>
                                     </>
                                 )}
                             </button>
@@ -612,24 +626,51 @@ const Applicants = () => {
                             {/* Reject Modal */}
                             {modalType === 'reject' && (
                                 <>
-                                    <div className="modal-body text-center">
-                                        <i className="fa fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                                        <h5 className="mb-3">Reject Application?</h5>
-                                        <p className="text-muted">
-                                            Do you really want to reject the enrollment application of:
-                                            <br/>
-                                            <strong className="text-capitalize">
-                                                {selectedApplicant.learnerInfo?.firstName} {selectedApplicant.learnerInfo?.lastName}
-                                            </strong>
-                                            <br/>
-                                            This action cannot be undone.
-                                        </p>
+                                    <div className="modal-body">
+                                        <div className="text-center mb-4">
+                                            <i className="fa fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                                            <h5 className="mb-3">Reject Application?</h5>
+                                            <p className="text-muted">
+                                                You are about to reject the enrollment application of:
+                                                <br/>
+                                                <strong className="text-capitalize">
+                                                    {selectedApplicant.learnerInfo?.firstName} {selectedApplicant.learnerInfo?.lastName}
+                                                </strong>
+                                                <br/>
+                                                <small className="text-muted">
+                                                    Email: {selectedApplicant.learnerInfo?.email}
+                                                </small>
+                                            </p>
+                                        </div>
+                                        
+                                        {/* ✅ ADD THIS - Rejection Reason Textarea */}
+                                        <div className="mb-3">
+                                            <label className="form-label fw-semibold">
+                                                Reason for Rejection <span className="text-danger">*</span>
+                                            </label>
+                                            <textarea 
+                                                className="form-control" 
+                                                rows="4"
+                                                placeholder="Please provide a clear reason for rejection..."
+                                                value={rejectionReason}
+                                                onChange={(e) => setRejectionReason(e.target.value)}
+                                                disabled={modalLoading}
+                                                required
+                                            ></textarea>
+                                            <small className="text-muted d-block mt-1">
+                                                <i className="fa fa-info-circle me-1"></i>
+                                                This reason will be sent to the applicant via email.
+                                            </small>
+                                        </div>
                                     </div>
                                     <div className="modal-footer">
                                         <button 
                                             type="button" 
                                             className="btn btn-secondary"
-                                            onClick={() => setShowModal(false)}
+                                            onClick={() => {
+                                                setShowModal(false);
+                                                setRejectionReason(''); // ✅ Clear reason when canceling
+                                            }}
                                             disabled={modalLoading}
                                         >
                                             Cancel
@@ -638,7 +679,7 @@ const Applicants = () => {
                                             type="button" 
                                             className="btn btn-danger"
                                             onClick={() => confirmReject(selectedApplicant._id)}
-                                            disabled={modalLoading}
+                                            disabled={modalLoading || !rejectionReason.trim()} // ✅ Disable if no reason
                                         >
                                             {modalLoading ? (
                                                 <>
@@ -655,6 +696,8 @@ const Applicants = () => {
                                     </div>
                                 </>
                             )}
+
+
 
                             {/* Remove Modal */}
                             {modalType === 'remove' && (

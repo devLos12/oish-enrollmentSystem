@@ -59,7 +59,7 @@ const Home = () => {
             {/* Overlay for better text readability */}
             <div 
                 className="position-absolute top-0 start-0 w-100 h-100"
-                style={{backgroundColor: 'rgba(0, 0, 0, 0.7)'}}
+                style={{backgroundColor: 'rgba(0, 0, 0, 0.6)'}}
 
             ></div>
 
@@ -68,6 +68,7 @@ const Home = () => {
             style={{ zIndex: 2, position: 'relative' }}>
                 <div className="col-12 col-md-10 col-lg-10 mx-auto">
                     <div className="d-flex align-items-center flex-column justify-content-center text-center px-3">
+                        
                         
                         <div className="d-flex align-items-center justify-content-center gap-3 flex-column"
                         >
@@ -104,7 +105,7 @@ const Home = () => {
                             </div>
                         </div>
 
-                        
+{/*                         
                         <div className="mt-5 card border-0 shadow-sm  position-relative" 
                         style={{ 
                             maxWidth: "800px", 
@@ -169,7 +170,7 @@ const Home = () => {
                                 </div>
                             </div>
                         </div>
-                        
+                         */}
                     </div>
                 </div>
             </div>

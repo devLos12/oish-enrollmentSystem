@@ -55,6 +55,10 @@ const AnnouncementManagement = () => {
 
 
 
+  const [modalLoading, setModalLoading] = useState(false); // ✅ ADD THIS
+
+
+
 
   // Fetch announcements
   useEffect(() => {
@@ -190,8 +194,13 @@ const AnnouncementManagement = () => {
   };
 
   // Submit (create/update)
-  // Update handleSubmitAnnouncement
+  
+  
   const handleSubmitAnnouncement = async () => {
+
+
+
+
     if (
       !selectedAnnouncement.title.trim() ||
       !selectedAnnouncement.description.trim() ||
@@ -202,6 +211,12 @@ const AnnouncementManagement = () => {
     }
 
     try {
+      setModalLoading(true); // ✅ START LOADING
+
+
+
+      return;
+      
       const formData = new FormData();
       formData.append("title", selectedAnnouncement.title);
       formData.append("description", selectedAnnouncement.description);
@@ -243,9 +258,15 @@ const AnnouncementManagement = () => {
       setFilesToRemove([]);
       fetchAnnouncementsData();
     } catch (error) {
-      alert(`Failed to ${modalType} announcement: ${error.message}`);
+      showAlert(`Failed to ${modalType} announcement: ${error.message}`, 'error');
+    } finally {
+      setModalLoading(false); // ✅ STOP LOADING
     }
   };
+
+
+
+
 
   // Delete
   const confirmDelete = async () => {
@@ -328,7 +349,7 @@ const AnnouncementManagement = () => {
                 <h4 className="text-capitalize fw-bold mb-1">Announcement Management</h4>
                 <p className="text-muted small mb-0">Create and manage school announcements</p>
               </div>
-              <button className="btn btn-danger" onClick={handleAddAnnouncement}>
+              <button className="btn btn-danger btn-sm" onClick={handleAddAnnouncement}>
                 <i className="fa fa-plus me-2"></i>
                 New Announcement
               </button>
@@ -591,17 +612,18 @@ const AnnouncementManagement = () => {
                         Upload Files
                       </label>
                       <input
-                        type="file"
-                        className="form-control"
-                        multiple
-                        onChange={handleFileUpload}
-                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                      />
+                          type="file"
+                          className="form-control"
+                          multiple
+                          onChange={handleFileUpload}
+                          accept="image/png, image/jpg, image/jpeg" // ✅ PNG at JPG lang
+                        />
                       <small className="text-muted">
-                        You can upload multiple files (Images, PDF, Word, Excel)
+                        You can upload multiple image files (PNG, JPG only)
                       </small>
                     </div>
-
+                  
+                        
 
                   {/* Uploaded Files Preview */}
                   {modalType === "edit" && (
@@ -728,11 +750,15 @@ const AnnouncementManagement = () => {
                 )}
                   </div>
 
+
+
+
                   <div className="modal-footer">
                     <button 
                       type="button" 
                       className="btn btn-secondary" 
                       onClick={() => setShowModal(false)}
+                      disabled={modalLoading} // ✅ DISABLE WHEN LOADING
                     >
                       Cancel
                     </button>
@@ -740,9 +766,19 @@ const AnnouncementManagement = () => {
                       type="button" 
                       className="btn btn-danger" 
                       onClick={handleSubmitAnnouncement}
+                      disabled={modalLoading} // ✅ DISABLE WHEN LOADING
                     >
-                      <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
-                      {modalType === 'add' ? 'Create Announcement' : 'Update Announcement'}
+                      {modalLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          {modalType === 'add' ? 'Creating...' : 'Updating...'}
+                        </>
+                      ) : (
+                        <>
+                          <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
+                          {modalType === 'add' ? 'Create Announcement' : 'Update Announcement'}
+                        </>
+                      )}
                     </button>
                   </div>
                 </>

@@ -74,7 +74,8 @@ const studentSchema = new mongoose.Schema({
     default: "pending"
   },
   
-  studentType: { type: String, enum: ["regular", "repeater"], default: "regular"},
+  studentType: { type: String, enum: ["regular", "repeater", "graduated"], default: "regular"},
+  
   
   registrationHistory: [
     {

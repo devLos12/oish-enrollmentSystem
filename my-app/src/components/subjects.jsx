@@ -787,29 +787,40 @@ const SubjectManagement = () => {
             <div className="container-fluid py-4 g-0 g-md-5">
                 <div className="row mb-4">
                     <div className="col-12">
-                        <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h4 className="text-capitalize fw-bold mb-1">subject management</h4>
-                                <p className="text-muted small mb-0">Manage academic subjects by grade level</p>
-                            </div>
+                        <h4 className="text-capitalize fw-bold mb-1">subject management</h4>
+                        <p className="text-muted small mb-0">Manage academic subjects by grade level</p>
+                    </div>
+                    <div className="col-12 mt-2 d-flex justify-content-md-end gap-2">
+                
+                        <button 
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => setShowImportModal(true)}
+                        >
+                            <i className="fa fa-file-excel me-2"></i>
+                            Import Excel
+                        </button>
+                        <button 
+                            className="btn btn-danger btn-sm"
+                            onClick={handleAddSubject}
+                        >
+                            <i className="fa fa-plus me-2"></i>
+                            Add Subject
+                        </button>
 
-                            <div className="d-flex gap-2">
-                                <button 
-                                    className="btn btn-outline-danger"
-                                    onClick={() => setShowImportModal(true)}
-                                >
-                                    <i className="fa fa-file-excel me-2"></i>
-                                    Import Excel
-                                </button>
-                                <button 
-                                    className="btn btn-danger"
-                                    onClick={handleAddSubject}
-                                >
-                                    <i className="fa fa-plus me-2"></i>
-                                    Add Subject
-                                </button>
-                            </div>
-                        </div>
+                            {/* ✅ ADD REFRESH BUTTON HERE */}
+                        <button 
+                            type="button" 
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={fetchSubjectsData}
+                            disabled={loading}
+                            title="Refresh subjects data"
+                        >
+                            {loading ? (
+                                <span className="spinner-border spinner-border-sm"></span>
+                            ) : (
+                                <i className="fa fa-refresh"></i>
+                            )}
+                        </button>
                     </div>
                 </div>
 

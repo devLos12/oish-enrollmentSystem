@@ -93,10 +93,10 @@ const SideBar = () => {
             {   label: "Generate Code",       icon: "fa-solid fa-key",
                 link: "/admin/generate_code", title: "Generate Code", 
             },
-            {
-                label: "Schedule",             icon: "fa-solid fa-clock",
-                link: "/admin/schedule",       title: "schedule", 
-            },
+            // {
+            //     label: "Schedule",             icon: "fa-solid fa-clock",
+            //     link: "/admin/schedule",       title: "schedule", 
+            // },
 
             { "label": "Logs",                  "icon": "fa-solid fa-clipboard-list",
                 link: "/admin/logs",            title: "Logs"

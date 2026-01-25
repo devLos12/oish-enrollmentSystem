@@ -1,7 +1,7 @@
 import React, { useContext, useLayoutEffect, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { globalContext } from "../context/global";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 const Dashboard = () => {
     const { setTextHeader } = useContext(globalContext);
@@ -13,20 +13,15 @@ const Dashboard = () => {
         returnees: 0,
         transferees: 0,
         maleStudents: 0,
-        femaleStudent: 0
+        femaleStudents: 0
     });
-    const [gradeStats, setGradeStats] = useState([]);
-    const [trackStats, setTrackStats] = useState([]);
     const [strandStats, setStrandStats] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [loadingGrade, setLoadingGrade] = useState(true);
-    const [loadingTrack, setLoadingTrack] = useState(true);
     const [loadingStrand, setLoadingStrand] = useState(true);
 
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
     }, [location?.state?.title]);
-
 
     // Fetch enrollment statistics
     useEffect(() => {
@@ -51,56 +46,6 @@ const Dashboard = () => {
         };
 
         fetchStats();
-    }, []);
-
-    // Fetch enrollment statistics by grade
-    useEffect(() => {
-        const fetchGradeStats = async () => {
-            try {
-                setLoadingGrade(true);
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollmentStatsByGrade`, {
-                    method: "GET",
-                    credentials: "include"
-                });
-                const result = await response.json();
-                if(!response.ok) throw new Error(result.message);
-
-                if (result.success) {
-                    setGradeStats(result.data);
-                }
-            } catch (error) {
-                console.error("Error:", error.message);
-            } finally {
-                setLoadingGrade(false);
-            }
-        };
-
-        fetchGradeStats();
-    }, []);
-
-    // Fetch track statistics
-    useEffect(() => {
-        const fetchTrackStats = async () => {
-            try {
-                setLoadingTrack(true);
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollmentStatsByTrack`, {
-                    method: "GET",
-                    credentials: "include"
-                });
-                const result = await response.json();
-                if(!response.ok) throw new Error(result.message);
-
-                if (result.success) {
-                    setTrackStats(result.data);
-                }
-            } catch (error) {
-                console.error("Error:", error.message);
-            } finally {
-                setLoadingTrack(false);
-            }
-        };
-
-        fetchTrackStats();
     }, []);
 
     // Fetch strand statistics
@@ -128,22 +73,45 @@ const Dashboard = () => {
         fetchStrandStats();
     }, []);
 
-    const StatCard = ({ title, count, bgColor, icon }) => (
-        <div className="col-6 col-sm-6 col-lg-4 mb-4 ">
-            <div className={`card h-100 border-0 overflow-hidden shadow-sm border-start border-5
-                 border-danger `}>
-                <div className="card-body text-center d-flex flex-column justify-content-center shadow-sm gap-2">
+    const StatCard = ({ title, count, icon, bgColor, textColor }) => (
+        <div className="col-12 col-sm-6 col-lg-4 mb-4">
+            <div 
+                className="card h-100 border-0 shadow-sm"
+                style={{
+                    background: bgColor,
+                    transition: 'transform 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+                <div className="card-body p-4 d-flex justify-content-between align-items-center">
                     {loading ? (
-                        <div className="spinner-border text-white" role="status">
-                            <span className="visually-hidden">Loading...</span>
+                        <div className="w-100 d-flex justify-content-center align-items-center" 
+                        style={{ height: '80px' }}>
+                            <div className={`spinner-border text-${textColor}`} role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
                         </div>
                     ) : (
                         <>
-                        <div className="d-flex flex-column align-items-center justify-content-center gap-2 ">
-                             <div className={`fa-solid fs-3 ${icon} small p-2 bg-danger bg-opacity-10 text-danger rounded-pill`}></div>
-                            <p className="m-0 fw-bold text-danger fs-3">{count}</p>
-                            <p className="m-0 fw-bold text-muted small">{title}</p>
-                        </div>
+                            <div>
+                                <p className={`text-${textColor} mb-2 small fw-medium text-uppercase`}>
+                                    {title}
+                                </p>
+                                <p className={`text-${textColor} fw-semibold mb-0 m-0 fs-2  `}>
+                                    {count}
+                                </p>
+                            </div>
+                            <div 
+                                className={`rounded-circle d-flex align-items-center justify-content-center bg-white`}
+                                style={{
+                                    width: '50px',
+                                    height: '50px',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <i className={`fa-solid ${icon} fs-4 text-${textColor}`}></i>
+                            </div>
                         </>
                     )}
                 </div>
@@ -151,28 +119,37 @@ const Dashboard = () => {
         </div>
     );
 
-    const HorizontalBarItem = ({ name, count, maxCount, color = '#ec4899' }) => {
+    const ProgressBar = ({ name, count, maxCount }) => {
         const percentage = (count / maxCount) * 100;
         
         return (
-            <div className="mb-3">
+            <div className="mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="text-dark fw-medium">{name}</span>
-                    <span className="fw-bold text-dark">{count}</span>
+                    <span className="fw-semibold text-dark">{name}</span>
+                    <span 
+                        className="badge rounded-pill"
+                        style={{
+                            background: 'rgba(220, 53, 69, 0.1)',
+                            color: '#dc3545',
+                            padding: '6px 12px'
+                        }}
+                    >
+                        {count} students
+                    </span>
                 </div>
                 <div style={{ 
                     width: '100%', 
-                    height: '8px', 
-                    backgroundColor: '#e5e7eb',
-                    borderRadius: '4px',
+                    height: '10px', 
+                    backgroundColor: '#f0f0f0',
+                    borderRadius: '10px',
                     overflow: 'hidden'
                 }}>
                     <div style={{
                         width: `${percentage}%`,
                         height: '100%',
-                        backgroundColor: color,
-                        borderRadius: '4px',
-                        transition: 'width 0.3s ease'
+                        background: 'linear-gradient(90deg, #dc3545 0%, #ff6b7a 100%)',
+                        borderRadius: '10px',
+                        transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}></div>
                 </div>
             </div>
@@ -186,53 +163,73 @@ const Dashboard = () => {
     ];
 
     const COLORS = ['#dc3545', '#fd7e14', '#ffc107'];
-    const trackScale = 25;
+    const maxStrandCount = Math.max(...strandStats.map(s => s.count), 1);
 
-    // Prepare track data with colors and maxCount
-    const trackData = trackStats.map(track => ({
-        name: track.name,
-        count: track.count,
-        color: track.name === 'Academic' ? '#fd7e14' : '#20c997',
-        maxCount: Math.max(...trackStats.map(t => t.count), 1) * trackScale  
-    }));
-
-    // Prepare strand data with maxCount
-    const strandData = strandStats.map(strand => ({
-        name: strand.name,
-        count: strand.count,
-        maxCount: Math.max(...strandStats.map(s => s.count), 1) * trackScale
-    }));
+    const CustomTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div style={{
+                    backgroundColor: 'white',
+                    padding: '12px 16px',
+                    border: 'none',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                }}>
+                    <p className="mb-1 fw-semibold text-dark">{payload[0].name}</p>
+                    <p className="mb-0 text-danger fw-bold">{payload[0].value} students</p>
+                </div>
+            );
+        }
+        return null;
+    };
 
     return (
-        <div className="container">
-            {/* Stat Cards Row */}
-            <div className="row my-4 my-md-0 p-md-3">
+        <div className="container-fluid py-4">
+            {/* Header Section */}
+            <div className="row mb-4">
+                <div className="col-12">
+                    <h4 className="text-capitalize fw-bold mb-1">Dashboard Overview</h4>
+                    <p className="text-muted small mb-0">Overview of enrollment statistics</p>
+                </div>
+            </div>
+
+            {/* Stat Cards */}
+            <div className="row">
                 <StatCard 
                     title="Total Students" 
                     count={stats.totalStudents} 
-                    bgColor={"bg-white"}
-                    icon={"fa-users"}
+                    icon="fa-users"
+                    bgColor="#fee2e2"
+                    textColor="danger"
                 />
-                 <StatCard 
-                    title="Male" 
+                <StatCard 
+                    title="Male Students" 
                     count={stats.maleStudents} 
-                    bgColor={"bg-white"}
-                    icon={"fa-mars"}
+                    icon="fa-mars"
+                    bgColor="#dbeafe"
+                    textColor="primary"
                 />
-                  <StatCard 
-                    title="Female" 
+                <StatCard 
+                    title="Female Students" 
                     count={stats.femaleStudents} 
-                    bgColor={"bg-white"}
-                    icon={"fa-venus"}
+                    icon="fa-venus"
+                    bgColor="#fce7f3"
+                    textColor="danger"
                 />
             </div>
 
-            {/* Pie Chart Row */}
-            <div className="row p-0 p-md-3">
+            {/* Charts Row */}
+            <div className="row">
+                {/* Student Statistics Pie Chart */}
                 <div className="col-12 col-lg-6 mb-4">
-                    <div className="card border-0 shadow-sm h-100">
+                    <div className="card shadow-sm h-100 border-0">
+                        <div className="card-header bg-white border-bottom">
+                            <h5 className="mb-0 fw-semibold text-dark">
+                                <i className="fa fa-chart-pie me-2 text-danger"></i>
+                                Student Statistics
+                            </h5>
+                        </div>
                         <div className="card-body">
-                            <h5 className="card-title fw-bold mb-1 text-capitalize">student statistics</h5>
                             {loading ? (
                                 <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
                                     <div className="spinner-border text-danger" role="status">
@@ -240,9 +237,8 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="d-flex align-items-center justify-content-center gap-3">
-                                    {/* Pie Chart */}
-                                    <div style={{ width: '200px', height: '200px' }}>
+                                <div className="d-flex align-items-center justify-content-center gap-4 flex-wrap">
+                                    <div style={{ width: '220px', height: '220px' }}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
@@ -251,174 +247,83 @@ const Dashboard = () => {
                                                     cy="50%"
                                                     labelLine={false}
                                                     label={false}
-                                                    outerRadius={80}
+                                                    outerRadius={90}
+                                                    innerRadius={50}
                                                     fill="#8884d8"
                                                     dataKey="value"
+                                                    paddingAngle={3}
                                                 >
                                                     {pieChartData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                        <Cell 
+                                                            key={`cell-${index}`} 
+                                                            fill={COLORS[index % COLORS.length]}
+                                                        />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip 
-                                                    contentStyle={{ 
-                                                        backgroundColor: '#fff', 
-                                                        border: '1px solid #ddd',
-                                                        borderRadius: '8px',
-                                                        padding: '10px'
-                                                    }}
-                                                />
+                                                <Tooltip content={<CustomTooltip />} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
 
-                                    {/* Custom Legend */}
-                                    <div className="d-flex flex-column gap-2">
-                                        <div className="d-flex align-items-center gap-2">
-                                            <div style={{ 
-                                                width: '12px', 
-                                                height: '12px', 
-                                                borderRadius: '50%', 
-                                                backgroundColor: '#dc3545' 
-                                            }}></div>
-                                            <span className="text-muted small fw-medium">Regular Students</span>
-                                        </div>
-                                        <div className="d-flex align-items-center gap-2">
-                                            <div style={{ 
-                                                width: '12px', 
-                                                height: '12px', 
-                                                borderRadius: '50%', 
-                                                backgroundColor: '#fd7e14' 
-                                            }}></div>
-                                            <span className="text-muted small fw-medium">Returnees</span>
-                                        </div>
-                                        <div className="d-flex align-items-center gap-2">
-                                            <div style={{ 
-                                                width: '12px', 
-                                                height: '12px', 
-                                                borderRadius: '50%', 
-                                                backgroundColor: '#ffc107' 
-                                            }}></div>
-                                            <span className="text-muted small fw-medium">Transferees</span>
-                                        </div>
+                                    <div className="d-flex flex-column gap-3">
+                                        {pieChartData.map((item, index) => (
+                                            <div key={index} className="d-flex align-items-center gap-3">
+                                                <div 
+                                                    className="rounded"
+                                                    style={{ 
+                                                        width: '16px', 
+                                                        height: '16px', 
+                                                        backgroundColor: COLORS[index],
+                                                        flexShrink: 0
+                                                    }}
+                                                ></div>
+                                                <div>
+                                                    <p className="mb-0 fw-semibold text-dark small">{item.name}</p>
+                                                    <p className="mb-0 text-muted" style={{ fontSize: '0.75rem' }}>
+                                                        {item.value} students
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
+
+                {/* Popular Strands */}
                 <div className="col-12 col-lg-6 mb-4">
-                    <div className="card border-0 shadow-sm h-100">
+                    <div className="card shadow-sm h-100 border-0">
+                        <div className="card-header bg-white border-bottom">
+                            <h5 className="mb-0 fw-semibold text-dark">
+                                <i className="fa fa-star me-2 text-danger"></i>
+                                Popular Strands
+                            </h5>
+                        </div>
                         <div className="card-body">
-                            <div className="d-flex align-items-center gap-2 mb-4">
-                                <i className="fa-solid fa-chart-line text-danger"></i>
-                                <h5 className="card-title fw-bold mb-0">Popular Strands</h5>
-                            </div>
                             {loadingStrand ? (
-                                <div className="d-flex justify-content-center align-items-center" style={{ height: '100px' }}>
+                                <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
                                     <div className="spinner-border text-danger" role="status">
                                         <span className="visually-hidden">Loading...</span>
                                     </div>
                                 </div>
                             ) : (
-                                <>
-                                    {strandData.map((strand, index) => (
-                                        <HorizontalBarItem
+                                <div>
+                                    {strandStats.map((strand, index) => (
+                                        <ProgressBar
                                             key={index}
                                             name={strand.name}
                                             count={strand.count}
-                                            maxCount={strand.maxCount}
+                                            maxCount={maxStrandCount}
                                         />
                                     ))}
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
-
-
-
-                {/* Bar Chart */}
-                {/* <div className="col-12 col-lg-4 mb-4">
-                    <div className="card border-0  h-100 bg-transparent">
-                        <div className="card-body">
-                            <h5 className="card-title fw-bold mb-1">Charts</h5>
-                            <p className="text-muted small mb-4">Grade Statistic</p>
-                            {loadingGrade ? (
-                                <div className="d-flex justify-content-center align-items-center" style={{ height: '250px' }}>
-                                    <div className="spinner-border text-danger" role="status">
-                                        <span className="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
-                            ) : (
-                                <ResponsiveContainer width="100%" height={250}>
-                                    <BarChart data={gradeStats}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                            dataKey="_id" 
-                                            tick={{ fontSize: 12 }}
-                                            label={{ value: 'Grade Level', position: 'insideBottom', offset: -5 }}
-                                        />
-                                        <YAxis 
-                                            tick={{ fontSize: 12 }}
-                                            label={{ value: 'Students', angle: -90, position: 'insideLeft' }}
-                                            domain={[0, (dataMax) => dataMax * 1.1]}
-                                        />
-                                        <Tooltip 
-                                            contentStyle={{ 
-                                                backgroundColor: '#fff', 
-                                                border: '1px solid #ddd',
-                                                borderRadius: '8px',
-                                                padding: '10px'
-                                            }}
-                                        />
-                                        <Bar dataKey="total" radius={[8, 8, 0, 0]}>
-                                            {gradeStats.map((entry, index) => (
-                                                <Cell 
-                                                key={`cell-${index}`} 
-                                                fill={entry._id === 12 ? "#ffc107" : "#dc3545"} 
-                                                />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            )}
-                        </div>
-                    </div>
-                </div> */}
             </div>
-
-            {/* Tracks and Strands Row */}
-            {/* <div className="row p-3">
-                <div className="col-12 col-lg-6 mb-4">
-                    <div className="card border-0 bg-transparent  h-100 ">
-                        <div className="card-body">
-                            <div className="d-flex align-items-center gap-2 mb-4">
-                                <i className="fa-solid fa-graduation-cap text-warning"></i>
-                                <h5 className="card-title fw-bold mb-0">Senior High School Tracks</h5>
-                            </div>
-                            {loadingTrack ? (
-                                <div className="d-flex justify-content-center align-items-center" style={{ height: '100px' }}>
-                                    <div className="spinner-border text-danger" role="status">
-                                        <span className="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    {trackData.map((track, index) => (
-                                        <HorizontalBarItem
-                                            key={index}
-                                            name={track.name}
-                                            count={track.count}
-                                            maxCount={track.maxCount}
-                                            color={track.color}
-                                        />
-                                    ))}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div> */}
         </div>
     );
 }

@@ -24,7 +24,7 @@ const EditStudent = () => {
     const [isUpdating, setIsUpdating] = useState(false);
 
     const gradeOptions = [11, 12];
-    const statusOptions = ['pending', 'enrolled', 'unenrolled'];
+    const statusOptions = ['pending', 'enrolled', 'unenrolled', 'graduated'];
     
     const trackStrandMapping = {
         'Academic': ['STEM', 'ABM', 'HUMSS', 'GAS'],
@@ -180,6 +180,15 @@ const EditStudent = () => {
     const handleCancel = () => {
         navigate(-1);
     };
+
+
+
+
+
+    useEffect(()=>{
+        console.log("selected: ", selectedStudent);
+    },[selectedStudent]);
+
 
     return (
         <>

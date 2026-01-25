@@ -2,27 +2,21 @@ import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
 import { globalContext } from "../../context/global";
 import { useLocation } from "react-router-dom";
 
-
-
-
-
 const GenerateCodeForm = () => {
     const { setTextHeader } = useContext(globalContext);
     const location = useLocation();
     const [resData, setResData] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
     
-
-
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
     },[location?.state?.title])
 
-
     const handleSubmit = async(e) => {
         e.preventDefault();
 
-
         setResData(null);
+        setIsLoading(true);
 
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/generate_code`, {
@@ -34,14 +28,14 @@ const GenerateCodeForm = () => {
 
             setTimeout(() => {
                 setResData(data);
+                setIsLoading(false);
             }, 1000);
         } catch (error) {
             console.log("Error: ", error.message);
+            setIsLoading(false);
         }
-    
     }
 
-    
     return(
         <div className="container">
             <div className="row justify-content-center">
@@ -60,11 +54,29 @@ const GenerateCodeForm = () => {
                               
                             </div>
 
-                                <button className="btn btn-dark text-capitalize">generate code</button>
+                                <button className="btn btn-dark text-capitalize" disabled={isLoading}>
+                                    {isLoading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            generating...
+                                        </>
+                                    ) : (
+                                        'generate code'
+                                    )}
+                                </button>
                             </div>
                         </form>
 
-                        {resData?.code && (
+                        {isLoading && (
+                            <div className="card-body mt-3 text-center">
+                                <div className="spinner-border text-dark" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </div>
+                                <p className="m-0 text-capitalize mt-2 fw-semibold">generating access code...</p>
+                            </div>
+                        )}
+
+                        {resData?.code && !isLoading && (
                             <div className="card-body mt-3 text-center">
                                 <p className="m-0 text-capitalize fw-semibold">{resData?.message}</p>
                                 <p className="m-0 text-capitalize fs-2 fw-bold text-success">{resData?.code}</p>

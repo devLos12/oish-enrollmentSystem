@@ -6,6 +6,26 @@ import Staff from "../model/staff.js";
 import Admin from "../model/admin.js";
 
 
+
+
+export const markAsGraduated = async(req, res) => {
+    try {
+        const { id } = req.params;
+        
+        
+        const student = await Student.findOne({_id: id });
+        if(!student || student.length === 0) return res.status(401).json({ message: "student not found."});
+        student.status = "graduated";
+        await student.save();
+
+        return res.status(200).json({ message: "mark as graduated successfully.", success: true});
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+        
+    }
+}
+
+
 export const createStudent = async (req, res) => {
     try {
         const {
@@ -115,8 +135,6 @@ export const createStudent = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
-
 
 
 
@@ -540,9 +558,6 @@ export const updateStudent = async (req, res) => {
 
 
 
-
-
-
 // GET all students
 export const getStudents = async (req, res) => {
     try {
@@ -554,10 +569,10 @@ export const getStudents = async (req, res) => {
     }
 };
 
+
 export const deleteStudent = async(req, res) => {
     try {
         const studentId = req.params.id;
-        
 
         await Section.updateMany(
             { students: studentId },
@@ -629,8 +644,6 @@ export const getAssignSections = async (req, res) => {
             };
         });
 
-        console.log(sectionsWithSlots);
-
 
         res.status(200).json(sectionsWithSlots);
         
@@ -642,8 +655,6 @@ export const getAssignSections = async (req, res) => {
         });
     }
 };
-
-
 
 
 
@@ -691,7 +702,6 @@ export const setStudentsPending = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
-
 
 
 

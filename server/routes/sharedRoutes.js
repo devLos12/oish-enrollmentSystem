@@ -7,7 +7,8 @@ deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection,
 getSubjectDetails, addSubjectSection, updateSubjectSection, deleteSubjectSection  
 } from "../controller/subject.js";
 import { ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant } from "../controller/enrollment.js";
-import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent } from "../controller/student.js";
+import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent, 
+markAsGraduated } from "../controller/student.js";
 import { createSection, deleteSection, getSections, updateEnrollmentStatus, updateSection } from "../controller/sectionManagement.js";
 import { getEnrollmentStats, getEnrollmentStatsByGrade } from "../controller/dashboard.js";
 import { getEnrollmentStatsByStrand, getEnrollmentStatsByTrack } from "../controller/dashboard.js";
@@ -47,8 +48,11 @@ SharedRouter.delete('/removeApplicant/:id', deleteApplicant);
 SharedRouter.get('/getStudents', getStudents);
 SharedRouter.get('/getSections', verifyAuth, getAssignSections);
 SharedRouter.post('/createStudent', verifyAuth, createStudent);
-SharedRouter.patch('/updateStudent/:id', updateStudent);
-SharedRouter.delete('/deleteStudent/:id', deleteStudent);
+SharedRouter.patch('/updateStudent/:id',  updateStudent);
+SharedRouter.delete('/deleteStudent/:id',  deleteStudent);
+SharedRouter.patch('/markAsGraduated/:id', markAsGraduated);
+
+
 SharedRouter.get('/sections', getSections);
 SharedRouter.post('/addSection', createSection);
 SharedRouter.patch('/updateSection/:id', updateSection);

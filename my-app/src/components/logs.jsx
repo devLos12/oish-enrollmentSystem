@@ -224,12 +224,15 @@ const Logs = () => {
                 </p>
               </div>
               <button
-                className="btn btn-danger"
+                className="btn btn-outline-secondary btn-sm"  // ← Fixed typo: "outine" to "outline"
                 onClick={fetchLogsData}
                 disabled={loading}
               >
-                <i className="fa fa-refresh me-2"></i>
-                Refresh
+                {loading ? (
+                  <span className="spinner-border spinner-border-sm"></span>
+                ) : (
+                  <i className="fa fa-refresh"></i>
+                )}
               </button>
             </div>
           </div>

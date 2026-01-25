@@ -94,6 +94,24 @@ const StaffManagement = () => {
     };
 
 
+
+    // 🔄 REFRESH STAFF TABLE
+    const handleRefreshStaff = async () => {
+        // Close all modals
+        setShowModal(false);
+        setShowAlertModal(false);
+        
+        setLoading(true);
+        
+        try {
+            await fetchStaffData();
+        } catch (error) {
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     const validatePassword = (pwd) => {
         const minLength = 8;
         const hasUpperCase = /[A-Z]/.test(pwd);
@@ -369,21 +387,10 @@ const StaffManagement = () => {
         <>
             <div className="container-fluid py-4 g-0 g-md-5 ">
                 {/* Header Section */}
-                <div className="row mb-4">
+                <div className="row mb-3">
                     <div className="col-12">
-                        <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h4 className="text-capitalize fw-bold mb-1">faculty member</h4>
-                                <p className="text-muted small mb-0">Manage all faculty members</p>
-                            </div>
-                            <button 
-                                className="btn btn-danger btn-sm d-flex align-items-center gap-2"
-                                onClick={handleAddStaff}
-                            >
-                                <i className="fa fa-plus"></i>
-                                <span className="d-none d-md-inline">Add Faculty Member</span>
-                            </button>
-                        </div>
+                        <h4 className="text-capitalize fw-bold mb-1">faculty member</h4>
+                        <p className="text-muted small mb-0">Manage all faculty members</p>
                     </div>
                 </div>
 
@@ -391,7 +398,7 @@ const StaffManagement = () => {
 
 
                 {/* Search Bar */}
-                <div className="row mb-3">
+                <div className="row mb-4">
                     <div className="col-12 col-md-6">
                         <div className="input-group">
                             <span className="input-group-text bg-white">
@@ -406,12 +413,38 @@ const StaffManagement = () => {
                             />
                         </div>
                     </div>
-                    <div className="col-12 col-md-6 text-end">
-                        <p className="text-muted mb-0 mt-2">
-                            Total Staff: <strong>{filteredStaff.length}</strong>
+                    <div className="col-12 col-md-6 mt-2 mt-md-0 d-flex justify-content-start justify-content-md-end bg0 gap-2">
+                        <button 
+                            className="btn btn-danger btn-sm"
+                            onClick={handleAddStaff}
+                        >
+                            <i className="fa fa-plus me-2"></i>Add Faculty Member
+                        </button>
+                        <button 
+                            type="button" 
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={handleRefreshStaff}
+                            title="Refresh staff list"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <span className="spinner-border spinner-border-sm"></span>
+                            ) : (
+                                <i className="fa fa-refresh"></i>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="col-12 mt-2 d-flex justify-content-start justify-content-md-end gap-2">
+                        <p className="text-muted mb-0 text-capitalize">
+                            Total: <strong>{filteredStaff.length}</strong>
                         </p>
                     </div>
                 </div>
+
+               
+
+
 
                 {/* Table */}
                 <div className="row">

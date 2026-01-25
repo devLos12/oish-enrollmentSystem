@@ -10,12 +10,12 @@ const Model = ({textModal, handleClickNo, handleClickYes})=>{
                     <div className="card text-center p-3">
                         <p className="m-0 text-capitalize fw-bold text-danger text-start small ">{"are you sure?"}</p>
                         <p className="m-0 text-capitalize mt-2 p-4 rounded small">{textModal}</p>
-                        <div className="mt-3 d-flex justify-content-center text-white ">
+                        <div className="mt-3 d-flex justify-content-center text-white gap-2">
                             <button className="w-50 rounded border-0 text-capitalize
-                            bg-danger me-2 text-light py-1 shadow-sm small"  
+                            bg-secondary text-light py-1 shadow-sm small"  
                              style={{maxWidth:"70px"}} onClick={handleClickNo}>no</button>
                             <button className="w-50 rounded border-0 text-capitalize
-                            bg-danger ms-2 text-light py-1 shadow-sm small"
+                            bg-danger text-light py-1 shadow-sm small"
                              style={{maxWidth:"70px"}}  onClick={handleClickYes}>yes</button>
                         </div>
                     </div>
