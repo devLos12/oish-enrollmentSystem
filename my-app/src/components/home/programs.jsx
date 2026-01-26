@@ -1,79 +1,46 @@
 import React from "react";
-import person1 from "../../assets/image/person.png";
-import person2 from "../../assets/image/person2.png";
 
 const Programs = () => {
     return (
-
-        <div className="container-fluid bg-light">
-            <div className="container py-5">
-                <div className="row g-0 rounded bg-danger">
-                    <div className="col-12 text-center p-3" 
-                    >
-                        <p className="m-0 text-white fw-bold mb-2 px-2 fs-1" 
-                        >
-                            SENIOR HIGH SCHOOL PROGRAM
-                        </p>
-                        <p className="m-0 text-dark fw-semibold mb-0 px-2 fs-5" 
-                        >
-                            CHOOSE THE RIGHT PROGRAM THAT FITS YOU
-                        </p>
+        <div className="container-fluid py-5" style={{background: 'linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%)'}}>
+            <div className="container">
+                {/* Header Section */}
+                <div className="row mb-5">
+                    <div className="col-12">
+                        <div className="rounded-2 p-4 p-md-5 text-center shadow-lg position-relative overflow-hidden" 
+                             style={{background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'}}>
+                            <div className="position-absolute top-0 start-0 w-100 h-100" 
+                                 style={{background: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)'}}></div>
+                            <h2 className="text-white fw-bold mb-3 display-6 position-relative">
+                                SENIOR HIGH SCHOOL PROGRAM
+                            </h2>
+                            <p className="text-white fs-5 mb-0 position-relative" 
+                            >
+                                Choose the right program that fits you
+                            </p>
+                        </div>
                     </div>
                 </div>
-              
-                {/* Main Programs Section */}
-                <div className="row py-4 py-md-5">
-                    <div className="col-12">
-                        <div className="row align-items-center justify-content-center ">
-                            
-                            {/* Person 1 - Left Side */}
-                            <div className="col-12 col-md-3">
-                                <div className="position-relative d-inline-block ">
-                                    <img 
-                                        src={person1} 
-                                        alt="Student 1" 
-                                        className="img-fluid"
-                                    />
-                                </div>
-                            </div>
 
-                            {/* STEM Program - Left */}
-                            <div className="col-12 col-md-3 text-center ">
-                                <h2 className="fw-bold mb-2 mb-md-3 fs-1 text-red" 
-                                >
-                                    STEM
-                                </h2>
-                                <p className="fw-semibold mb-1 fs-5"
-                                >
-                                    SCIENCE , TECHNOLOGY
-                                </p>
-                                <p className="fw-semibold" >
-                                    ENGINEERING & MATHEMATICS
-                                </p>
+                {/* Featured Programs */}
+                <div className="row g-4 mb-5">
+                    <div className="col-12 col-md-6">
+                        <div className="card border-0 h-100 hover-card" 
+                             style={{background: '#ffffff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'}}>
+                            <div className="card-body p-4 p-md-5 text-center">
+                                <h2 className="fw-bold mb-3 display-6" style={{color: '#dc2626'}}>STEM</h2>
+                                <p className="mb-2 fw-semibold" style={{color: '#4b5563'}}>SCIENCE, TECHNOLOGY</p>
+                                <p className="fw-semibold" style={{color: '#4b5563'}}>ENGINEERING & MATHEMATICS</p>
                             </div>
+                        </div>
+                    </div>
 
-                            {/* TVL - ICT Program - Right */}
-                            <div className="col-12 col-md-3 text-center">
-                                <h2 className="fw-bold mb-2 mb-md-3 fs-1 text-red" 
-                                
-                                >
-                                    TVL - ICT
-                                </h2>
-                                <p className="fw-semibold fs-5" 
-                                >
-                                    TECHNICAL DRAFTING
-                                </p>
-                            </div>
-
-                            {/* Person 2 - Right Side */}
-                            <div className="col-6 col-md-3 text-center order-3 order-md-4">
-                                <div className="position-relative d-inline-block">
-                                    <img 
-                                        src={person2} 
-                                        alt="Student 2" 
-                                        className="img-fluid"
-                                    />
-                                </div>
+                    <div className="col-12 col-md-6">
+                        <div className="card border-0 h-100 hover-card" 
+                             style={{background: '#ffffff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'}}>
+                            <div className="card-body p-4 p-md-5 text-center">
+                                <h2 className="fw-bold mb-3 display-6" style={{color: '#dc2626'}}>TVL - ICT</h2>
+                                <p className="fw-semibold" style={{color: '#4b5563'}}>TECHNICAL DRAFTING</p>
                             </div>
                         </div>
                     </div>
@@ -81,62 +48,72 @@ const Programs = () => {
 
                 {/* Other Programs Section */}
                 <div className="row">
-                    <div className="col-12 ">
-                        <div className="text-center mb-2 mb-md-3 px-2">
-                            <p className="mb-0" >
-                                <span className="fw-semibold">ALSO OFFERING: </span>
-                                <span className="text-danger fw-bold">HUMANITIES & SOCIAL SCIENCE ( HUMMS )</span>
-                            </p>
-                        </div>
-                        <div className="text-center mb-2 mb-md-3 px-2">
-                            <p className="fw-bold mb-0 text-danger">
-                                ACCOUNTANCY, BUSINESS & MANAGEMENT ( ABM )
-                            </p>
-                        </div>
-                        <div className="text-center mb-2 mb-md-3 px-2">
-                            <p className="fw-bold mb-0 text-danger">
-                                TVL - HOME ECONOMICS 
-                                <span className="fw-normal d-block d-md-inline"> ( BREAD & PASTRY PRODUCTION, FOOD & BEVERAGE SERVICES, COOKERY )</span>
-                            </p>
-                        </div>
-                        <div className="text-center mb-3 mb-md-4 px-2">
-                            <p className="fw-bold mb-0 text-danger" >TVL - INDUSTRIAL ARTS 
-                                <span className="fw-normal d-block d-md-inline" > ( SHIELDED METAL ARC WELDING (SMAW) )</span>
-                            </p>
-                        </div>
+                    <div className="col-12">
+                        <div className="rounded-4 p-4 p-md-5 position-relative overflow-hidden" 
+                             style={{background: '#ffffff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'}}>
+                            <h3 className="text-center fw-bold mb-4" style={{color: '#1f2937'}}>
+                                Also Offering:
+                            </h3>
+                            
+                            <div className="row g-3">
+                                <div className="col-12 col-md-6">
+                                    <div className="p-3 border-start border-4 rounded position-relative program-item" 
+                                         style={{borderColor: '#6b7280', background: 'linear-gradient(90deg, rgba(107,114,128,0.08) 0%, rgba(107,114,128,0.02) 100%)', transition: 'all 0.3s ease'}}>
+                                        <h5 className="fw-bold mb-1" style={{color: '#dc2626'}}>HUMMS</h5>
+                                        <p className="small mb-0 fw-medium" style={{color: '#4b5563'}}>HUMANITIES & SOCIAL SCIENCE</p>
+                                    </div>
+                                </div>
 
-                        {/* Enroll Button */}
-                        {/* <div className="text-center text-md-end pe-0 pe-md-5 mt-4">
-                            <button 
-                                className="btn fw-bold text-white px-4 px-md-5 py-2 py-md-3 rounded-0 position-relative"
-                                style={{ 
-                                    backgroundColor: '#FBBF24',
-                                    fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
-                                    border: 'none',
-                                    zIndex: 2
-                                }}
-                            >
-                                ENROLL
-                                <span 
-                                    className="position-absolute text-white fw-bold px-3 px-md-4 py-2 py-md-3"
-                                    style={{
-                                        backgroundColor: '#2563EB',
-                                        top: '6px',
-                                        right: '-30px',
-                                        fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
-                                        clipPath: 'polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%)',
-                                        zIndex: 1
-                                    }}
-                                >
-                                    NOW
-                                </span>
-                            </button>
-                        </div> */}
+                                <div className="col-12 col-md-6">
+                                    <div className="p-3 border-start border-4 rounded position-relative program-item" 
+                                         style={{borderColor: '#6b7280', background: 'linear-gradient(90deg, rgba(107,114,128,0.08) 0%, rgba(107,114,128,0.02) 100%)', transition: 'all 0.3s ease'}}>
+                                        <h5 className="fw-bold mb-1" style={{color: '#dc2626'}}>ABM</h5>
+                                        <p className="small mb-0 fw-medium" style={{color: '#4b5563'}}>ACCOUNTANCY, BUSINESS & MANAGEMENT</p>
+                                    </div>
+                                </div>
+
+                                <div className="col-12 col-md-6">
+                                    <div className="p-3 border-start border-4 rounded position-relative program-item" 
+                                         style={{borderColor: '#6b7280', background: 'linear-gradient(90deg, rgba(107,114,128,0.08) 0%, rgba(107,114,128,0.02) 100%)', transition: 'all 0.3s ease'}}>
+                                        <h5 className="fw-bold mb-2" style={{color: '#dc2626'}}>TVL - HOME ECONOMICS</h5>
+                                        <p className="small mb-0 fw-medium" style={{color: '#4b5563'}}>BREAD & PASTRY PRODUCTION, FOOD & BEVERAGE SERVICES, COOKERY</p>
+                                    </div>
+                                </div>
+
+                                <div className="col-12 col-md-6">
+                                    <div className="p-3 border-start border-4 rounded position-relative program-item" 
+                                         style={{borderColor: '#6b7280', background: 'linear-gradient(90deg, rgba(107,114,128,0.08) 0%, rgba(107,114,128,0.02) 100%)', transition: 'all 0.3s ease'}}>
+                                        <h5 className="fw-bold mb-2" style={{color: '#dc2626'}}>TVL - INDUSTRIAL ARTS</h5>
+                                        <p className="small mb-0 fw-medium" style={{color: '#4b5563'}}>SHIELDED METAL ARC WELDING (SMAW)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <style>{`
+                .hover-card {
+                    transition: all 0.3s ease;
+                }
+                .hover-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+                }
+                
+                .program-item {
+                    cursor: pointer;
+                }
+                
+                .program-item:hover {
+                    background: linear-gradient(90deg, rgba(107,114,128,0.15) 0%, rgba(107,114,128,0.05) 100%) !important;
+                    transform: translateX(5px);
+                    border-color: #dc2626 !important;
+                }
+            `}</style>
         </div>
-    )
+    );
 }
 
 export default Programs;
