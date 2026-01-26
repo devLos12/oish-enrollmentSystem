@@ -12,6 +12,8 @@ import cloudinary from "../config/cloudinary.js";
 
 
 
+
+
 const uploadToCloudinary = (fileBuffer, originalname, folder) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -28,6 +30,8 @@ const uploadToCloudinary = (fileBuffer, originalname, folder) => {
     uploadStream.end(fileBuffer);
   });
 };
+
+
 
 
 const deleteFromCloudinary = async (publicId) => {
@@ -520,6 +524,8 @@ export const GetAllEnrollments = async(req, res) => {
 }
 
 
+
+
 // Multer storage configuration
 const storage = multer.memoryStorage();
 
@@ -556,7 +562,6 @@ export const enrollmentUpload = uploadDocuments.fields([
   { name: 'goodMoralFile', maxCount: 1 },
   { name: 'idPictureFile', maxCount: 1 },
 ]);
-
 
 
 

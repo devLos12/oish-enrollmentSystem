@@ -7,7 +7,6 @@ import html2pdf from "html2pdf.js";
 
 
 
-
 const StudentManagement = () => {
     const { role, setTextHeader, studentList, setStudentList } = useContext(globalContext);
     const [filteredStudents, setFilteredStudents] = useState([]);
@@ -76,6 +75,26 @@ const StudentManagement = () => {
     const gradeOptions = [11, 12];
     const statusOptions = ['pending','enrolled','unenrolled', 'dropped', 'graduated'];
     const semesterOptions = [1, 2];
+
+
+    const sanitizeNameInput = (value) => {
+        return value.replace(/[^a-zA-Z\s\-]/g, '');
+    };
+
+    const getTodayDate = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const getEndOfYearDate = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        return `${year}-12-31`;  // December 31 of current year
+    };
+
 
 
     const STRAND_OPTIONS = {
@@ -515,7 +534,6 @@ const StudentManagement = () => {
 
 
 
-
     const handleAddFormChange = (e) => {
         const { name, value } = e.target;
         
@@ -540,25 +558,31 @@ const StudentManagement = () => {
                 [name]: formatted
             }));
         } 
-
+        // ✅ Special handling for LRN
         else if (name === 'lrn') {
             let cleaned = value.replace(/\D/g, '');
-            cleaned = cleaned.substring(0, 12); // Limit to 12 digits
+            cleaned = cleaned.substring(0, 12);
             
             setAddFormData(prev => ({
                 ...prev,
                 [name]: cleaned
-        }));
-    }
-
-
-
+            }));
+        }
+        // ✅ NEW: Name fields - Letters, spaces, hyphens ONLY
+        else if (name === 'firstName' || name === 'middleName' || name === 'lastName') {
+            const sanitized = sanitizeNameInput(value);
+            
+            setAddFormData(prev => ({
+                ...prev,
+                [name]: sanitized
+            }));
+        }
         // ✅ Reset strand when track changes
         else if (name === 'track') {
             setAddFormData(prev => ({
                 ...prev,
                 track: value,
-                strand: '' // Reset strand
+                strand: ''
             }));
         } 
         else {
@@ -568,8 +592,6 @@ const StudentManagement = () => {
             }));
         }
     };
-
-
 
 
 
@@ -649,7 +671,6 @@ const StudentManagement = () => {
             setLoading(false);
         }
     };
-
 
 
 
@@ -1425,6 +1446,7 @@ const StudentManagement = () => {
                                                     className="form-control border-start-0"
                                                     value={historyDateFilter}
                                                     onChange={(e) => setHistoryDateFilter(e.target.value)}
+                                                    max={getTodayDate()}  // ✅ No future dates
                                                 />
                                                 {historyDateFilter && (
                                                     <button 
@@ -1651,7 +1673,10 @@ const StudentManagement = () => {
                                             className="form-control"
                                             value={scheduleData.date}
                                             onChange={(e) => setScheduleData({...scheduleData, date: e.target.value})}
+                                            min={getTodayDate()}       
+                                            max={getEndOfYearDate()}    
                                         />
+                                        <small className="text-muted">Schedule within this year only</small>
                                     </div>
                                     <div className="col-6">
                                         <label className="form-label text-capitalize fw-bold">
@@ -1881,7 +1906,7 @@ const StudentManagement = () => {
                 <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
                     <div className="modal-dialog modal-dialog-centered modal-lg">
                         <div className="modal-content">
-                            <div className="modal-header bg-success text-white">
+                            <div className="modal-header  text-success">
                                 <h5 className="modal-title">
                                     <i className="fa fa-user-plus me-2"></i>Add New Student
                                 </h5>
@@ -1889,71 +1914,100 @@ const StudentManagement = () => {
                             </div>
                             <form onSubmit={handleAddSubmit}>
                                 <div className="modal-body" style={{maxHeight: '70vh', overflowY: 'auto'}}>
+                                    
                                     {/* Personal Information */}
-                                    <div className="mb-4">
-                                        <h6 className="text-success fw-bold mb-3">Personal Information</h6>
-                                        <div className="row">
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">LRN <span className="text-danger">*</span></label>
+                                    <h6 className="text-success text-uppercase fw-bold mb-3 text-center">
+                                        Personal Information
+                                    </h6>
+                                    
+                                    <div className="row">
+                                        {/* Left Column */}
+                                        <div className="col-md-6">
+                                            {/* LRN */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-id-card text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        LRN: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    placeholder="Enter LRN"
+                                                    className="form-control shadow-sm"
                                                     name="lrn"
                                                     value={addFormData.lrn}
                                                     onChange={handleAddFormChange}
                                                     required
                                                 />
                                             </div>
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Email <span className="text-danger">*</span></label>
-                                                <input
-                                                    type="email"
-                                                    className="form-control"
-                                                    name="email"
-                                                    value={addFormData.email}
-                                                    onChange={handleAddFormChange}
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
 
-                                        <div className="row">
-                                            <div className="col-md-3 mb-3">
-                                                <label className="form-label">First Name <span className="text-danger">*</span></label>
+                                            {/* First Name */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-user text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        first name: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    placeholder="Enter first name"
+                                                    className="form-control shadow-sm"
                                                     name="firstName"
                                                     value={addFormData.firstName}
                                                     onChange={handleAddFormChange}
                                                     required
                                                 />
                                             </div>
-                                            <div className="col-md-3 mb-3">
-                                                <label className="form-label">Middle Name</label>
+
+                                            {/* Middle Name */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-user text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        middle name:
+                                                    </label>
+                                                </div>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    placeholder="Enter middle name (optional)"
+                                                    className="form-control shadow-sm"
                                                     name="middleName"
                                                     value={addFormData.middleName}
                                                     onChange={handleAddFormChange}
                                                 />
                                             </div>
-                                            <div className="col-md-3 mb-3">
-                                                <label className="form-label">Last Name <span className="text-danger">*</span></label>
+
+                                            {/* Last Name */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-user text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        last name: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    placeholder="Enter last name"
+                                                    className="form-control shadow-sm"
                                                     name="lastName"
                                                     value={addFormData.lastName}
                                                     onChange={handleAddFormChange}
                                                     required
                                                 />
                                             </div>
-                                            <div className="col-md-3 mb-3">
-                                                <label className="form-label">Ext.</label>
+
+                                            {/* Extension Name */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-tag text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        extension:
+                                                    </label>
+                                                </div>
                                                 <select
-                                                    className="form-select"
+                                                    className="form-select shadow-sm"
                                                     name="extensionName"
                                                     value={addFormData.extensionName}
                                                     onChange={handleAddFormChange}
@@ -1968,58 +2022,110 @@ const StudentManagement = () => {
                                             </div>
                                         </div>
 
-                                        <div className="row">
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Birth Date <span className="text-danger">*</span></label>
+                                        {/* Right Column */}
+                                        <div className="col-md-6 border-start">
+                                            {/* Birth Date */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-calendar text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        birth date: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <input
                                                     type="date"
-                                                    className="form-control"
+                                                    className="form-control shadow-sm"
                                                     name="birthDate"
                                                     value={addFormData.birthDate}
                                                     onChange={handleAddFormChange}
+                                                    max={getTodayDate()}
+                                                    min="1990-01-01"
                                                     required
                                                 />
                                             </div>
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Sex <span className="text-danger">*</span></label>
+
+                                            {/* Sex */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-venus-mars text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        sex: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <select
-                                                    className="form-select"
+                                                    className="form-select shadow-sm"
                                                     name="sex"
                                                     value={addFormData.sex}
                                                     onChange={handleAddFormChange}
                                                     required
                                                 >
-                                                    <option value="">Select Sex</option>
+                                                    <option value="">Select sex</option>
                                                     <option value="Male">Male</option>
                                                     <option value="Female">Female</option>
                                                 </select>
                                             </div>
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Contact Number</label>
+
+                                            {/* Email */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-envelope text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        email: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
+                                                <input
+                                                    type="email"
+                                                    placeholder="student@example.com"
+                                                    className="form-control shadow-sm"
+                                                    name="email"
+                                                    value={addFormData.email}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                />
+                                            </div>
+
+                                            {/* Contact Number */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-phone text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        contact number:
+                                                    </label>
+                                                </div>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    placeholder="09XX XXX XXXX"
+                                                    className="form-control shadow-sm"
                                                     name="contactNumber"
                                                     value={addFormData.contactNumber}
                                                     onChange={handleAddFormChange}
                                                     maxLength="13"
                                                 />
-                                                <small className="text-muted">Format: 0XXX XXX XXXX (11 digits)</small>
+                                                <small className="text-muted">Format: 0XXX XXX XXXX</small>
                                             </div>
                                         </div>
                                     </div>
 
-
-
+                                    <hr className="my-4" />
 
                                     {/* Academic Information */}
-                                    <div className="mb-3">
-                                        <h6 className="text-success fw-bold mb-3">Academic Information</h6>
-                                        <div className="row">
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Student Type <span className="text-danger">*</span></label>
+                                    <h6 className="text-success text-uppercase fw-bold mb-3 text-center">
+                                        Academic Information
+                                    </h6>
+                                    
+                                    <div className="row">
+                                        {/* Left Column */}
+                                        <div className="col-md-6">
+                                            {/* Student Type */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-graduation-cap text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        student type: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <select
-                                                    className="form-select"
+                                                    className="form-select shadow-sm"
                                                     name="studentType"
                                                     value={addFormData.studentType}
                                                     onChange={handleAddFormChange}
@@ -2029,57 +2135,83 @@ const StudentManagement = () => {
                                                     <option value="repeater">Repeater</option>
                                                 </select>
                                             </div>
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Grade Level <span className="text-danger">*</span></label>
+
+                                            {/* Grade Level */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-layer-group text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        grade level: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <select
-                                                    className="form-select"
+                                                    className="form-select shadow-sm"
                                                     name="gradeLevel"
                                                     value={addFormData.gradeLevel}
                                                     onChange={handleAddFormChange}
                                                     required
                                                 >
-                                                    <option value="">Select Grade</option>
+                                                    <option value="">Select grade</option>
                                                     <option value="11">Grade 11</option>
                                                     <option value="12">Grade 12</option>
                                                 </select>
                                             </div>
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Semester <span className="text-danger">*</span></label>
+
+                                            {/* Semester */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-calendar-alt text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        semester: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <select
-                                                    className="form-select"
+                                                    className="form-select shadow-sm"
                                                     name="semester"
                                                     value={addFormData.semester}
                                                     onChange={handleAddFormChange}
                                                     required
                                                 >
-                                                    <option value="">Select Semester</option>
-                                                    <option value={1}>First </option>
-                                                    <option value={2}>Second </option>
+                                                    <option value="">Select semester</option>
+                                                    <option value={1}>First Semester</option>
+                                                    <option value={2}>Second Semester</option>
                                                 </select>
                                             </div>
                                         </div>
 
-
-
-                                        <div className="row">
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Track <span className="text-danger">*</span></label>
+                                        {/* Right Column */}
+                                        <div className="col-md-6 border-start">
+                                            {/* Track */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-road text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        track: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <select
-                                                    className="form-select"
+                                                    className="form-select shadow-sm"
                                                     name="track"
                                                     value={addFormData.track}
                                                     onChange={handleAddFormChange}
                                                     required
                                                 >
-                                                    <option value="">Select Track</option>
+                                                    <option value="">Select track</option>
                                                     <option value="Academic">Academic</option>
                                                     <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
                                                 </select>
                                             </div>
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Strand <span className="text-danger">*</span></label>
+
+                                            {/* Strand */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-book text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        strand: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
                                                 <select
-                                                    className="form-select"
+                                                    className="form-select shadow-sm"
                                                     name="strand"
                                                     value={addFormData.strand}
                                                     onChange={handleAddFormChange}
@@ -2087,7 +2219,7 @@ const StudentManagement = () => {
                                                     required
                                                 >
                                                     <option value="">
-                                                        {!addFormData.track ? 'Select Track First' : 'Select Strand'}
+                                                        {!addFormData.track ? 'Select track first' : 'Select strand'}
                                                     </option>
                                                     {addFormData.track && 
                                                         STRAND_OPTIONS[addFormData.track]?.map(option => (
@@ -2101,65 +2233,74 @@ const StudentManagement = () => {
                                         </div>
                                     </div>
 
+                                    <hr className="my-4" />
 
-                                    {/* Password and security */}
-                                    <div className="mb-3">
-                                        <h6 className="text-success fw-bold mb-3  text-capitalize">paswword & security</h6>
-                                        
-                                    {/* ✅ Row 4: Password & Confirm Password */}
-                                        <div className="row">
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Password <span className="text-danger">*</span></label>
-                                                <div className="input-group">
+                                    {/* Password & Security */}
+                                    <h6 className="text-success text-uppercase fw-bold mb-3 text-center">
+                                        Password & Security
+                                    </h6>
+                                    
+                                    <div className="row">
+                                        {/* Left Column */}
+                                        <div className="col-md-6">
+                                            {/* Password */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-lock text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        password: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
+                                                <div className="position-relative">
                                                     <input
                                                         type={showPassword ? "text" : "password"}
-                                                        className="form-control"
+                                                        placeholder="Enter password"
+                                                        className="form-control shadow-sm"
                                                         name="password"
                                                         value={addFormData.password}
                                                         onChange={handleAddFormChange}
                                                         required
                                                         minLength="6"
                                                     />
-                                                    <button 
-                                                        className="btn btn-outline-secondary" 
-                                                        type="button"
+                                                    <i 
+                                                        className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                        style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
                                                         onClick={() => setShowPassword(!showPassword)}
-                                                    >
-                                                        <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                                    </button>
+                                                    ></i>
                                                 </div>
                                                 <small className="text-muted">Minimum 6 characters</small>
                                             </div>
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Confirm Password <span className="text-danger">*</span></label>
-                                                <div className="input-group">
+                                        </div>
+
+                                        {/* Right Column */}
+                                        <div className="col-md-6 border-start">
+                                            {/* Confirm Password */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-lock text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        confirm password: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
+                                                <div className="position-relative">
                                                     <input
                                                         type={showConfirmPassword ? "text" : "password"}
-                                                        className="form-control"
+                                                        placeholder="Re-enter password"
+                                                        className="form-control shadow-sm"
                                                         name="confirmPassword"
                                                         value={addFormData.confirmPassword}
                                                         onChange={handleAddFormChange}
                                                         required
                                                     />
-                                                    <button 
-                                                        className="btn btn-outline-secondary" 
-                                                        type="button"
+                                                    <i 
+                                                        className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                        style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
                                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                    >
-                                                        <i className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                                    </button>
+                                                    ></i>
                                                 </div>
                                             </div>
                                         </div>
-
                                     </div>
-
-
-
-
-
-
-
 
                                 </div>
                                 <div className="modal-footer">
@@ -2184,6 +2325,10 @@ const StudentManagement = () => {
                     </div>
                 </div>
             )}
+
+
+
+
         </>
     );
 };

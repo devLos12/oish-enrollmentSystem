@@ -210,10 +210,12 @@ const RegistrationViewForm = () => {
                         <div className="row mt-5">
                             <div className="col-md-6 text-center">
                                 <div className="">
-                                    <strong className="text-uppercase">{student?.lastName || ''}, {student?.firstName || ''} {student?.middleName?.charAt(0) || ''}.</strong>
+                                    <strong className="text-capitalize">
+                                        {student?.lastName || ''}, {student?.firstName || ''} {student?.middleName ? student.middleName.charAt(0) + '.' : ''}
+                                    </strong>
                                 </div>
                                 <div className="border-top border-dark d-inline-block px-5"
-                                style={{width:"250px"}}
+                                    style={{width:"250px"}}
                                 ></div>
                                 <div className="mt-2">
                                     <em>Student's Signature</em>

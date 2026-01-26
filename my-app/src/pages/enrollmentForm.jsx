@@ -1963,6 +1963,18 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
                     ))}
                 </select>
             </div>
+
+            <div className="mb-3">
+                <label className="form-label small">Country</label>
+                <input
+                    type="text"
+                    name="country"
+                    value="Philippines"
+                    className="form-control"
+                    disabled
+                    readOnly
+                />
+            </div>
         </>
     );
 };
@@ -2047,7 +2059,6 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
         </div>
     );
 };
-
 
 
 // Reusable Section Component
@@ -2665,14 +2676,6 @@ export const Step2 = () => {
                                             disabled={viewOnly}
                                         />
 
-                                        <FormField
-                                            label="Country"
-                                            name="country"
-                                            type="text"
-                                            value={formData.address?.current?.country}
-                                            onChange={(e) => handleAddressChange(e, 'current')}
-                                            disabled={viewOnly}
-                                        />
 
                                         <FormField
                                             label="Zip Code"
@@ -2743,14 +2746,6 @@ export const Step2 = () => {
                                             disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
                                         />
 
-                                        <FormField
-                                            label="Country"
-                                            name="country"
-                                            type="text"
-                                            value={formData.address?.permanent?.country}
-                                            onChange={(e) => handleAddressChange(e, 'permanent')}
-                                            disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
-                                        />
 
                                         <FormField
                                             label="Zip Code"
