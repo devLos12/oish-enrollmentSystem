@@ -524,7 +524,6 @@ export const GetAllEnrollments = async(req, res) => {
 const storage = multer.memoryStorage();
 
 
-
 // File filter - accept only images and PDFs
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png/;
@@ -565,7 +564,7 @@ export const enrollmentUpload = uploadDocuments.fields([
 export const EnrollmentRegistration = async (req, res) => {
   try {
     const { step, enrollmentId } = req.body; // step: "step1" | "step2" | "step3"
-    
+
 
     // ==========================================
     // STEP 1: CREATE NEW ENROLLMENT
@@ -662,7 +661,17 @@ export const EnrollmentRegistration = async (req, res) => {
             message: '4Ps Household ID is required' 
           });
         }
+
+        if (!/^\d{12}$/.test(learnerInfo.fourPs.householdId)) {
+          return res.status(400).json({ 
+              message: '4Ps Household ID must be exactly 12 digits' 
+          });
+        }
+
       }
+
+     
+
 
       // ✅ VALIDATION: LRN is required if "With LRN?" is "Yes"
       if (req.body.withLRN === 'Yes' && (!learnerInfo.lrn || learnerInfo.lrn.trim() === '')) {
@@ -678,8 +687,10 @@ export const EnrollmentRegistration = async (req, res) => {
       // Validation checks
       if (learnerInfo.email) {
         const existingEmailEnrollment = await Enrollment.findOne({
-          "learnerInfo.email": learnerInfo.email
+          "learnerInfo.email": learnerInfo.email,
+          _id: { $ne: enrollmentId } 
         });
+
         const existingEmailStudent = await Student.findOne({ email: learnerInfo.email });
         const existingEmailStaff = await Staff.findOne({ email: learnerInfo.email });
 
@@ -691,7 +702,8 @@ export const EnrollmentRegistration = async (req, res) => {
 
       if (learnerInfo.lrn) {
         const existingLRN = await Enrollment.findOne({
-          "learnerInfo.lrn": learnerInfo.lrn
+          "learnerInfo.lrn": learnerInfo.lrn,
+          _id: { $ne: enrollmentId } 
         });
 
         if (existingLRN) {
@@ -699,9 +711,7 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
-
-
-
+      
 
       //  Auto-generate school year
       const currentYear = new Date().getFullYear();
@@ -716,55 +726,72 @@ export const EnrollmentRegistration = async (req, res) => {
       const lrn = req.body.withLRN === 'No' ? 'N/A' : (learnerInfo.lrn?.trim() || 'N/A');
 
 
-      // Create new enrollment record
-      const enrollment = await Enrollment.create({
-
-
-        schoolYear: autoSchoolYear,  //  Auto-generated
+      
+      // ✅ Prepare data object
+      const enrollmentData = {
+        schoolYear: autoSchoolYear,
         gradeLevelToEnroll: req.body.gradeLevelToEnroll,
-        
-        // Top-level boolean conversions
         withLRN: req.body.withLRN === 'Yes',
         isReturning: req.body.isReturning === 'Yes',
         
         learnerInfo: {
-          // Basic fields (direct pass-through)
           email: learnerInfo.email,
-          lrn: lrn,  // ✅ "N/A" if withLRN is "No" or empty
-          psaNo: psaNo,  // ✅ "N/A" if empty
+          lrn: lrn,
+          psaNo: psaNo,
           lastName: learnerInfo.lastName,
           firstName: learnerInfo.firstName,
           middleName: learnerInfo.middleName,
-          extensionName: extensionName,  // ✅ "N/A" if empty
+          extensionName: extensionName,
           birthDate: learnerInfo.birthDate,
           age: learnerInfo.age,
           sex: learnerInfo.sex,
           placeOfBirth: learnerInfo.placeOfBirth,
           motherTongue: learnerInfo.motherTongue,
           
-          // ✅ Nested object 1: learnerWithDisability
           learnerWithDisability: {
-              isDisabled: learnerInfo.learnerWithDisability?.isDisabled === 'Yes',  // "Yes" → true, "No" → false
+              isDisabled: learnerInfo.learnerWithDisability?.isDisabled === 'Yes',
               disabilityType: learnerInfo.learnerWithDisability?.disabilityType || []
           },
           
-          // ✅ Nested object 2: indigenousCommunity
           indigenousCommunity: {
-              isMember: learnerInfo.indigenousCommunity?.isMember === 'Yes',  // "Yes" → true, "No" → false
+              isMember: learnerInfo.indigenousCommunity?.isMember === 'Yes',
               name: learnerInfo.indigenousCommunity?.name || ''
           },
           
-          // ✅ Nested object 3: fourPs
           fourPs: {
-              isBeneficiary: learnerInfo.fourPs?.isBeneficiary === 'Yes',  // "Yes" → true, "No" → false
+              isBeneficiary: learnerInfo.fourPs?.isBeneficiary === 'Yes',
               householdId: learnerInfo.fourPs?.householdId || ''
           },
-
         },
 
         statusRegistration: "incomplete"
-      });
+      };
 
+
+      //udpate existing step1 record
+      if(enrollmentId){
+
+        const enrollment = await Enrollment.findByIdAndUpdate(
+          enrollmentId,
+          enrollmentData,
+          { new: true, runValidators: true }
+        );
+
+        if (!enrollment) {
+          return res.status(404).json({ message: "Enrollment record not found" });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: "Step 1 updated successfully",
+          enrollmentId: enrollment._id,
+          step1: true,
+        });
+      } 
+
+      // Create new enrollment record
+      const enrollment = await Enrollment.create(enrollmentData);
+      
       return res.status(201).json({
         success: true,
         message: "Step 1 saved successfully",
@@ -869,8 +896,6 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
-
-
       if (!address.current.houseNo || address.current.houseNo.trim() === '') {
         address.current.houseNo = 'N/A';
       }
@@ -916,7 +941,6 @@ export const EnrollmentRegistration = async (req, res) => {
           parentGuardianInfo.guardian[field] = 'N/A';
         }
       });
-
 
       // ✅ Proceed with update
       const enrollment = await Enrollment.findByIdAndUpdate(
@@ -992,8 +1016,6 @@ export const EnrollmentRegistration = async (req, res) => {
           }
         }
       }
-
-      console.log("Uploaded files:", req.files);
 
       // ✅ UPLOAD TO CLOUDINARY
       const requiredDocuments = {};

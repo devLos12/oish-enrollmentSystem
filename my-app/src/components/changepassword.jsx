@@ -159,6 +159,7 @@ const ChangePassword = () => {
         );
     }
 
+    
     return (
         <>
             <div className="container mt-4">
@@ -172,6 +173,7 @@ const ChangePassword = () => {
                                     <p className="text-muted mb-0">Update your account password</p>
                                 </div>
                             </div>
+
 
                             {/* Password Change Form */}
                             <div className="card shadow-sm border-0 mb-4">

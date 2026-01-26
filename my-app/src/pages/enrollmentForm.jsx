@@ -91,6 +91,11 @@ export const Step1 = () => {
 
     const [lrnError, setLrnError] = useState('');
     const [psaError, setPsaError] = useState('');
+    const [fourPsError, setFourPsError] = useState('');
+
+
+    const [hasChanges, setHasChanges] = useState(false);
+
 
 
     useEffect(() => {
@@ -229,7 +234,7 @@ export const Step1 = () => {
 
         { label: 'Place of Birth (Municipality/City)', name: 'placeOfBirth', type: 'text', colClass: 'col-md-6' },
         { label: 'Age', name: 'age', type: 'number', colClass: 'col-md-3' },
-        { label: 'Mother Tongue', name: 'motherTongue', type: 'text', colClass: 'col-md-9' }
+        { label: 'Mother Tongue (e.g., Tagalog, Bisaya, Ilocano)', name: 'motherTongue', type: 'text', colClass: 'col-md-9' }
     ];
 
     const conditionalSections = [
@@ -297,11 +302,109 @@ export const Step1 = () => {
             ]
         }
     ];
-    
+
+    const extensionNameOptions = [
+        'Jr.',
+        'Sr.',
+        'II',
+        'III',
+        'IV',
+        'V'
+    ];
+
+
+
+    // ✅ Helper function to remove numbers from text
+    const removeNumbers = (value) => {
+        return value.replace(/[0-9]/g, '');
+    };
+
+
     const handleChange = (e, path) => {
         const { name, value } = e.target;
         
+
         if (path) {
+
+
+            // ✅ Special handling for learnerWithDisability
+            if (path === 'learnerWithDisability' && name === 'isDisabled') {
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        learnerWithDisability: {
+                            isDisabled: value,
+                            disabilityType: value === 'No' ? [] : prev.learnerInfo.learnerWithDisability.disabilityType  // ✅ Clear array if "No"
+                        }
+                    }
+                }));
+                setHasChanges(true);
+                return;  // ✅ Early return
+            }
+
+            // ✅ For Indigenous Community
+            if (path === 'indigenousCommunity' && name === 'isMember') {
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        indigenousCommunity: {
+                            isMember: value,
+                            name: value === 'No' ? '' : prev.learnerInfo.indigenousCommunity.name  // ✅ Clear if "No"
+                        }
+                    }
+                }));
+                setHasChanges(true);
+                return;
+            }
+
+            // ✅ For 4Ps
+            if (path === 'fourPs' && name === 'isBeneficiary') {
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        fourPs: {
+                            isBeneficiary: value,
+                            householdId: value === 'No' ? '' : prev.learnerInfo.fourPs.householdId  // ✅ Clear if "No"
+                        }
+                    }
+                }));
+                setHasChanges(true);
+                return;
+            }
+
+            // ✅ For 4Ps - Household ID input (numeric validation)
+            if (path === 'fourPs' && name === 'householdId') {
+                // Remove non-numeric characters
+                const numericValue = value.replace(/\D/g, '');
+                
+                // Limit to 12 digits (or 9 if you want standard)
+                const limitedValue = numericValue.slice(0, 12);
+                
+                // Update error message
+                if (limitedValue.length > 0 && limitedValue.length < 12) {
+                    setFourPsError('4Ps Household ID must be exactly 12 digits');
+                } else {
+                    setFourPsError('');
+                }
+                
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        fourPs: {
+                            ...prev.learnerInfo.fourPs,
+                            householdId: limitedValue
+                        }
+                    }
+                }));
+                setHasChanges(true);
+                return;
+            }
+
+
             // For nested objects like indigenousCommunity and fourPs
             setFormData(prev => ({
                 ...prev,
@@ -313,6 +416,9 @@ export const Step1 = () => {
                     }
                 }
             }));
+
+
+
         } else if (name.startsWith('learnerInfo.')) {
             const fieldName = name.split('.')[1];
 
@@ -397,11 +503,18 @@ export const Step1 = () => {
 
 
             } else {
+                // ✅ Fields that should not contain numbers
+                const textOnlyFields = ['lastName', 'firstName', 'middleName', 'placeOfBirth', 'motherTongue'];
+                
+                const finalValue = textOnlyFields.includes(fieldName) 
+                    ? removeNumbers(value) 
+                    : value;
+                
                 setFormData(prev => ({
                     ...prev,
                     learnerInfo: {
                         ...prev.learnerInfo,
-                        [fieldName]: value
+                        [fieldName]: finalValue
                     }
                 }));
             }
@@ -409,28 +522,9 @@ export const Step1 = () => {
             // For top-level fields like schoolYear, gradeLevelToEnroll, etc.
             setFormData(prev => ({ ...prev, [name]: value }));
         }
+
+        setHasChanges(true);
     };
-
-
-
-
-
-
-    // const handleNext = () => {
-    //     if(role === "admin" || role === "staff"){
-    //         document.getElementById("scrollContainer").scrollTo({
-    //             top: 0,
-    //             behavior: "auto"
-    //         });
-    //         navigate(`/${role}/applicant_form/step2`, { state: { allowed: true, applicant: location?.state.applicant }}); // Navigate to next step
-    //     } else {
-    //         window.scrollTo({ top: 0, behavior: "auto"});
-    //         navigate("/enrollment/step2", { state: { allowed: true }}); // Navigate to next step
-    //         sessionStorage.setItem("myForm", JSON.stringify(formData));
-    //     }
-    // };
-
-
 
 
 
@@ -439,16 +533,27 @@ export const Step1 = () => {
         setShowErrorModal(false);
 
         const isIncomplete = sessionStorage.getItem("step1Saved") === "true";
+        const enrollmentId = sessionStorage.getItem("enrollmentId");
+
+
 
         // ✅ If already submitted, no need for loading - just navigate
-        if(isIncomplete){
+        if(isIncomplete && !hasChanges){
             window.scrollTo({ top: 0, behavior: "auto"});
             navigate("/enrollment/step2", { state: { allowed: true }});
             return 
         }
 
+        // ✅ If has changes, clear the saved indicator to force re-submit
+        if (hasChanges) {
+            sessionStorage.removeItem("step1Saved");
+        }
+
+
+
         // ✅ Show loading only when making API call
         setIsLoading(true);
+
 
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
@@ -457,6 +562,7 @@ export const Step1 = () => {
                 credentials: "include",
                 body: JSON.stringify({
                     step: "step1",
+                    enrollmentId: enrollmentId,
                     gradeLevelToEnroll: formData.gradeLevelToEnroll,
                     withLRN: formData.withLRN,
                     isReturning: formData.isReturning,
@@ -604,7 +710,9 @@ export const Step1 = () => {
                 }
             };
         });
+        setHasChanges(true);
     };
+
 
 
     const isDisabilityChecked = (id, specific = null) => {
@@ -624,6 +732,9 @@ export const Step1 = () => {
             }
         }
     };
+
+
+
 
     // Reusable render functions
     const renderTextField = (field, isNested = false) => {
@@ -682,6 +793,33 @@ export const Step1 = () => {
                 </div>
             );
         }
+
+        // ✅ Special handling for Extension Name (dropdown)
+        if (field.name === 'extensionName') {
+            return (
+                <div key={field.name} className="mb-3">
+                    <label className="form-label small">
+                        {field.label}
+                        {field.optional && <span className="text-muted ms-2">(Optional)</span>}
+                    </label>
+                    <select
+                        name="learnerInfo.extensionName"
+                        value={formData?.learnerInfo?.extensionName || ''}
+                        onChange={handleChange}
+                        className="form-select"
+                        disabled={viewOnly}
+                    >
+                        <option value="">Select Extension Name</option>
+                        {extensionNameOptions.map(option => (
+                            <option key={option} value={option}>{option}</option>
+                        ))}
+                    </select>
+                </div>
+            );
+        }
+
+
+
         
         // ✅ Regular fields (existing code)
         return (
@@ -741,7 +879,9 @@ export const Step1 = () => {
         
         // ✅ Check if this is indigenous people section
         const isIndigenousSection = section.path === 'indigenousCommunity';
-        
+        const isFourPsSection = section.path === 'fourPs';
+
+
         return (
             <div className="mb-3" key={section.path}>
                 <label className="form-label small">{section.label}</label>
@@ -767,7 +907,25 @@ export const Step1 = () => {
                             <option key={option} value={option}>{option}</option>
                         ))}
                     </select>
-                ) : (
+                ) : isFourPsSection ? (
+                    // ✅ Special input for 4Ps with validation
+                    <>
+                        <input
+                            type="text"
+                            name={section.inputName}
+                            placeholder="Enter 12-digit Household ID"
+                            value={formData?.learnerInfo?.[section.path]?.[section.inputName] || ''}
+                            onChange={(e) => handleChange(e, section.path)}
+                            className={`form-control ${fourPsError ? 'is-invalid' : ''}`}
+                            disabled={isMember !== 'Yes' || viewOnly}
+                            maxLength="12"
+                        />
+                        {fourPsError && <div className="invalid-feedback d-block">{fourPsError}</div>}
+                        <small className="text-muted">
+                            {formData?.learnerInfo?.[section.path]?.[section.inputName]?.length || 0}/12 digits
+                        </small>
+                    </>
+                )   :   (
                     <input
                         type="text"
                         name={section.inputName}
@@ -781,11 +939,6 @@ export const Step1 = () => {
             </div>
         );
     };
-
-
-
-
-
 
 
 
@@ -934,6 +1087,11 @@ export const Step1 = () => {
     };
 
 
+
+    // ✅ Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+
+
     return (
         <div className="container bg-light d-flex ">
             <div className={`row justify-content-center `}
@@ -1008,7 +1166,8 @@ export const Step1 = () => {
                                                         onChange={handleChange}
                                                         className="form-control"
                                                         disabled={viewOnly || field.name === 'age'}
-                                                        style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}  // ✅ Visual indicator
+                                                        style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}
+                                                        max={field.type === 'date' ? today : undefined}  // ✅ Add this
                                                     />
                                                 </div>
                                             ))}
@@ -1809,9 +1968,31 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
 };
 
 
-
-
 const FormField = ({ label, name, type, value, onChange, disabled }) => {
+    
+    
+    // ✅ Special handling for Zip Code (numbers only)
+    if (name === 'zipCode') {
+        return (
+            <div className="mb-3">
+                <label className="form-label small">{label}</label>
+                <input
+                    type="text"
+                    name={name}
+                    className="form-control"
+                    value={value || ''}
+                    onChange={onChange}
+                    disabled={disabled}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength="4"
+                />
+                <small className="text-muted">Numbers only (4 digits)</small>
+            </div>
+        );
+    }
+    
+    
     // ✅ Special handling for Contact Number
     if (name === 'contactNumber') {
         return (
@@ -1831,7 +2012,7 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
         );
     }
 
-    // ✅ Special handling for House Number (numbers only)
+   // ✅ NEW: Special handling for House Number (alphanumeric)
     if (name === 'houseNo') {
         return (
             <div className="mb-3">
@@ -1843,10 +2024,10 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
                     value={value || ''}
                     onChange={onChange}
                     disabled={disabled}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
+                    maxLength="50"
+                    placeholder="e.g., 123, Block 5 Lot 10, 45-A"
                 />
-                <small className="text-muted">Numbers only</small>
+                <small className="text-muted">Can include block/lot number (alphanumeric)</small>
             </div>
         );
     }
@@ -1928,6 +2109,8 @@ export const Step2 = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false); 
+
 
 
     // Access control check
@@ -2109,10 +2292,12 @@ export const Step2 = () => {
                 }
             }));
         }
-        // ✅ NEW: House Number validation (numbers only)
+        // ✅ NEW: House Number - Alphanumeric (letters, numbers, spaces, hyphens)
         else if (name === 'houseNo') {
-            // Remove all non-digit characters
-            const cleaned = value.replace(/\D/g, '');
+            // Allow alphanumeric, spaces, and hyphens only
+            const cleaned = value.replace(/[^a-zA-Z0-9\s\-]/g, '');
+            // Limit to 50 characters
+            const limited = cleaned.substring(0, 50);
             
             setFormData(prev => ({
                 ...prev,
@@ -2120,10 +2305,44 @@ export const Step2 = () => {
                     ...prev.address,
                     [addressType]: { 
                         ...prev.address[addressType], 
-                        [name]: cleaned 
+                        [name]: limited 
                     }
                 }
             }));
+        }
+        // ✅ NEW: House Number - Alphanumeric (letters, numbers, spaces, hyphens)
+        else if (name === 'houseNo') {
+            // Allow alphanumeric, spaces, and hyphens only
+            const cleaned = value.replace(/[^a-zA-Z0-9\s\-]/g, '');
+            // Limit to 50 characters
+            const limited = cleaned.substring(0, 50);
+            
+            setFormData(prev => ({
+                ...prev,
+                address: {
+                    ...prev.address,
+                    [addressType]: { 
+                        ...prev.address[addressType], 
+                        [name]: limited 
+                    }
+                }
+            }));
+        }
+
+        else if (name === 'zipCode') {
+                // Remove all non-digit characters and limit to 4 digits
+                const cleaned = value.replace(/\D/g, '').substring(0, 4);
+                
+                setFormData(prev => ({
+                    ...prev,
+                    address: {
+                        ...prev.address,
+                        [addressType]: { 
+                            ...prev.address[addressType], 
+                            [name]: cleaned 
+                        }
+                    }
+                }));
         }
         else {
             setFormData(prev => ({
@@ -2134,8 +2353,9 @@ export const Step2 = () => {
                 }
             }));
         }
-    }, [setFormData]);
 
+        setHasChanges(true);
+    }, [setFormData]);
 
 
 
@@ -2174,15 +2394,31 @@ export const Step2 = () => {
                 }
             }));
         } else {
+            // ✅ Fields that should not contain numbers
+            const textOnlyFields = ['lastName', 'firstName', 'middleName'];
+            
+            const finalValue = textOnlyFields.includes(name) 
+                ? removeNumbers(value) 
+                : value;
+            
             setFormData(prev => ({
                 ...prev,
                 parentGuardianInfo: {
                     ...prev.parentGuardianInfo,
-                    [parentType]: { ...prev.parentGuardianInfo[parentType], [name]: value }
+                    [parentType]: { ...prev.parentGuardianInfo[parentType], [name]: finalValue }
                 }
             }));
         }
+
+
+        setHasChanges(true);
     }, [setFormData]);
+
+
+
+
+
+
 
 
 
@@ -2199,14 +2435,30 @@ export const Step2 = () => {
                 [name]: type === 'checkbox' ? checked : value
             }
         }));
+        setHasChanges(true);
     }, [setFormData]);
+
+
+
+
+
+
+
+
 
     const handleAcademicStatusChange = useCallback((status) => {
         setFormData(prev => ({
             ...prev,
             studentType: prev.studentType === status ? '' : status
         }));
+        setHasChanges(true);
     }, [setFormData]);
+
+
+
+
+
+
 
     const handleSeniorHighChange = useCallback((e) => {
         const { name, value } = e.target;
@@ -2218,27 +2470,10 @@ export const Step2 = () => {
                 ...(name === 'track' && { strand: '' })
             }
         }));
+        setHasChanges(true);
     }, [setFormData]);
 
 
-
-
-    
-
-    // const handleNext = useCallback(() => {
-    //     const scrollContainer = document.getElementById("scrollContainer");
-        
-    //     if (role === "admin" || role === "staff") {
-    //         scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
-    //         navigate(`/${role}/applicant_form/step3`, { 
-    //             state: { allowed: true, applicant: location?.state.applicant } 
-    //         });
-    //     } else {
-    //         window.scrollTo({ top: 0, behavior: "auto" });
-    //         navigate("/enrollment/step3", { state: { allowed: true } });
-    //         sessionStorage.setItem("myForm", JSON.stringify(formData));
-    //     }
-    // }, [role, navigate, location, formData]);
 
 
 
@@ -2248,29 +2483,39 @@ export const Step2 = () => {
         
 
 
-        // ✅ For admin/staff, no API call needed
-        if (role === "admin" || role === "staff") {
-            const scrollContainer = document.getElementById("scrollContainer");
-            scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
-            navigate(`/${role}/applicant_form/step3`, { 
-                state: { allowed: true, applicant: location?.state.applicant } 
-            });
-            return;
-        }
+        // // ✅ For admin/staff, no API call needed
+        // if (role === "admin" || role === "staff") {
+        //     const scrollContainer = document.getElementById("scrollContainer");
+        //     scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
+        //     navigate(`/${role}/applicant_form/step3`, { 
+        //         state: { allowed: true, applicant: location?.state.applicant } 
+        //     });
+        //     return;
+        // }
+
+
 
 
         // ✅ Check if already saved
         const enrollmentId = sessionStorage.getItem("enrollmentId");
-
-        // If step2 already saved, just navigate
         const step2Saved = sessionStorage.getItem("step2Saved");
 
 
-        if (step2Saved === "true") {
+
+
+        // ✅ If already submitted and NO changes, just navigate
+        if (step2Saved === "true" && !hasChanges) {
             window.scrollTo({ top: 0, behavior: "auto" });
             navigate("/enrollment/step3", { state: { allowed: true } });
             return;
         }
+
+         // ✅ If has changes, clear the saved indicator to force re-submit
+        if (hasChanges) {
+            sessionStorage.removeItem("step2Saved");
+        }
+
+
 
         // ✅ Show loading
         setIsLoading(true);
@@ -2368,7 +2613,13 @@ export const Step2 = () => {
         );
     };
 
-    
+
+    // ✅ Helper function to remove numbers from text
+    const removeNumbers = (value) => {
+        return value.replace(/[0-9]/g, '');
+    };
+
+
     return (
         <div className="container bg-light d-flex">
             <div className={`row  justify-content-center w-100 g-0`}
@@ -2783,20 +3034,9 @@ export const Step3 = () => {
         if (!formData.certification) {
             setFormData(prev => ({
                 ...prev,
-                // preferredLearningModality: {
-                //     modularPrint: false,
-                //     modularDigital: false,
-                //     online: false,
-                //     radioBased: false,
-                //     blended: false,
-                //     tvBased: false,
-                //     homeschooling: false
-                // },
+            
                 certification: {
-                    // signatureFile: null,
-                    // signatureFileName: '',
-                    // signaturePreview: null,
-
+          
                     psaBirthCertFile: null,
                     psaBirthCertFileName: '',
                     psaBirthCertPreview: null,
@@ -2813,10 +3053,6 @@ export const Step3 = () => {
                     idPictureFileName: '',
                     idPicturePreview: null,
 
-                    // medicalCertFile: null,
-                    // medicalCertFileName: '',
-                    // medicalCertPreview: null,
-                    
                     dateSigned: ''
                 }
             }));
