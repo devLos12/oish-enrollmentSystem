@@ -3011,7 +3011,10 @@ export const Step3 = () => {
     const [successModal, setSuccessModal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-
+    const [errorModal, setErrorModal] = useState({
+        isShow: false,
+        message: ''
+    });
 
 
 
@@ -3309,7 +3312,7 @@ export const Step3 = () => {
 
 
 
-        const handleNext = async() => {
+    const handleNext = async() => {
         if(role === "admin" || role === "staff"){
             setApproveShowModal((prev) => ({...prev, isShow: true, data: prev.data }));
             return
@@ -3374,7 +3377,10 @@ export const Step3 = () => {
             
         } catch (error) {
             console.error("Error: ", error.message);
-            alert(`Error: ${error.message}`);
+            setErrorModal({
+                isShow: true,
+                message: error.message || 'Something went wrong. Please try again.'
+            });
             setIsSubmitting(false); 
         }
     };
@@ -3787,7 +3793,7 @@ export const Step3 = () => {
                                 <h4 className="fw-bold mb-3">Admission Successful!</h4>
                                 <p className="text-muted mb-4">
                                     Your enrollment application has been submitted successfully.<br/>
-                                    wait for approval.
+                                    We will send you an email after the admission approval..
                                 </p>
                                 <button 
                                     type="button" 
@@ -3796,6 +3802,43 @@ export const Step3 = () => {
                                         setSuccessModal(false);
                                         navigate('/', { replace: true, state: { allowed: false }});
                                         window.scrollTo({ top: 0, behavior: "auto"});
+                                    }}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+
+            {/* Error Modal */}
+            {errorModal.isShow && (
+                <div 
+                    className="modal fade show d-block" 
+                    tabIndex="-1" 
+                    style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+                >
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-body text-center py-5">
+                                <div className="mb-4">
+                                    <i className="fa-solid fa-circle-xmark text-danger" style={{ fontSize: '5rem' }}></i>
+                                </div>
+                                <h4 className="fw-bold mb-3">Submission Failed</h4>
+                                <p className="text-muted mb-4">
+                                    {errorModal.message}
+                                </p>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-danger px-5"
+                                    onClick={() => {
+                                        setErrorModal({
+                                            isShow: false,
+                                            message: ''
+                                        });
                                     }}
                                 >
                                     Close
