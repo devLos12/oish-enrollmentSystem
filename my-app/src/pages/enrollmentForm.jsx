@@ -3792,8 +3792,7 @@ export const Step3 = () => {
                                 </div>
                                 <h4 className="fw-bold mb-3">Admission Successful!</h4>
                                 <p className="text-muted mb-4">
-                                    Your enrollment application has been submitted successfully.<br/>
-                                    We will send you an email after the admission approval..
+                                    We will send you an email after the admission approval.
                                 </p>
                                 <button 
                                     type="button" 
@@ -3811,7 +3810,6 @@ export const Step3 = () => {
                     </div>
                 </div>
             )}
-
 
 
             {/* Error Modal */}
