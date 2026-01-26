@@ -94,8 +94,11 @@ const Applicants = () => {
             const data = await res.json();
             if(!res.ok) throw new Error(data.message);
 
-            setApplicants(data);
-            setFilteredApplicants(data);
+            const reversedData = data.reverse();
+
+
+            setApplicants(reversedData);
+            setFilteredApplicants(reversedData);
         } catch (error) {
             console.error("Error fetching applicants:", error.message);
             showAlert("Failed to load applicants data", 'error');
