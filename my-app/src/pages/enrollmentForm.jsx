@@ -226,7 +226,6 @@ export const Step1 = () => {
         'Tingguian',
         'T\'boli',
         'Yakan',
-        'Others'
     ];
 
     const rightFields = [
@@ -335,7 +334,7 @@ export const Step1 = () => {
                         ...prev.learnerInfo,
                         learnerWithDisability: {
                             isDisabled: value,
-                            disabilityType: value === 'No' ? [] : prev.learnerInfo.learnerWithDisability.disabilityType  // ✅ Clear array if "No"
+                            disabilityType: value === 'No' ? [] : prev.learnerInfo?.learnerWithDisability?.disabilityType  // ✅ Clear array if "No"
                         }
                     }
                 }));
@@ -351,7 +350,7 @@ export const Step1 = () => {
                         ...prev.learnerInfo,
                         indigenousCommunity: {
                             isMember: value,
-                            name: value === 'No' ? '' : prev.learnerInfo.indigenousCommunity.name  // ✅ Clear if "No"
+                            name: value === 'No' ? '' : prev.learnerInfo?.indigenousCommunity?.name  // ✅ Clear if "No"
                         }
                     }
                 }));
@@ -367,7 +366,7 @@ export const Step1 = () => {
                         ...prev.learnerInfo,
                         fourPs: {
                             isBeneficiary: value,
-                            householdId: value === 'No' ? '' : prev.learnerInfo.fourPs.householdId  // ✅ Clear if "No"
+                            householdId: value === 'No' ? '' : prev.learnerInfo?.fourPs?.householdId  // ✅ Clear if "No"
                         }
                     }
                 }));

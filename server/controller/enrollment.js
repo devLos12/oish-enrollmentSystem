@@ -1125,6 +1125,7 @@ export const EnrollmentRegistration = async (req, res) => {
     }
 
 
+
     // If no valid step provided
     return res.status(400).json({ message: "Invalid step provided" });
   } catch (error) {
@@ -1616,14 +1617,30 @@ export const ApplicantApproval = async (req, res) => {
       });
     }
 
-    // 4. CHECK DUPLICATE: LRN
-    const existingLRN = await Student.findOne({ lrn: applicant.learnerInfo.lrn });
+
+     // 4. CHECK DUPLICATE: LRN (✅ Only check if LRN is valid, not "N/A" or empty)
+    const lrnValue = applicant.learnerInfo.lrn?.trim();
+    const isValidLRN = lrnValue && 
+                       lrnValue !== '' && 
+                       lrnValue.toLowerCase() !== 'n/a' && 
+                       lrnValue !== 'null' && 
+                       lrnValue !== 'undefined';
     
-    if (existingLRN) {
-      return res.status(409).json({
-        message: "LRN already exists for another student."
-      });
+    if (isValidLRN) {
+      const existingLRN = await Student.findOne({ lrn: lrnValue });
+      
+      if (existingLRN) {
+        return res.status(409).json({
+          message: "LRN already exists for another student."
+        });
+      }
     }
+
+    console.log(isValidLRN);
+    
+
+
+
     
     // Default password setup
     const defaultPass = Math.random().toString(36).slice(-6);

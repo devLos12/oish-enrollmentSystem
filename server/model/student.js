@@ -10,8 +10,9 @@ const studentSchema = new mongoose.Schema({
   lrn: { 
     type: String,
     required: true,
-    unique: true
   },
+
+    
   profileImage: {  type: String, required: false },
   publicId:{
       type: String, 
