@@ -22,6 +22,115 @@ const Programs = () => {
                     </div>
                 </div>
 
+                {/* Video Section */}
+                <div className="row mb-5">
+                <div className="col-12">
+                    <div
+                    className="rounded-2 shadow-lg overflow-hidden"
+                    style={{ background: "#000" }}
+                    >
+                    <div
+                        style={{
+                        position: "relative",
+                        paddingBottom: "56.25%", // 16:9 ratio
+                        height: 0,
+                        }}
+                    >
+{/* Custom Play Button Overlay */}
+<div 
+  id="playButtonOverlay"
+  onClick={() => {
+    const video = document.getElementById('schoolVideo');
+    const overlay = document.getElementById('playButtonOverlay');
+    if (video && overlay) {
+      video.play();
+      overlay.style.display = 'none';
+    }
+  }}
+  style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    background: "rgba(0, 0, 0, 0.3)",
+    zIndex: 2,
+    pointerEvents: "auto",
+  }}
+>
+  <div
+    style={{
+      width: "80px",
+      height: "80px",
+      borderRadius: "50%",
+      background: "rgba(220, 38, 38, 0.9)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      transition: "all 0.3s ease",
+    }}
+    className="play-button-circle"
+  >
+    <svg
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="white"
+      style={{ marginLeft: "4px" }}
+    >
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  </div>
+</div>
+
+<video
+  id="schoolVideo"
+  src="https://res.cloudinary.com/dqg9d0gbp/video/upload/v1769434972/sd_k1tju4.mp4"
+  poster="https://res.cloudinary.com/dqg9d0gbp/image/upload/v1769333741/profiles/students/1769333720577-shsBackground.jpg"
+  style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    zIndex: 1,
+  }}
+  controls
+  controlsList="nofullscreen nodownload noremoteplayback"
+  disablePictureInPicture
+  title="School Introduction Video"
+/>
+
+{/* Facebook iframe embed - commented out
+<iframe
+  src="https://www.facebook.com/plugins/video.php?href=https://www.facebook.com/watch/?v=1426824341829847&show_text=false"
+  style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+  }}
+  scrolling="no"
+  frameBorder="0"
+  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+  allowFullScreen
+  title="School Introduction Video"
+/>
+*/}
+
+                    </div>
+                    </div>
+                </div>
+                </div>
+
+
                 {/* Featured Programs */}
                 <div className="row g-4 mb-5">
                     <div className="col-12 col-md-6">
@@ -110,6 +219,23 @@ const Programs = () => {
                     background: linear-gradient(90deg, rgba(107,114,128,0.15) 0%, rgba(107,114,128,0.05) 100%) !important;
                     transform: translateX(5px);
                     border-color: #dc2626 !important;
+                }
+                
+                video::-webkit-media-controls-picture-in-picture-button {
+                    display: none !important;
+                }
+                
+                video::-webkit-media-controls-fullscreen-button {
+                    display: none !important;
+                }
+                
+                .play-button-circle:hover {
+                    transform: scale(1.1);
+                    background: rgba(220, 38, 38, 1) !important;
+                }
+                
+                #schoolVideo:not([paused]) ~ #playButtonOverlay {
+                    display: none !important;
                 }
             `}</style>
         </div>
