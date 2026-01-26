@@ -49,7 +49,7 @@ const Programs = () => {
                 {/* Other Programs Section */}
                 <div className="row">
                     <div className="col-12">
-                        <div className="rounded-4 p-4 p-md-5 position-relative overflow-hidden" 
+                        <div className="rounded-2 p-4 p-md-5 position-relative overflow-hidden" 
                              style={{background: '#ffffff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'}}>
                             <h3 className="text-center fw-bold mb-4" style={{color: '#1f2937'}}>
                                 Also Offering:
