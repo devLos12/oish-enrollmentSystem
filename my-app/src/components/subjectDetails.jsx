@@ -22,6 +22,11 @@ const SubjectDetails = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success');
 
+
+    // 🔥 ADD THIS: Loading state for submit button
+    const [isSubmitting, setIsSubmitting] = useState(false);    
+
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -140,7 +145,7 @@ const SubjectDetails = () => {
             return;
         }
         
-       
+        setIsSubmitting(true); // 🔥 START LOADING
 
         try {
             const url = modalType === 'add' 
@@ -159,7 +164,6 @@ const SubjectDetails = () => {
                     scheduleEndTime: selectedSection.scheduleEndTime,
                     room: selectedSection.room,
                     gradeLevel: subjectData.gradeLevel
-
                 }),
                 credentials: "include",
             });
@@ -173,9 +177,10 @@ const SubjectDetails = () => {
         } catch (error) {
             console.error(`Error ${modalType === 'add' ? 'adding' : 'updating'} section:`, error.message);
             showAlert(`Failed to ${modalType === 'add' ? 'add' : 'update'} section: ${error.message}`, 'error');
+        } finally {
+            setIsSubmitting(false); // 🔥 STOP LOADING
         }
     };
-
 
 
 
@@ -560,22 +565,33 @@ const SubjectDetails = () => {
                                     </div>
 
                                     <div className="modal-footer">
-                                        <button 
-                                            type="button" 
-                                            className="btn btn-secondary"
-                                            onClick={() => setShowSectionModal(false)}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            className="btn btn-danger"
-                                            onClick={handleSubmitSection}
-                                        >
-                                            <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
-                                            {modalType === 'add' ? 'Add Section' : 'Update Section'}
-                                        </button>
-                                    </div>
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-secondary"
+                                                onClick={() => setShowSectionModal(false)}
+                                                disabled={isSubmitting} // 🔥 Disable cancel button while submitting
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                className="btn btn-danger"
+                                                onClick={handleSubmitSection}
+                                                disabled={isSubmitting} // 🔥 Disable while submitting
+                                            >
+                                                {isSubmitting ? (
+                                                    <>
+                                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                                        {modalType === 'add' ? 'Adding...' : 'Updating...'}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
+                                                        {modalType === 'add' ? 'Add Section' : 'Update Section'}
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                 </>
                             )}
 

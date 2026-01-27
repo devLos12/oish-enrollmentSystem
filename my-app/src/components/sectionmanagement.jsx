@@ -245,8 +245,7 @@ const SectionManagement = () => {
 
   const isFull = (sec) => getStudentCount(sec) >= (sec.maxCapacity || 35);
 
-
-
+  
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
   };

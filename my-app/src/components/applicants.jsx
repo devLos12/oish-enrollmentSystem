@@ -110,7 +110,7 @@ const Applicants = () => {
     const handleViewApplicant = (applicant) => {
         navigate(`/${role}/enrollmentpdf`, { state: { applicant, autoDownload: false } });
     };
-
+    
     const handleDownloadFile = (applicant) => {
         navigate(`/${role}/enrollmentpdf`, { state: { applicant, autoDownload: true } });
     }

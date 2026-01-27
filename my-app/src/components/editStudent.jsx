@@ -60,13 +60,6 @@ const EditStudent = () => {
     const fetchSections = async (gradeLevel, track, strand, semester) => {
 
 
-        // const data = {
-        //     gradeLevel, track, strand, semester
-        // }
-        // console.log(data);
-
-        // if(true) return;
-
         try {
             setLoadingSections(true);
             const res = await fetch(
@@ -126,17 +119,29 @@ const EditStudent = () => {
     };
 
     const handleUpdateStudent = async () => {
+
+
+        if (selectedStudent?.lrn && selectedStudent.lrn !== 'N/A') {
+            const cleanedLRN = selectedStudent.lrn.replace(/\D/g, '');
+            if (cleanedLRN.length !== 12) {
+                showAlert("LRN must be exactly 12 digits", 'error');
+                return;
+            }
+        }
+
+
         // Validate section is selected
         if (!selectedStudent?.section || !selectedStudent.section.trim()) {
             showAlert("Please select a section first", 'error');
+
             return;
         }
         
-
         // Validate contact number (only if provided)
         const cleanedContact = selectedStudent?.contactNumber?.replace(/\D/g, '') || '';
         if (cleanedContact.length > 0 && (cleanedContact.length !== 11 || !cleanedContact.startsWith('0'))) {
             showAlert("Contact number must be 11 digits and start with 0", 'error');
+
             return;
         }
 
@@ -153,6 +158,7 @@ const EditStudent = () => {
                     lastName: selectedStudent.lastName,
                     email: selectedStudent.email,
                     contactNumber: selectedStudent.contactNumber,
+                    lrn: selectedStudent.lrn,
                     gradeLevel: parseInt(selectedStudent.gradeLevel),
                     track: selectedStudent.track,
                     strand: selectedStudent.strand,
@@ -211,7 +217,12 @@ const EditStudent = () => {
                                             type="text" 
                                             className="form-control text-capitalize"
                                             value={selectedStudent?.firstName || ''}
-                                            onChange={(e) => setSelectedStudent({...selectedStudent, firstName: e.target.value})}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                // Only allow letters and spaces
+                                                const cleaned = value.replace(/[^a-zA-Z\s]/g, '');
+                                                setSelectedStudent({...selectedStudent, firstName: cleaned});
+                                            }}
                                         />
                                     </div>
                                     <div className="col-md-4">
@@ -220,7 +231,12 @@ const EditStudent = () => {
                                             type="text" 
                                             className="form-control text-capitalize"
                                             value={selectedStudent?.middleName || ''}
-                                            onChange={(e) => setSelectedStudent({...selectedStudent, middleName: e.target.value})}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                // Only allow letters and spaces
+                                                const cleaned = value.replace(/[^a-zA-Z\s]/g, '');
+                                                setSelectedStudent({...selectedStudent, middleName: cleaned});
+                                            }}
                                         />
                                     </div>
                                     <div className="col-md-4">
@@ -229,14 +245,55 @@ const EditStudent = () => {
                                             type="text" 
                                             className="form-control text-capitalize"
                                             value={selectedStudent?.lastName || ''}
-                                            onChange={(e) => setSelectedStudent({...selectedStudent, lastName: e.target.value})}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                // Only allow letters and spaces
+                                                const cleaned = value.replace(/[^a-zA-Z\s]/g, '');
+                                                setSelectedStudent({...selectedStudent, lastName: cleaned});
+                                            }}
                                         />
                                     </div>
                                 </div>
-
                                 {/* Contact Fields */}
-                                <div className="row mb-3">
-                                    <div className="col-md-6">
+                                <div className="row mb-4">
+                                      <div className="col-md-4">
+                                        <label className="form-label text-capitalize fw-bold">
+                                            LRN (Learner Reference Number)
+                                            {selectedStudent?.lrn === 'N/A' && (
+                                                <span className="badge bg-warning text-dark ms-2">Not Set</span>
+                                            )}
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            className="form-control"
+                                            placeholder="Enter 12-digit LRN"
+                                            value={selectedStudent?.lrn === 'N/A' ? '' : (selectedStudent?.lrn || '')}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                // Only allow numbers
+                                                let cleaned = value.replace(/\D/g, '');
+                                                
+                                                // Limit to 12 digits
+                                                cleaned = cleaned.substring(0, 12);
+                                                
+                                                setSelectedStudent({...selectedStudent, lrn: cleaned});
+                                            }}
+                                            maxLength={12}
+                                        />
+                                        <small className="text-muted d-block mt-1">
+                                            <i className="fa fa-info-circle me-1"></i>
+                                            Must be exactly 12 digits. Required for enrollment.
+                                        </small>
+                                        {selectedStudent?.lrn && selectedStudent.lrn !== 'N/A' && selectedStudent.lrn.length < 12 && (
+                                            <small className="text-danger d-block mt-1">
+                                                <i className="fa fa-exclamation-circle me-1"></i>
+                                                LRN must be 12 digits (currently {selectedStudent.lrn.length})
+                                            </small>
+                                        )}
+                                    </div>
+
+
+                                    <div className="col-md-4">
                                         <label className="form-label text-capitalize fw-bold">Email</label>
                                         <input 
                                             type="email" 
@@ -245,7 +302,7 @@ const EditStudent = () => {
                                             onChange={(e) => setSelectedStudent({...selectedStudent, email: e.target.value})}
                                         />
                                     </div>
-                                    <div className="col-md-6">
+                                    <div className="col-md-4">
                                         <label className="form-label text-capitalize fw-bold">Contact Number</label>
                                         <input 
                                             type="text" 
@@ -278,6 +335,8 @@ const EditStudent = () => {
                                         />
                                     </div>
                                 </div>
+
+
 
                                 {/* Academic Fields */}
                                 <div className="row mb-3">
@@ -344,6 +403,7 @@ const EditStudent = () => {
                                                 </span>
                                             )}
                                         </label>
+                                        
                                         <select 
                                             className="form-select"
                                             value={selectedStudent?.section || ''}
@@ -362,6 +422,7 @@ const EditStudent = () => {
                                                 </option>
                                             ))}
                                         </select>
+                                        
                                         {(!selectedStudent?.gradeLevel || !selectedStudent?.strand) && (
                                             <small className="text-muted d-block mt-1">
                                                 <i className="fa fa-info-circle me-1"></i>

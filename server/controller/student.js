@@ -146,6 +146,7 @@ export const updateStudent = async (req, res) => {
         const studentId = req.params.id;
         const { 
             firstName, middleName, lastName, email, contactNumber,
+            lrn, 
             gradeLevel, track, strand, semester, section, status, studentType,
             repeatedSubjects
         } = req.body;
@@ -155,6 +156,56 @@ export const updateStudent = async (req, res) => {
         if (!currentStudent) {
             return res.status(404).json({ message: "Student not found." });
         }
+
+
+
+        if (lrn !== undefined && lrn !== null) {
+            // If LRN is being updated, validate format
+            const cleanedLRN = String(lrn).trim();
+            
+            // Check if it's not empty and not "N/A"
+            if (cleanedLRN !== '' && cleanedLRN.toUpperCase() !== 'N/A') {
+                // Must be exactly 12 digits
+                const digitsOnly = cleanedLRN.replace(/\D/g, '');
+                if (digitsOnly.length !== 12) {
+                    return res.status(400).json({ 
+                        message: "LRN must be exactly 12 digits." 
+                    });
+                }
+                // Additional check: must contain only numbers
+                if (cleanedLRN !== digitsOnly) {
+                    return res.status(400).json({ 
+                        message: "LRN must contain only numbers." 
+                    });
+                }
+            }
+        }
+
+
+        // Use incoming LRN if provided, otherwise use current student's LRN
+        const lrnToCheck = lrn !== undefined ? lrn : currentStudent.lrn;
+        const hasValidLRN = lrnToCheck && 
+                           String(lrnToCheck).trim() !== '' && 
+                           String(lrnToCheck).trim().toUpperCase() !== 'N/A';
+        
+
+        if (!hasValidLRN) {
+            // If trying to assign a section
+            if (section && section.trim() !== '') {
+                return res.status(400).json({ 
+                    message: "Cannot assign section. Student must have a valid LRN first." 
+                });
+            }
+            
+            // If trying to change status to enrolled
+            if (status === 'enrolled') {
+                return res.status(400).json({ 
+                    message: "Cannot enroll student. Student must have a valid LRN first." 
+                });
+            }
+        }
+
+
 
         // 🔥 Check if any critical field changed
         const studentTypeChanged = currentStudent.studentType !== studentType;
@@ -178,6 +229,7 @@ export const updateStudent = async (req, res) => {
                     lastName,
                     email,
                     contactNumber,
+                    lrn,
                     gradeLevel,
                     track,
                     strand
@@ -338,6 +390,9 @@ export const updateStudent = async (req, res) => {
             });
         }
 
+
+
+
         // ========================================
         // 🔥 REPEATER STUDENT UNENROLLED PROCESS
         // ========================================
@@ -426,6 +481,9 @@ export const updateStudent = async (req, res) => {
                 student: updatedStudent
             });
         }
+
+
+
 
         // ========================================
         // 🔥 REGULAR STUDENT PROCESS
@@ -570,6 +628,8 @@ export const getStudents = async (req, res) => {
 };
 
 
+
+
 export const deleteStudent = async(req, res) => {
     try {
         const studentId = req.params.id;
@@ -591,6 +651,8 @@ export const deleteStudent = async(req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
+
 
 
 
@@ -655,6 +717,7 @@ export const getAssignSections = async (req, res) => {
         });
     }
 };
+
 
 
 
