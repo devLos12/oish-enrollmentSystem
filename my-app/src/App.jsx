@@ -49,7 +49,7 @@ const App = () => {
   },[]);
 
 
-  if(authLoading) return <p></p>
+  if(authLoading) return <p>......LOADING</p>
 
 
   const getRedirectPath = () => {
