@@ -179,7 +179,7 @@ export const updateStudent = async (req, res) => {
             }
         }
 
-        
+
 
         // Use incoming LRN if provided, otherwise use current student's LRN
         const lrnToCheck = lrn !== undefined ? lrn : currentStudent.lrn;
@@ -203,10 +203,6 @@ export const updateStudent = async (req, res) => {
                 });
             }
         }
-
-
-        return;
-
 
 
         // 🔥 Check if any critical field changed
