@@ -139,8 +139,6 @@ export const createStudent = async (req, res) => {
 
 
 
-
-
 export const updateStudent = async (req, res) => {
     try {
         const studentId = req.params.id;
@@ -166,7 +164,7 @@ export const updateStudent = async (req, res) => {
             if (cleanedLRN !== '' && cleanedLRN.toUpperCase() !== 'N/A') {
                 // Must be exactly 12 digits
                 const digitsOnly = cleanedLRN.replace(/\D/g, '');
-                
+
                 if (digitsOnly.length !== 12) {
                     return res.status(400).json({ 
                         message: "LRN must be exactly 12 digits." 
@@ -181,6 +179,7 @@ export const updateStudent = async (req, res) => {
             }
         }
 
+        
 
         // Use incoming LRN if provided, otherwise use current student's LRN
         const lrnToCheck = lrn !== undefined ? lrn : currentStudent.lrn;
