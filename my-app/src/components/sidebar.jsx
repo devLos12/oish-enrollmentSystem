@@ -5,7 +5,10 @@ import image from "../assets/image/logo.png";
 
 const SideBar = () => {
 
-    const { role, setModal, setOpenmenu, textHeader, setIsLoggingOut } = useContext(globalContext);
+    const { role, setModal, setOpenmenu, textHeader, setIsLoggingOut,
+        pendingApplicantsCount, setPendingApplicantsCount,
+        pendingStudentsCount, setPendingStudentsCount,
+     } = useContext(globalContext);
     const navigate = useNavigate();
     const location = useLocation();
     
@@ -80,7 +83,7 @@ const SideBar = () => {
             //         }
             //     ]
             // },
-            { "label": "Student Management",   "icon": "fa-solid fa-user-graduate", 
+            { "label": "Students",   "icon": "fa-solid fa-user-graduate", 
 
                 link: "/admin/student_management", title: "student management"
             },
@@ -168,6 +171,12 @@ const SideBar = () => {
     const navLinks = data[role] || [];
 
     const handleNavClick = (item) => {
+
+        if(item.label === "Students"){
+            setPendingStudentsCount(0);
+        }
+        
+
         if (item.hasDropdown) {
             // Toggle dropdown
             setIsAccessCodeOpen(!isAccessCodeOpen);
@@ -175,6 +184,8 @@ const SideBar = () => {
             // Normal navigation
             navigate(item.link, { state: { title: item.title }});
             setOpenmenu(false);
+
+
         }
     }
 
@@ -216,43 +227,36 @@ const SideBar = () => {
                         <div className="col">
                             <p className="m-0 text-capitalize  small">{data.label}</p>
                         </div>
-                        
-                        {/* Dropdown arrow pag may subItems */}
-                        {/* {data.hasDropdown && (
-                            <div className="col-auto">
-                                <i className={`fa-solid fa-chevron-${isAccessCodeOpen ? 'up' : 'down'} text-white small`}></i>
-                            </div>
-                        )} */}
-                    </div>
 
-                    {/* Dropdown SubItems - lalabas pag naka-open */}
-                    {/* {data.hasDropdown && isAccessCodeOpen && (
-                        <div className="px-3 ">
-                            {data.subItems.map((subItem, j) => (
-                                <div 
-                                    key={j}
-                                    className="row mt-1 p-2 rounded-3 cursor align-items-center "
-                                    style={{
-                                        backgroundColor: location.pathname === subItem.link 
-                                            ? 'rgba(255,255,255,0.2)' 
-                                            : 'transparent'
-                                    }}
-                                    onClick={() => navigate(subItem.link, { state: { title: subItem.title }})}
+                        {/* ✅ NOTIFICATION BADGE - Show only for applicants */}
+                        {data.label === "applicants" && pendingApplicantsCount > 0 && (
+                            <div className="col-auto">
+                                <span className={`badge  
+                                ${textHeader === data.title ? "bg-danger text-white" 
+                                : "bg-white text-danger"}
+                                rounded-circle d-flex align-items-center justify-content-center `}
+                                style={{width: "25px", height: "25px"}}
                                 >
-                                    <div className="col-1">
-                                        <i className={`${subItem.icon} text-white`} 
-                                        style={{fontSize: '12px'}}></i>
-                                    </div>
-                                    <div className="col">
-                                        <p className="m-0 text-capitalize text-white" 
-                                        style={{fontSize: '12px'}}>
-                                            {subItem.label}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )} */}
+                                    {pendingApplicantsCount}
+                                </span>
+                            </div>
+                        )}
+
+                        {data.label === "Students" && pendingStudentsCount > 0 && (
+                            <div className="col-auto">
+                                <span className={`badge  
+                                ${textHeader === data.title ? "bg-danger text-white" 
+                                : "bg-white text-danger"}
+                                rounded-circle d-flex align-items-center justify-content-center `}
+                                style={{width: "25px", height: "25px"}}
+                                >
+                                    {pendingStudentsCount}
+                                </span>
+                            </div>
+                        )}
+                        
+                    
+                    </div>
                 </div>
             ))}
 

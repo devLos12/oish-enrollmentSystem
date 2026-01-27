@@ -54,7 +54,59 @@ export const MyGlobalContext = ( { children }) => {
         const [studentList, setStudentList] = useState([]);
         const [openMenu, setOpenmenu] = useState(false);
         
-    
+        const [pendingApplicantsCount, setPendingApplicantsCount] = useState(0);
+        const [pendingStudentsCount, setPendingStudentsCount] = useState(0);
+
+        
+
+     
+
+
+
+
+
+
+        const fetchPendingApplicantsCount = async () => {
+
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getApplicants`, {
+                    method: "GET",
+                    credentials: "include"
+                });
+
+                const data = await res.json();
+                if(!res.ok) return;
+
+                // Count pending only
+                const pendingCount = data.filter(app => app.status === 'pending').length;
+                setPendingApplicantsCount(pendingCount);
+                
+            } catch (error) {
+                console.error("Error fetching pending count:", error.message);
+                setPendingApplicantsCount(0);
+            }
+        };
+
+
+        const fetchPendingStudentsCount = async () => {
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getStudents`, {
+                    method: "GET",
+                    credentials: "include"
+                });
+
+                const data = await res.json();
+                if(!res.ok) return;
+
+                // Count pending only
+                const pendingCount = data.filter(student => student.status === 'pending').length;
+                setPendingStudentsCount(pendingCount);
+            } catch (error) {
+                console.error("Error fetching pending students count:", error.message);
+                setPendingStudentsCount(0);
+            }
+        };
+
     return (
 
         <globalContext.Provider value={{
@@ -70,7 +122,11 @@ export const MyGlobalContext = ( { children }) => {
             formData, setFormData,
             trigger, setTrigger,
             studentList, setStudentList,
-            openMenu, setOpenmenu
+            openMenu, setOpenmenu,
+            pendingApplicantsCount, setPendingApplicantsCount,
+            pendingStudentsCount, setPendingStudentsCount,
+            fetchPendingApplicantsCount,
+            fetchPendingStudentsCount
         }}>
             {children}
         </globalContext.Provider>

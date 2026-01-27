@@ -2,13 +2,15 @@ import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 import html2pdf from "html2pdf.js";
-
+import { io } from "socket.io-client";
 
 
 
 
 const StudentManagement = () => {
-    const { role, setTextHeader, studentList, setStudentList } = useContext(globalContext);
+    const { role, setTextHeader, studentList, setStudentList, 
+        fetchPendingStudentsCount
+    } = useContext(globalContext);
     const [filteredStudents, setFilteredStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterGrade, setFilterGrade] = useState('');
@@ -360,7 +362,21 @@ const StudentManagement = () => {
 
 
 
+    useEffect(() => {
+        // Setup socket connection
+        const socket = io(import.meta.env.VITE_API_URL, {
+            withCredentials: true
+        });
 
+        socket.on('new-approve', (data) => {
+            fetchStudentsData();
+        });
+
+        // Cleanup on unmount
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
 
 
@@ -426,6 +442,8 @@ const StudentManagement = () => {
         setShowAlertModal(true);
     };
 
+   
+
     const fetchStudentsData = async () => {
         try {
             setLoading(true);
@@ -437,6 +455,7 @@ const StudentManagement = () => {
             if (!res.ok) throw new Error(data.message);
             setStudentList(data);
             setFilteredStudents(data);
+
         } catch (error) {
             console.error("Error fetching students:", error.message);
             showAlert("Failed to load students data", 'error');
@@ -444,6 +463,11 @@ const StudentManagement = () => {
             setLoading(false);
         }
     };
+
+
+ 
+
+
 
     const handleViewStudent = (student) => {
         setOpenDropdown(null);
@@ -465,6 +489,7 @@ const StudentManagement = () => {
         setSelectedStudent(student);
         setModalType('delete');
         setShowModal(true);
+
     };
 
     const handleMarkAsGraduated = (student) => {
@@ -476,7 +501,7 @@ const StudentManagement = () => {
 
 
 
-
+    
     const confirmDelete = async () => {
         try {
             setIsDeleting(true);
@@ -490,6 +515,9 @@ const StudentManagement = () => {
             setShowModal(false);
             showAlert("Student deleted successfully!", 'success');
             fetchStudentsData();
+
+
+            fetchPendingStudentsCount();
         } catch (error) {
             console.error("Error deleting student:", error.message);
             showAlert("Failed to delete student", 'error');
@@ -598,7 +626,6 @@ const StudentManagement = () => {
     const handleAddSubmit = async (e) => {
         e.preventDefault();
 
-        
 
         // ✅ Validate LRN length
         if (addFormData.lrn.length !== 12) {
@@ -825,7 +852,6 @@ const StudentManagement = () => {
 
 
 
-
     // 🔄 REFRESH BOTH TABLES
     const handleRefreshAll = async () => {
         // Close all modals
@@ -973,7 +999,6 @@ const StudentManagement = () => {
 
 
 
-
     const renderEmailHistoryPagination = () => {
         const pages = [];
         const maxVisiblePages = 5;
@@ -1054,9 +1079,6 @@ const StudentManagement = () => {
 
         return pages;
     };
-
-
-
 
 
 
@@ -1923,24 +1945,7 @@ const StudentManagement = () => {
                                     <div className="row">
                                         {/* Left Column */}
                                         <div className="col-md-6">
-                                            {/* LRN */}
-                                            <div className="mb-3">
-                                                <div className="d-flex align-items-center gap-1 mb-2">
-                                                    <i className="fa fa-id-card text-muted"></i>
-                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
-                                                        LRN: <span className="text-danger">*</span>
-                                                    </label>
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Enter LRN"
-                                                    className="form-control shadow-sm"
-                                                    name="lrn"
-                                                    value={addFormData.lrn}
-                                                    onChange={handleAddFormChange}
-                                                    required
-                                                />
-                                            </div>
+                                        
 
                                             {/* First Name */}
                                             <div className="mb-3">
@@ -2019,6 +2024,25 @@ const StudentManagement = () => {
                                                     <option value="III">III</option>
                                                     <option value="IV">IV</option>
                                                 </select>
+                                            </div>
+
+                                                {/* LRN */}
+                                            <div className="mb-3">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-id-card text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">
+                                                        LRN: <span className="text-danger">*</span>
+                                                    </label>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter LRN"
+                                                    className="form-control shadow-sm"
+                                                    name="lrn"
+                                                    value={addFormData.lrn}
+                                                    onChange={handleAddFormChange}
+                                                    required
+                                                />
                                             </div>
                                         </div>
 

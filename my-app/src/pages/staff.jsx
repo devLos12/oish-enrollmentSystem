@@ -22,16 +22,44 @@ import EnrollmentFormPDF from "../components/printView.jsx";
 import ClassRoom from "../components/teacher/classroom.jsx";
 import Students from "../components/teacher/students.jsx";
 import TeacherScheduleTable from "../components/teacher/schedule.jsx";
-
+import { io } from "socket.io-client";
 
 
 
 
 const Staff =  () => {
-     const { profile, trigger, setProfile, setRole, modal, setModal, setStaffAuth, setIsLoggingOut
-
+     const { profile, trigger, setProfile, setRole, modal, setModal, setStaffAuth, setIsLoggingOut,
+        fetchPendingApplicantsCount
     } = useContext(globalContext);
     const navigate = useNavigate();
+
+
+
+
+    
+    useEffect(() => {
+        // Load count on mount
+        fetchPendingApplicantsCount();
+
+        // Setup socket connection
+        const socket = io(import.meta.env.VITE_API_URL, {
+            withCredentials: true
+        });
+
+        // Listen for new enrollments
+        socket.on('new-enrollment', (data) => {
+            // Update count real-time
+            fetchPendingApplicantsCount();
+        });
+
+        // Cleanup on unmount
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
+
+
+
 
 
      //fetch profile
@@ -52,6 +80,8 @@ const Staff =  () => {
             console.log("Error: ", error.message);
         });
     },[trigger]);
+
+
 
 
 

@@ -6,7 +6,7 @@ import imageCompression from 'browser-image-compression';
 
 const ProgressStepper = ({ currentStep }) => {
     const steps = [
-        { number: 1, label: 'Learner\nInformation' },
+        { number: 1, label: 'Student\nInformation' },
         { number: 2, label: 'Address & Parents' },
         { number: 3, label: 'Documents &\nCertification' }
     ];
@@ -185,13 +185,13 @@ export const Step1 = () => {
     ];
 
     const learnerFields = [
+        { label: 'First Name', name: 'firstName', type: 'text' },
+        { label: 'Middle Name', name: 'middleName', type: 'text' },
+        { label: 'Last Name', name: 'lastName', type: 'text' },
+        { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: '', optional: true },
         { label: 'Email Address', name: 'email', type: 'email' },
         { label: 'PSA Birth Certificate No. (if available upon registration)', name: 'psaNo', type: 'text', note: '', optional: true },
         { label: 'Learner Reference No.', name: 'lrn', type: 'text', conditionalDisable: 'withLRN' },  // ✅ Added flag
-        { label: 'Last Name', name: 'lastName', type: 'text' },
-        { label: 'First Name', name: 'firstName', type: 'text' },
-        { label: 'Middle Name', name: 'middleName', type: 'text' },
-        { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: '', optional: true }
     ];
 
 
@@ -314,11 +314,13 @@ export const Step1 = () => {
 
 
     // ✅ Helper function to remove numbers from text
-    const removeNumbers = (value) => {
-        return value.replace(/[0-9]/g, '');
+    const removeNumbersAndSpecialChars = (value) => {
+        // Allow: letters (a-z, A-Z), spaces, periods, hyphens, apostrophes only
+        // Good for names like "De La Cruz", "O'Brien", "Santos Jr."
+        return value.replace(/[^a-zA-Z\s\-']/g, '');
     };
 
-
+    
     const handleChange = (e, path) => {
         const { name, value } = e.target;
         
@@ -502,11 +504,11 @@ export const Step1 = () => {
 
 
             } else {
-                // ✅ Fields that should not contain numbers
+                // ✅ Fields that should not contain numbers and special characters
                 const textOnlyFields = ['lastName', 'firstName', 'middleName', 'placeOfBirth', 'motherTongue'];
                 
                 const finalValue = textOnlyFields.includes(fieldName) 
-                    ? removeNumbers(value) 
+                    ? removeNumbersAndSpecialChars(value)  // ✅ NEW
                     : value;
                 
                 setFormData(prev => ({
@@ -518,8 +520,26 @@ export const Step1 = () => {
                 }));
             }
         } else {
+
             // For top-level fields like schoolYear, gradeLevelToEnroll, etc.
-            setFormData(prev => ({ ...prev, [name]: value }));
+
+
+            // ✅ If "With LRN?" is set to "No", clear the LRN value
+            if (name === 'withLRN' && value === 'No') {
+                setFormData(prev => ({ 
+                    ...prev, 
+                    [name]: value,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        lrn: ''  // ✅ Clear LRN when "No" is selected
+                    }
+                }));
+                setLrnError('');  // ✅ Also clear any LRN error
+            } else {
+                setFormData(prev => ({ ...prev, [name]: value }));
+            }
+
+
         }
 
         setHasChanges(true);
@@ -1105,38 +1125,7 @@ export const Step1 = () => {
 
 
                     <div className="p-0 p-md-4">
-                        {/* School Year & Grade Level Section */}
-                        <div className="card border-0 mb-4">
-                            <div className="card-body">
-                                <div className="row">
-                                    <div className="col-md-6">
-                                        {headerFields.map(field => renderTextField(field, false))}
-                                        
-                                        {/* Grade Level Dropdown */}
-                                        <div className="mb-3">
-                                            <label className="form-label fw-semibold">Grade level to Enroll:</label>
-                                            <select
-                                                name="gradeLevelToEnroll"
-                                                value={formData.gradeLevelToEnroll || ''}
-                                                onChange={handleChange}
-                                                className="form-select"
-                                                disabled={viewOnly}
-                                            >
-                                                <option value="">Select Grade Level</option>
-                                                {gradeLevelOptions.map(option => (
-                                                    <option key={option} value={option}>{option}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="col-md-6 border-start">
-                                        <p className="mb-3">Check the appropriate circle only</p>
-                                        {radioGroups.map(group => renderRadioGroup(group))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    
 
                         {/* Main Form Grid */}
                         <div className="row">
@@ -1144,7 +1133,7 @@ export const Step1 = () => {
                             <div className="col-md-6">
                                 <div className="card border-0 h-100">
                                     <div className="card-body">
-                                        <h2 className="h5 fw-bold mb-4">LEARNER INFORMATION</h2>
+                                        <h2 className="h5 fw-bold mb-4">STUDENT INFORMATION</h2>
                                         {learnerFields.map(field => renderTextField(field, true))}
                                     </div>
                                 </div>
@@ -1194,6 +1183,39 @@ export const Step1 = () => {
 
                                         {/* Conditional Sections */}
                                         {conditionalSections.map(section => renderConditionalSection(section))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                            {/* School Year & Grade Level Section */}
+                        <div className="card border-0 mt-4">
+                            <div className="card-body">
+                                <div className="row">
+                                    <div className="col-md-6">
+                                        {headerFields.map(field => renderTextField(field, false))}
+                                        
+                                        {/* Grade Level Dropdown */}
+                                        <div className="mb-3">
+                                            <label className="form-label fw-semibold">Grade level to Enroll:</label>
+                                            <select
+                                                name="gradeLevelToEnroll"
+                                                value={formData.gradeLevelToEnroll || ''}
+                                                onChange={handleChange}
+                                                className="form-select"
+                                                disabled={viewOnly}
+                                            >
+                                                <option value="">Select Grade Level</option>
+                                                {gradeLevelOptions.map(option => (
+                                                    <option key={option} value={option}>{option}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="col-md-6 border-start">
+                                        <p className="mb-3">Check the appropriate circle only</p>
+                                        {radioGroups.map(group => renderRadioGroup(group))}
                                     </div>
                                 </div>
                             </div>
@@ -2408,7 +2430,7 @@ export const Step2 = () => {
             const textOnlyFields = ['lastName', 'firstName', 'middleName'];
             
             const finalValue = textOnlyFields.includes(name) 
-                ? removeNumbers(value) 
+                ? removeNumbersAndSpecialChars(value)
                 : value;
             
             setFormData(prev => ({
@@ -2624,11 +2646,11 @@ export const Step2 = () => {
     };
 
 
-    // ✅ Helper function to remove numbers from text
-    const removeNumbers = (value) => {
-        return value.replace(/[0-9]/g, '');
+    const removeNumbersAndSpecialChars = (value) => {
+        // Allow: letters (a-z, A-Z), spaces, hyphens, apostrophes only
+        // NO dots/periods, NO special chars
+        return value.replace(/[^a-zA-Z\s\-']/g, '');
     };
-
 
     return (
         <div className="container bg-light d-flex">
@@ -2642,6 +2664,42 @@ export const Step2 = () => {
                     )}
 
                     <div className="p-0 p-md-4">
+
+                        {/* Parent/Guardian Information */}
+                        <div className="card border-0 mb-4">
+                            <div className="card-body">
+                                <h2 className="h5 fw-bold mb-4">PARENT/GUARDIAN INFORMATION</h2>
+                                
+                                <FormSection
+                                    title="Father's Information"
+                                    fields={FORM_FIELDS.parentInfo}
+                                    values={formData.parentGuardianInfo?.father}
+                                    onChange={handleParentGuardianChange}
+                                    disabled={viewOnly}
+                                    parentType="father"
+                                />
+
+                                <FormSection
+                                    title="Mother's Information"
+                                    fields={FORM_FIELDS.parentInfo}
+                                    values={formData.parentGuardianInfo?.mother}
+                                    onChange={handleParentGuardianChange}
+                                    disabled={viewOnly}
+                                    parentType="mother"
+                                />
+
+                                <FormSection
+                                    title="Guardian's Information (Required)"
+                                    fields={FORM_FIELDS.parentInfo}
+                                    values={formData.parentGuardianInfo?.guardian}
+                                    onChange={handleParentGuardianChange}
+                                    disabled={viewOnly}
+                                    parentType="guardian"
+                                />
+                            </div>
+                        </div>
+
+
                         {/* Address Section */}
                         <div className="row mb-4">
                             {/* Current Address */}
@@ -2756,40 +2814,6 @@ export const Step2 = () => {
                                         />
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Parent/Guardian Information */}
-                        <div className="card border-0 mb-4">
-                            <div className="card-body">
-                                <h2 className="h5 fw-bold mb-4">PARENT/GUARDIAN INFORMATION</h2>
-                                
-                                <FormSection
-                                    title="Father's Information"
-                                    fields={FORM_FIELDS.parentInfo}
-                                    values={formData.parentGuardianInfo?.father}
-                                    onChange={handleParentGuardianChange}
-                                    disabled={viewOnly}
-                                    parentType="father"
-                                />
-
-                                <FormSection
-                                    title="Mother's Information"
-                                    fields={FORM_FIELDS.parentInfo}
-                                    values={formData.parentGuardianInfo?.mother}
-                                    onChange={handleParentGuardianChange}
-                                    disabled={viewOnly}
-                                    parentType="mother"
-                                />
-
-                                <FormSection
-                                    title="Guardian's Information (Required)"
-                                    fields={FORM_FIELDS.parentInfo}
-                                    values={formData.parentGuardianInfo?.guardian}
-                                    onChange={handleParentGuardianChange}
-                                    disabled={viewOnly}
-                                    parentType="guardian"
-                                />
                             </div>
                         </div>
 

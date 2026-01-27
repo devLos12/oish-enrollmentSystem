@@ -9,6 +9,7 @@ import nodemailer from "nodemailer";
 import { error } from "console";
 import { Resend } from 'resend';
 import cloudinary from "../config/cloudinary.js";
+import { isObjectIdOrHexString } from "mongoose";
 
 
 
@@ -30,7 +31,6 @@ const uploadToCloudinary = (fileBuffer, originalname, folder) => {
     uploadStream.end(fileBuffer);
   });
 };
-
 
 
 
@@ -524,8 +524,6 @@ export const GetAllEnrollments = async(req, res) => {
 }
 
 
-
-
 // Multer storage configuration
 const storage = multer.memoryStorage();
 
@@ -674,7 +672,6 @@ export const EnrollmentRegistration = async (req, res) => {
         }
 
       }
-
 
       // ✅ VALIDATION: LRN is required if "With LRN?" is "Yes"
       if (req.body.withLRN === 'Yes' && (!learnerInfo.lrn || learnerInfo.lrn.trim() === '')) {
@@ -834,6 +831,23 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
+      // ✅ VALIDATION: Current Address Contact Number Format
+      if (address.current?.contactNumber) {
+        const cleanedNumber = address.current.contactNumber.replace(/\s/g, '');
+        
+        if (!/^\d{11}$/.test(cleanedNumber)) {
+          return res.status(400).json({ 
+            message: 'Current Address: Contact Number must be exactly 11 digits' 
+          });
+        }
+        
+        if (!cleanedNumber.startsWith('09')) {
+          return res.status(400).json({ 
+            message: 'Current Address: Contact Number must start with 09' 
+          });
+        }
+      }
+
       // ✅ VALIDATION: Permanent Address (if NOT same as current)
       if (!address.permanent?.sameAsCurrent) {
         const requiredPermFields = [
@@ -851,6 +865,7 @@ export const EnrollmentRegistration = async (req, res) => {
           }
         }
       }
+      
 
       // ✅ VALIDATION: Guardian is REQUIRED (Father & Mother are OPTIONAL)
       const requiredGuardianFields = [
@@ -858,17 +873,42 @@ export const EnrollmentRegistration = async (req, res) => {
         { field: 'firstName', message: 'Guardian First Name is required' }
       ];
 
-
-
       for (const { field, message } of requiredGuardianFields) {
         if (!parentGuardianInfo.guardian?.[field] || parentGuardianInfo.guardian[field].trim() === '') {
           return res.status(400).json({ message });
         }
       }
 
+      // ✅ VALIDATION: Parent/Guardian Contact Numbers (if provided)
+      const parentsToValidate = ['father', 'mother', 'guardian'];
+
+      for (const parentType of parentsToValidate) {
+        const contactNumber = parentGuardianInfo[parentType]?.contactNumber;
+        
+        // Skip if empty (will be set to N/A later for optional fields)
+        if (!contactNumber || contactNumber.trim() === '') {
+          continue;
+        }
+        
+        const cleanedNumber = contactNumber.replace(/\s/g, '');
+        
+        if (!/^\d{11}$/.test(cleanedNumber)) {
+          const parentName = parentType.charAt(0).toUpperCase() + parentType.slice(1);
+          return res.status(400).json({ 
+            message: `${parentName}: Contact Number must be exactly 11 digits` 
+          });
+        }
+        
+        if (!cleanedNumber.startsWith('09')) {
+          const parentName = parentType.charAt(0).toUpperCase() + parentType.slice(1);
+          return res.status(400).json({ 
+            message: `${parentName}: Contact Number must start with 09` 
+          });
+        }
+      }
+
       // ✅ VALIDATION: School History (ONLY if returningLearner is checked)
       if (schoolHistory.returningLearner) {
-        // Must select either transferee or returnee
         if (!req.body.studentType || (req.body.studentType !== 'transferee' && req.body.studentType !== 'returnee')) {
           return res.status(400).json({ message: 'Please select either Transferee or Returning Learner' });
         }
@@ -900,6 +940,7 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
+      // ✅ Set N/A for empty houseNo (ONCE only)
       if (!address.current.houseNo || address.current.houseNo.trim() === '') {
         address.current.houseNo = 'N/A';
       }
@@ -910,18 +951,7 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
-
-      if (!address.current.houseNo || address.current.houseNo.trim() === '') {
-        address.current.houseNo = 'N/A';
-      }
-
-      if (!address.permanent?.sameAsCurrent) {
-        if (!address.permanent.houseNo || address.permanent.houseNo.trim() === '') {
-          address.permanent.houseNo = 'N/A';
-        }
-      }
-
-      // ✅ Set N/A for Father's empty fields
+      // ✅ Set N/A for Father's & Mother's empty fields
       const parentTypes = ['father', 'mother'];
       const parentFields = ['lastName', 'firstName', 'middleName', 'contactNumber'];
 
@@ -936,7 +966,6 @@ export const EnrollmentRegistration = async (req, res) => {
           }
         });
       });
-
 
       // ✅ Set N/A for Guardian's OPTIONAL fields (middleName, contactNumber)
       const guardianOptionalFields = ['middleName', 'contactNumber'];
@@ -986,9 +1015,10 @@ export const EnrollmentRegistration = async (req, res) => {
         success: true,
         message: "Step 2 saved successfully",
         step2: true,
-        
       });
     }
+
+
 
     // ==========================================
     // STEP 3: UPLOAD DOCUMENTS & FINALIZE
@@ -997,6 +1027,8 @@ export const EnrollmentRegistration = async (req, res) => {
       if (!enrollmentId) {
         return res.status(400).json({ message: "Enrollment ID is required" });
       }
+
+
 
       // ✅ Additional validation - check file types
       const uploadedFiles = req.files;
@@ -1116,6 +1148,7 @@ export const EnrollmentRegistration = async (req, res) => {
         { new: true }
       );
 
+      io.emit("new-enrollment", { message: "hello world" });
 
       return res.status(200).json({
         success: true,
@@ -1635,16 +1668,12 @@ export const ApplicantApproval = async (req, res) => {
       }
     }
 
-    console.log(isValidLRN);
-    
 
-
-
-    
     // Default password setup
     const defaultPass = Math.random().toString(36).slice(-6);
     const salt = await bcrypt.genSalt(10);
     const hashedPass = await bcrypt.hash(defaultPass, salt);
+
 
 
     await Student.create({
@@ -1669,12 +1698,15 @@ export const ApplicantApproval = async (req, res) => {
 
     applicant.status = "approved",
     await applicant.save();
-        
     
-    sendStudentAccount(applicant.learnerInfo.email, studentNumber, defaultPass)
-    .catch(err => console.log("Email sending failed: ", err))
+
+    const studentName = `${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.lastName}`;
+
+    sendStudentAccount(applicant.learnerInfo.email, studentNumber, defaultPass, studentName)
+    .catch(err => console.log("Email sending failed: ", err));
 
     
+    io.emit("new-approve", { message: "new approve applicant."});
     res.status(200).json({ message: "Applicant approved successfully"});
 
   } catch (error) {

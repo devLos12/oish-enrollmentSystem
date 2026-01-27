@@ -211,7 +211,7 @@ const RegistrationViewForm = () => {
                             <div className="col-md-6 text-center">
                                 <div className="">
                                     <strong className="text-capitalize">
-                                        {student?.lastName || ''}, {student?.firstName || ''} {student?.middleName ? student.middleName.charAt(0) + '.' : ''}
+                                        {student?.lastName || ''}, {student?.firstName || ''} {student?.middleName } {student?.extensionName === "N/A" || student?.extensionName === "n/a" ? "" : student?.extensionName}
                                     </strong>
                                 </div>
                                 <div className="border-top border-dark d-inline-block px-5"

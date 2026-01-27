@@ -390,7 +390,6 @@ export const updateStudent = async (req, res) => {
 
 
 
-
         // ========================================
         // 🔥 REPEATER STUDENT UNENROLLED PROCESS
         // ========================================
@@ -479,8 +478,6 @@ export const updateStudent = async (req, res) => {
                 student: updatedStudent
             });
         }
-
-
 
 
         // ========================================

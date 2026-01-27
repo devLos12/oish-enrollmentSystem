@@ -1,9 +1,20 @@
 import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
+import { io } from "socket.io-client"; 
+
+
+
+
+
+
+
+
 
 const Applicants = () => {
-    const { setTextHeader, role } = useContext(globalContext);
+    const { setTextHeader, role, 
+        fetchPendingApplicantsCount
+     } = useContext(globalContext);
     const location = useLocation();
     
     const [applicants, setApplicants] = useState([]);
@@ -43,6 +54,26 @@ const Applicants = () => {
 
 
 
+    useEffect(() => {
+        // Connect to Socket.IO server
+        const socket = io(import.meta.env.VITE_API_URL, {
+            withCredentials: true
+        });
+
+        // Listen for new enrollment event
+        socket.on('new-enrollment', (data) => {
+            console.log('📩 New enrollment received:', data.message);
+            // ✅ Auto-refresh applicants list
+            getAllApplicants();
+        });
+
+        // Cleanup on component unmount
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
+
+    
     const handleRefresh = async () => {
         setRefreshing(true);
         await getAllApplicants();
@@ -83,6 +114,7 @@ const Applicants = () => {
         setCurrentPage(1);
     }, [searchTerm, statusFilter, applicants]);
 
+
     const getAllApplicants = async() => {
         try {
             setLoading(true);
@@ -99,6 +131,7 @@ const Applicants = () => {
 
             setApplicants(reversedData);
             setFilteredApplicants(reversedData);
+
         } catch (error) {
             console.error("Error fetching applicants:", error.message);
             showAlert("Failed to load applicants data", 'error');
@@ -134,6 +167,8 @@ const Applicants = () => {
         setShowModal(true);
     };
 
+
+
     const confirmApprove = async (enrollmentId) => {
         try {
             setModalLoading(true); // START LOADING
@@ -149,6 +184,9 @@ const Applicants = () => {
             setShowModal(false);
             showAlert(data.message, 'success');
             getAllApplicants();
+
+
+            fetchPendingApplicantsCount();
         } catch (error) {
             console.log(error.message);
             setShowModal(false);
@@ -185,6 +223,9 @@ const Applicants = () => {
             setRejectionReason(''); // ✅ Clear reason after success
             showAlert(data.message, 'success');
             getAllApplicants();
+
+            
+            fetchPendingApplicantsCount();
         } catch (error) {
             setShowModal(false);
             showAlert(error.message, 'error');
@@ -212,6 +253,8 @@ const Applicants = () => {
             setShowModal(false);
             showAlert(data.message, 'success');
             getAllApplicants();
+
+            fetchPendingApplicantsCount();
         } catch (error) {
             console.error("Error removing applicant:", error.message);
             setShowModal(false);
@@ -374,7 +417,7 @@ const Applicants = () => {
                     </div>
                 </div>
 
-
+                                
 
 
 
@@ -459,7 +502,12 @@ const Applicants = () => {
                                                             </td>
                                                             <td className="align-middle">
                                                                 <span className="text-capitalize fw-semibold">
-                                                                    {`${applicant.learnerInfo?.lastName}, ${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.middleName || ''}`.trim()}
+                                                                    {`${applicant.learnerInfo?.lastName}, ${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.middleName || ''} ${
+                                                                    applicant.learnerInfo?.extensionName && 
+                                                                    applicant.learnerInfo.extensionName.toLowerCase() !== 'n/a' 
+                                                                        ? applicant.learnerInfo.extensionName 
+                                                                        : ''
+                                                                    }`.trim()}
                                                                 </span>
                                                             </td>
                                                             <td className="align-middle text-capitalize">{applicant.gradeLevelToEnroll}</td>

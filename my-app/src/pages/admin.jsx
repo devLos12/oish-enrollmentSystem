@@ -23,17 +23,46 @@ import EnrollmentFormPDF from "../components/printView.jsx";
 import Schedule from "../components/schedule.jsx";
 import image from "../assets/image/logo.png";
 import SubjectDetails from "../components/subjectDetails.jsx";
-
+import { io } from "socket.io-client";
 
 
 
 
 const Admin = () => {
     const { profile, setProfile, setRole, role,  modal, setModal, setAdminAuth, setIsLoggingOut,
-        setFormData
+        setFormData, fetchPendingApplicantsCount, fetchPendingStudentsCount
 
     } = useContext(globalContext);
     const navigate = useNavigate();
+
+
+
+    useEffect(() => {
+        fetchPendingApplicantsCount();
+        fetchPendingStudentsCount();     // Increase students count (if status = pending)
+
+
+        // Setup socket connection
+        const socket = io(import.meta.env.VITE_API_URL, {
+            withCredentials: true
+        });
+
+        // Listen for new enrollments
+        socket.on('new-enrollment', (data) => {
+            // Update count real-time
+            fetchPendingApplicantsCount();
+        });
+
+        socket.on('new-approve', (data) => {
+            fetchPendingApplicantsCount();  // Decrease applicants count
+            fetchPendingStudentsCount();     // Increase students count (if status = pending)
+        });
+
+        // Cleanup on unmount
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
     
     const routes = [

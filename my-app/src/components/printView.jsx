@@ -192,7 +192,7 @@ const EnrollmentFormPDF = () => {
     <div style={hiddenStyle}>
       <div className="container-fluid min-vh-100 bg-light">
         <div className="row justify-content-center">
-          <div className="col-12 col-lg-10 bg-white p-2 p-md-4">
+          <div className="col-12 col-lg-11 bg-white p-2 p-md-4">
             <div ref={formRef}>
               
               {/* Header */}
@@ -209,50 +209,12 @@ const EnrollmentFormPDF = () => {
 
               {/* LRN and PSA Section */}
               <div className="border border-2 border-dark mb-2 mb-md-3">
-                <div className="row p-2 p-md-3  ">
-                  <div className="col-12 mt-3 mb-2">
-                    <span className='fw-bold'>Grade level:</span>
-                    <span className='ms-2 border-bottom border-dark px-2 '>{enrollmentData.gradeLevelToEnroll}</span>
-                  </div>
-                  <div className="col-12 col-md-6 mt-3 mt-md-0">
-                    <div className="col-auto">
-                      <span className="fw-bold">LRN: </span>
-                      <span className="border-bottom border-dark px-2" 
-                      >{enrollmentData.learnerInfo?.lrn || ''}</span>
-                    </div>
-                    <div className="col-auto">
-                      <span className="fw-bold">PSA Birth Cert No.: </span>
-                      <span className="border-bottom border-dark px-2 d-inline-block my-2">{enrollmentData.learnerInfo?.psaNo || ''}</span>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6 mt-3 mt-md-0">
-                    <div className="col-auto d-flex align-items-center gap-2 ">
-                        <CheckBox checked={enrollmentData.withLRN} />
-                        <span className="small">With LRN</span>
-                        <CheckBox checked={!enrollmentData.withLRN} />
-                        <span className="small">No LRN</span>
-                    </div>
-                    <div className="col-auto d-flex align-items-center gap-2 my-2">
-                        <span className="fw-bold">Returning (Balik-Aral)?</span>
-                        <CheckBox checked={enrollmentData.schoolHistory?.returningLearner} />
-                        <span>Yes</span>
-                        <CheckBox checked={!enrollmentData.schoolHistory?.returningLearner} />
-                        <span>No</span>
-                    </div>
-                  </div>
-
-                </div>
-
-
-
-
                 {/* Learner Information */}
                 <SectionHeader title="LEARNER INFORMATION " />
                 <div className="p-2 p-md-3">
                   <FieldRow fields={sections.learnerInfo} />
                   
-                  <div className="row mb-2 mb-md-3 g-2">
+                  <div className="row mb-2 mb-md-3 g-1">
                     <div className="col-12 col-sm-6">
                       <div className="small fw-bold mb-1">DATE OF BIRTH (MM/DD/YYYY)</div>
                       <div className="border-bottom border-dark pb-1 small" 
@@ -306,6 +268,42 @@ const EnrollmentFormPDF = () => {
                       {enrollmentData.learnerInfo?.placeOfBirth || ''}
                     </div>
                   </div>
+
+                  <div className="row mb-md-4 ">
+                    <div className="col-12 my-3">
+                      <span className='fw-bold'>Grade level:</span>
+                      <span className='ms-2 border-bottom border-dark px-2 '>{enrollmentData.gradeLevelToEnroll}</span>
+                    </div>
+                    <div className="col-12 col-md-6  mt-md-0 ">
+                      <div className="col-auto">
+                        <span className="fw-bold">LRN: </span>
+                        <span className="border-bottom border-dark px-2" 
+                        >{enrollmentData.learnerInfo?.lrn || ''}</span>
+                      </div>
+                      <div className="col-auto">
+                        <span className="fw-bold">PSA Birth Cert No.: </span>
+                        <span className="border-bottom border-dark px-2 d-inline-block my-2">{enrollmentData.learnerInfo?.psaNo || ''}</span>
+                      </div>
+                    </div>
+
+                    <div className="col-12 col-md-6 my-3 my-md-0 mt-md-0">
+                      <div className="col-auto d-flex align-items-center gap-2 ">
+                          <CheckBox checked={enrollmentData.withLRN} />
+                          <span className="small">With LRN</span>
+                          <CheckBox checked={!enrollmentData.withLRN} />
+                          <span className="small">No LRN</span>
+                      </div>
+                      <div className="col-auto d-flex align-items-center gap-2 my-2">
+                          <span className="fw-bold">Returning (Balik-Aral)?</span>
+                          <CheckBox checked={enrollmentData.schoolHistory?.returningLearner} />
+                          <span>Yes</span>
+                          <CheckBox checked={!enrollmentData.schoolHistory?.returningLearner} />
+                          <span>No</span>
+                      </div>
+                    </div>
+                  </div>
+
+
 
                   {/* Disability */}
                   <div className="mb-2 mb-md-3 small">
@@ -389,6 +387,10 @@ const EnrollmentFormPDF = () => {
                   </div>
                 </div>
               </div>
+
+
+
+              
 
               {/* Current Address */}
               <div className="border border-2 border-dark mb-2 mb-md-3">
