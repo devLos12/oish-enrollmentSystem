@@ -7,7 +7,7 @@ import { globalContext } from "../context/global";
 const ProtectedRoute = ({ children, isAuthenticated}) => {
     const { authLoading, isLoggingOut } = useContext(globalContext);
 
-    if(authLoading || isLoggingOut ) return <p></p>;
+    if(authLoading || isLoggingOut ) return <p>....loading</p>;
 
     const getRedirectPath = () => {
         return "/404_forbidden"
