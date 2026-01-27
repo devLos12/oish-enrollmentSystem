@@ -49,7 +49,14 @@ const App = () => {
   },[]);
 
 
-  if(authLoading) return <p>......LOADING</p>
+  if(authLoading) return (
+    <div className="d-flex flex-column justify-content-center align-items-center vh-100 bg-white">
+      <div className="spinner-border text-danger" role="status" style={{ width: '3rem', height: '3rem' }}>
+        <span className="visually-hidden">Loading...</span>
+      </div>
+      <p className="mt-3 text-secondary fw-semibold">Loading...</p>
+    </div>
+  )
 
 
   const getRedirectPath = () => {
