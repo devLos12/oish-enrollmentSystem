@@ -14,19 +14,27 @@ const CreateLogs = async(id, name, role) => {
     });
 }
 
-const CreateCookie = (res, account, role) => {
-    const accessToken = jwt.sign(
-        { id: account?._id, role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_SECRET_EXPIRESIN }
-    );
+    const CreateCookie = (res, account, role) => {
+        const accessToken = jwt.sign(
+            { id: account?._id, role },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_SECRET_EXPIRESIN }
+        );
 
-    res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: false,
-        path: "/",
-    });
-}
+        // Check if running locally based on allowed origins
+        const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+        const isLocal = allowedOrigins.some(origin => 
+            origin.includes('localhost') || origin.startsWith('http://')
+        );
+
+        res.cookie("accessToken", accessToken, {
+            httpOnly: true,
+            secure: !isLocal, // false if local (http), true if production (https)
+            sameSite: 'lax',
+            path: "/",
+        });
+    }
+
 
 const LoginPortal = async(req, res) => {
     try {

@@ -158,7 +158,6 @@ export const updateStudent = async (req, res) => {
         }
 
 
-
         if (lrn !== undefined && lrn !== null) {
             // If LRN is being updated, validate format
             const cleanedLRN = String(lrn).trim();
@@ -167,6 +166,7 @@ export const updateStudent = async (req, res) => {
             if (cleanedLRN !== '' && cleanedLRN.toUpperCase() !== 'N/A') {
                 // Must be exactly 12 digits
                 const digitsOnly = cleanedLRN.replace(/\D/g, '');
+                
                 if (digitsOnly.length !== 12) {
                     return res.status(400).json({ 
                         message: "LRN must be exactly 12 digits." 
@@ -204,6 +204,9 @@ export const updateStudent = async (req, res) => {
                 });
             }
         }
+
+
+        return;
 
 
 

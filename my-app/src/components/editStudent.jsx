@@ -258,7 +258,7 @@ const EditStudent = () => {
                                 <div className="row mb-4">
                                       <div className="col-md-4">
                                         <label className="form-label text-capitalize fw-bold">
-                                            LRN (Learner Reference Number)
+                                            LRN 
                                             {selectedStudent?.lrn === 'N/A' && (
                                                 <span className="badge bg-warning text-dark ms-2">Not Set</span>
                                             )}

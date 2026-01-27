@@ -675,8 +675,6 @@ export const EnrollmentRegistration = async (req, res) => {
 
       }
 
-     
-
 
       // ✅ VALIDATION: LRN is required if "With LRN?" is "Yes"
       if (req.body.withLRN === 'Yes' && (!learnerInfo.lrn || learnerInfo.lrn.trim() === '')) {
@@ -688,6 +686,7 @@ export const EnrollmentRegistration = async (req, res) => {
       if (!emailRegex.test(learnerInfo.email)) {
           return res.status(400).json({ message: 'Invalid email format' });
       }
+      
 
       // Validation checks
       if (learnerInfo.email) {
