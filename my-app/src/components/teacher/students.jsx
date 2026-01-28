@@ -59,6 +59,8 @@ const Students = () => {
         }
     }
 
+
+
     // Pagination logic
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -170,19 +172,29 @@ const Students = () => {
                     <div className="col-12">
                         <div className="card border-0 shadow-sm">
                             <div className="card-body">
-                                <div className="d-flex align-items-center gap-2">
-                                    <h4 className="fw-bold mb-1 text-capitalize">{subjectInfo.subjectName}</h4>
-                                    <p className="m-0 mb-0 ">|</p>
-                                    <span className="badge bg-info me-2">{subjectInfo.subjectCode}</span>
+                                <div className="row">
+                                    <div className="col-12">
+                                        
+                                        <p className="m-0 fs-4 fw-bold mb-1 text-capitalize">{subjectInfo.subjectName}</p>
+
+                                    </div>
+                                    <div className="col-12 d-flex gap-2 align-items-center  text-muted">
+                                        <p className="m-0 text-capitalize fw-bold">subject code:</p>
+                                        <p className="m-0 badge bg-info bg-opacity-10 text-info border-info border">{subjectInfo.subjectCode}</p>
+                                    </div>
+
+                                    <div className="col-6 mt-1 d-flex gap-2 align-items-center  text-muted">
+                                        <p className="m-0 text-capitalize fw-bold">semester: </p>
+                                        <p className="m-0 text-capitalize small badge bg-primary">{subjectInfo?.semester === 1 ? "First" : "Second"}</p>
+                                    </div>
+
+                                    <div className="col-6 mt-1 text-end text-muted">
+                                        <strong>Total Students:</strong> {students.length}
+                                    </div>
                                 </div>
 
-                                <p className="text-muted mb-2">
-                                    <span className="badge bg-warning text-dark me-2">{subjectInfo.track}</span>
-                                    <span>{subjectInfo.gradeLevel} - {subjectInfo.sectionName}</span>
-                                </p>
-                                <p className="mb-0">
-                                    <strong>Total Students:</strong> {students.length}
-                                </p>
+
+                               
                             </div>
                         </div>
                     </div>

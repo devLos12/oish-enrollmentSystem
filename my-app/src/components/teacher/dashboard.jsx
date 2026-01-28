@@ -128,7 +128,7 @@ const Dashboard = () => {
                         <div className="card-body">
                             <div className="row g-3">
                                 {[
-                                    { label: "Role", value: role || 'N/A' },
+                                    { label: "Role", value: role === "staff" && "teacher" || 'N/A' },
                                     { label: "Member Since", value: formatDate(staffData?.createdAt) }
                                 ].map((item, i) => (
                                     <div key={i} className="col-12">

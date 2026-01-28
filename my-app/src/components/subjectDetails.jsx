@@ -102,7 +102,7 @@ const SubjectDetails = () => {
     const handleAddSection = () => {
         setSelectedSection({
             sectionName: '',
-            scheduleDay: '',
+            // scheduleDay: '',
             scheduleStartTime: '',
             scheduleEndTime: '',
             room: '',
@@ -136,7 +136,7 @@ const SubjectDetails = () => {
     const handleSubmitSection = async () => {
         if (
             !selectedSection.sectionName?.trim() ||
-            !selectedSection.scheduleDay ||
+            // !selectedSection.scheduleDay ||
             !selectedSection.scheduleStartTime ||
             !selectedSection.scheduleEndTime ||
             !selectedSection.room?.trim()
@@ -159,7 +159,7 @@ const SubjectDetails = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     sectionName: selectedSection.sectionName,
-                    scheduleDay: selectedSection.scheduleDay,
+                    // scheduleDay: selectedSection.scheduleDay,
                     scheduleStartTime: selectedSection.scheduleStartTime,
                     scheduleEndTime: selectedSection.scheduleEndTime,
                     room: selectedSection.room,
@@ -378,7 +378,7 @@ const SubjectDetails = () => {
                                                     <tr>
                                                         <th>#</th>
                                                         <th>Section Name</th>
-                                                        <th>Schedule</th>
+                                                        {/* <th>Schedule</th> */}
                                                         <th>Time</th>
                                                         <th>Room</th>
                                                         <th>Total Students</th>
@@ -390,7 +390,8 @@ const SubjectDetails = () => {
                                                         <tr key={index}>
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
                                                             <td className="align-middle fw-semibold">{section.sectionName}</td>
-                                                            <td className="align-middle">{section.scheduleDay || 'N/A'}</td>
+                                                            {/* <td className="align-middle">{section.scheduleDay || 'N/A'}</td> */}
+
                                                             <td className="align-middle">
                                                                 {formatTime12Hour(section.scheduleStartTime)} - {formatTime12Hour(section.scheduleEndTime)}
                                                             </td>
@@ -485,7 +486,28 @@ const SubjectDetails = () => {
                                 <>
                                     <div className="modal-body">
                                         <div className="row mb-3">
-                                            <div className="col-12">
+                                     
+                                        </div>
+
+                                        <div className="row mb-3">
+                                            {/* <div className="col-12">
+                                                <label className="form-label text-capitalize fw-bold">Schedule & Room</label>
+                                            </div> */}
+                                            {/* <div className="col-6">
+                                                <label className="form-label small">Day</label>
+                                                <select 
+                                                    className="form-select"
+                                                    value={selectedSection?.scheduleDay || ''}
+                                                    onChange={(e) => setSelectedSection({...selectedSection, scheduleDay: e.target.value})}
+                                                >
+                                                    <option value="">Select Day</option>
+                                                    {dayOptions.map(day => (
+                                                        <option key={day} value={day}>{day}</option>
+                                                    ))}
+                                                </select>
+                                            </div> */}
+
+                                            <div className="col-6">
                                                 <label className="form-label text-capitalize fw-bold">
                                                     Section Name
                                                     {loadingSections && (
@@ -514,25 +536,6 @@ const SubjectDetails = () => {
                                                     </small>
                                                 )}
                                             </div>
-                                        </div>
-
-                                        <div className="row mb-3">
-                                            <div className="col-12">
-                                                <label className="form-label text-capitalize fw-bold">Schedule & Room</label>
-                                            </div>
-                                            <div className="col-6">
-                                                <label className="form-label small">Day</label>
-                                                <select 
-                                                    className="form-select"
-                                                    value={selectedSection?.scheduleDay || ''}
-                                                    onChange={(e) => setSelectedSection({...selectedSection, scheduleDay: e.target.value})}
-                                                >
-                                                    <option value="">Select Day</option>
-                                                    {dayOptions.map(day => (
-                                                        <option key={day} value={day}>{day}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
                                             <div className="col-6">
                                                 <label className="form-label small">Room</label>
                                                 <input 
@@ -543,6 +546,8 @@ const SubjectDetails = () => {
                                                     onChange={(e) => setSelectedSection({...selectedSection, room: e.target.value})}
                                                 />
                                             </div>
+
+
                                             <div className="col-6">
                                                 <label className="form-label small">Start Time</label>
                                                 <input 
@@ -563,6 +568,11 @@ const SubjectDetails = () => {
                                             </div>
                                         </div>
                                     </div>
+                                    
+
+
+
+
 
                                     <div className="modal-footer">
                                             <button 

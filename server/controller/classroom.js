@@ -5,7 +5,7 @@ const getClassrooms = async (req, res) => {
   try {
     const studentId = req.account.id; 
 
-    // 🔹 Get student info para makuha yung section at current semester
+    // 🔹 Get student info
     const student = await Student.findById(studentId).select('strand semester section sectionId');
     
     if (!student) {
@@ -23,17 +23,27 @@ const getClassrooms = async (req, res) => {
       select: "studentNumber firstName lastName section gradeLevel email"
     });
 
-    // 🔹 Filter out subjects na walang students after match
+    // 🔹 Filter out subjects na:
+    // 1. Walang students after match
+    // 2. ❌ Walang sections (incomplete subject)
     const filteredSubjects = subjects.filter(sub => 
-      sub.students && sub.students.length > 0
+      sub.students && 
+      sub.students.length > 0 &&
+      sub.sections && 
+      sub.sections.length > 0  // ✅ May sections na ba?
     );
 
     // 🔹 Format data para sa frontend
     const result = filteredSubjects.map(sub => {
-      // 🔥 Filter sections array to get only the student's section
+      // 🔥 Get student's section from sections array
       const studentSection = sub.sections.find(
         sec => sec.sectionName === student.section
       );
+
+      // ❌ If walang match sa sections, skip this subject
+      if (!studentSection) {
+        return null;
+      }
 
       return {
         subjectId: sub._id,
@@ -44,13 +54,12 @@ const getClassrooms = async (req, res) => {
         track: sub.track,
         semester: sub.semester,
         teacher: sub.teacher,
-        // 🔥 Flat structure - schedule details kasama na sa main object
-        sectionId: studentSection?.sectionId || null,
-        sectionName: studentSection?.sectionName || null,
-        scheduleDay: studentSection?.scheduleDay || null,
-        scheduleStartTime: studentSection?.scheduleStartTime || null,
-        scheduleEndTime: studentSection?.scheduleEndTime || null,
-        room: studentSection?.room || null,
+        // 🔥 Schedule details from matching section
+        sectionId: studentSection.sectionId,
+        sectionName: studentSection.sectionName,
+        scheduleStartTime: studentSection.scheduleStartTime,
+        scheduleEndTime: studentSection.scheduleEndTime,
+        room: studentSection.room,
         students: sub.students.map(s => ({
           id: s._id,
           studentNumber: s.studentNumber,
@@ -60,7 +69,8 @@ const getClassrooms = async (req, res) => {
           email: s.email
         }))
       };
-    });
+    }).filter(Boolean);  // ✅ Remove null entries
+
 
     res.status(200).json(result);
 

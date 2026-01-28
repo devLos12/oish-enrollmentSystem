@@ -11,15 +11,17 @@ import ClassRoom from "../components/student/classroom.jsx";
 import StudentTable from "../components/student/classmate.jsx";
 import EditProfile from "../components/student/editprofile.jsx";
 import ChangePassword from "../components/changepassword.jsx";
+import { useLayoutEffect } from "react";
 
 
 const Student = () => {
 
     const { profile, setProfile, setRole, role,  modal, setModal, setStudentAuth, setIsLoggingOut,
-        setFormData, trigger
+        setFormData, trigger, 
 
     } = useContext(globalContext);    
     const navigate = useNavigate();
+
 
 
     //fetch profile
@@ -36,7 +38,6 @@ const Student = () => {
         .then((data) => {
             setProfile(data);
 
-            console.log("Student profile: ", data);
         })
         .catch((error) => {
             console.log("Error: ", error.message);

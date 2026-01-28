@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import { globalContext } from "../context/global";
 import { useNavigate } from "react-router-dom";
 import SideBar from "./sidebar";
+import { useLayoutEffect } from "react";
 
 
 
@@ -19,13 +20,17 @@ const Header = () => {
         setIsStudent(role === "student");
     }, [role]);
 
+    useLayoutEffect(() => {
+        console.log(textHeader);
+    },[textHeader])
+
     // Close menu when clicking overlay
     const handleOverlayClick = (e) => {
         if (e.target === e.currentTarget) {
             setOpenmenu(false);
         }
     };
-
+    
     return (
         <>
             <header 
@@ -43,7 +48,7 @@ const Header = () => {
                         {textHeader || "Dashboard"}
                         </p> 
                         
-                        {textHeader?.toLowerCase() === "dashboard" && (
+                        {(textHeader === "dashboard" || textHeader === undefined) &&  (
                             <div className="d-flex align-items-center text-dark gap-2">
                                 <p className="m-0 ">|</p>
                                 <p className="m-0 text-capitalize fw-semibold">{
@@ -51,6 +56,7 @@ const Header = () => {
                                 role === "student" ? "student" : role}</p>
                             </div>
                         )}
+
                     </div>
                 </div>
             

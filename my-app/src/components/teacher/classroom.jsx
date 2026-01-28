@@ -68,24 +68,16 @@ const ClassRoom = () => {
 
     
 
-    // Dynamic options from actual data
-    const gradeOptions = [...new Set(
-        subjectClass
-            .map(subject => subject.gradeLevel)
-            .filter(grade => grade)
-    )].sort((a, b) => a - b);
-
-    const semesterOptions = [...new Set(
-        subjectClass
-            .map(subject => subject.semester)
-            .filter(sem => sem)
-    )].sort((a, b) => a - b);
+    const gradeOptions = [11, 12];
+    const semesterOptions = [1, 2];
 
     const strandOptions = [...new Set(
         subjectClass
             .map(subject => subject.strand)
             .filter(strand => strand)
     )].sort();
+
+
 
     // Filter logic
     useEffect(() => {
@@ -200,7 +192,7 @@ const ClassRoom = () => {
                                     >
                                         <option value="">All Semesters</option>
                                         {semesterOptions.map(semester => (
-                                            <option key={semester} value={semester}>Semester {semester}</option>
+                                            <option key={semester} value={semester}>{semester === 1 ? "First Semester" : "Second Semester"}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -279,7 +271,7 @@ const ClassRoom = () => {
 
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">code:</p>
-                                        <span className="m-0 text-capitalize small fw-bold badge bg-info small">{data.subjectCode}</span>
+                                        <span className="m-0 text-capitalize small fw-bold small">{data.subjectCode}</span>
                                     </div>
 
                                     <div className="d-flex gap-2 align-items-center">
@@ -292,8 +284,8 @@ const ClassRoom = () => {
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">schedule:</p>
                                         <p className="m-0 small fw-bold">
-                                            {data.scheduleDay 
-                                                ? `${data.scheduleDay} ${formatTime(data.scheduleStartTime)} - ${formatTime(data.scheduleEndTime)}`
+                                            {data.scheduleStartTime && data.scheduleEndTime 
+                                                ? `${formatTime(data.scheduleStartTime)} - ${formatTime(data.scheduleEndTime)}`
                                                 : 'N/A'
                                             }
                                         </p>

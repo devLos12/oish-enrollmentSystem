@@ -56,7 +56,7 @@ export const getTeacherStudents = async(req, res) => {
                 students: sectionStudents,
                 subject: { 
                     room: findSection.room,
-                    scheduleDay: findSection.scheduleDay,
+                    // scheduleDay: findSection.scheduleDay,
                     scheduleEndTime: findSection.scheduleEndTime,
                     scheduleStartTime: findSection.scheduleStartTime,
                     sectionId: findSection.sectionId,
@@ -68,7 +68,8 @@ export const getTeacherStudents = async(req, res) => {
                     subjectType: subject.subjectType,
                     teacher: subject.teacher,
                     teacherId: subject.teacherId,
-                    track: subject.track
+                    track: subject.track,
+                    semester: subject.semester
                 }
             }
         });

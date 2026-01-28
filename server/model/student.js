@@ -108,8 +108,8 @@ const studentSchema = new mongoose.Schema({
           subjectName: String,
           subjectTeacher: String,
           semester: Number,
-
-          scheduleDay: String,
+          
+          // scheduleDay: String,
           scheduleStartTime: String,
           scheduleEndTime: String,
           room: String

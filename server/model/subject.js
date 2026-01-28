@@ -16,12 +16,13 @@ const SubjectSchema = new mongoose.Schema({
   // scheduleStartTime: { type: String, required: false },
   // scheduleEndTime: { type: String, required: false },
   // room: { type: String, required: false },
-  // students: [{ type: mongoose.Schema.Types.ObjectId, ref: "Student"}],
+  
+  students: [{ type: mongoose.Schema.Types.ObjectId, ref: "Student"}],
 
   sections: [{
     sectionId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Section"},
     sectionName: { type: String, required: true },
-    scheduleDay: { type: String },
+    // scheduleDay: { type: String },
     scheduleStartTime: { type: String },
     scheduleEndTime: { type: String },
     room: { type: String },

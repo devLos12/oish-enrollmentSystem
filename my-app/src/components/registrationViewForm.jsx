@@ -272,7 +272,7 @@ const RegistrationViewForm = () => {
                                     <tr>
                                         <th className="fw-bold text-center">Subject</th>
                                         <th className="fw-bold text-center">Teacher</th>
-                                        <th className="fw-bold text-center">Day & Time</th>
+                                        <th className="fw-bold text-center">Monday - Friday</th>
                                         <th className="fw-bold text-center">Room</th>
                                     </tr>
                                 </thead>
@@ -280,21 +280,20 @@ const RegistrationViewForm = () => {
                                     {student?.subjects && student.subjects.length > 0 ? (
                                         student.subjects.map((subject, index) => (
                                             <tr key={index}>
-                                                <td className="text-capitalize">{subject?.subjectName || 'N/A'}</td>
-                                                <td className="text-capitalize">{subject?.subjectTeacher || 'TBA'}</td>
-                                                <td className="text-capitalize small">
-                                                    {subject?.scheduleDay && subject?.scheduleStartTime && subject?.scheduleEndTime ? (
+                                                <td className="text-capitalize text-center">{subject?.subjectName || 'N/A'}</td>
+                                                <td className="text-capitalize text-center">{subject?.subjectTeacher || 'TBA'}</td>
+                                                <td className="text-capitalize text-center">
+                                                    {subject?.scheduleStartTime && subject?.scheduleEndTime ? (
                                                         <div className="d-flex flex-column">
-                                                            <span className="fw-semibold">{subject.scheduleDay}</span>
                                                             <span className="text-muted">
                                                                 {formatTime(subject.scheduleStartTime)} - {formatTime(subject.scheduleEndTime)}
                                                             </span>
                                                         </div>
-                                                    ) : (
+                                                    ) : (  
                                                         <span className="text-muted fst-italic">TBA</span>
                                                     )}
                                                 </td>
-                                                <td className="text-capitalize">
+                                                <td className="text-capitalize text-center">
                                                     {subject?.room ? (
                                                         subject.room
                                                     ) : (

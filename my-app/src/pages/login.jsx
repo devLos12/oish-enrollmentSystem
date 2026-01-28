@@ -10,7 +10,10 @@ const Login = () => {
     const navigate = useNavigate();
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
-    const { setAdminAuth, setStaffAuth, setStudentAuth, setRole, setIsLoggingOut } = useContext(globalContext);
+    const { setAdminAuth, setStaffAuth, setStudentAuth, setRole, setIsLoggingOut,
+    setTextHeader
+
+     } = useContext(globalContext);
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     

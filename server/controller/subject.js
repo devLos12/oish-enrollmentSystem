@@ -108,13 +108,19 @@ export const updateSubjectSection = async(req, res) => {
 }
 
 
+
 export const addSubjectSection = async(req, res) => {
     try {
         const { id } = req.params;
         const { sectionName, scheduleDay, scheduleStartTime, scheduleEndTime, room, gradeLevel } = req.body;
 
+        
+
         // Validation
-        if (!sectionName || !scheduleDay || !scheduleStartTime || !scheduleEndTime || !room) {
+        if (!sectionName || 
+            !scheduleStartTime || 
+            !scheduleEndTime || 
+            !room) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required"
@@ -153,7 +159,7 @@ export const addSubjectSection = async(req, res) => {
         subject.sections.push({
             sectionId: secId, 
             sectionName,
-            scheduleDay,
+            // scheduleDay,
             scheduleStartTime,
             scheduleEndTime,
             room,
@@ -178,7 +184,7 @@ export const addSubjectSection = async(req, res) => {
                 );
 
                 if (subjectIndex !== -1) {
-                    student.subjects[subjectIndex].scheduleDay = scheduleDay;
+                    // student.subjects[subjectIndex].scheduleDay = scheduleDay;
                     student.subjects[subjectIndex].scheduleStartTime = scheduleStartTime;
                     student.subjects[subjectIndex].scheduleEndTime = scheduleEndTime;
                     student.subjects[subjectIndex].room = room;
@@ -193,7 +199,7 @@ export const addSubjectSection = async(req, res) => {
                     );
 
                     if (historySubjectIndex !== -1) {
-                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleDay = scheduleDay;
+                        // student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleDay = scheduleDay;
                         student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleStartTime = scheduleStartTime;
                         student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleEndTime = scheduleEndTime;
                         student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].room = room;
@@ -219,7 +225,6 @@ export const addSubjectSection = async(req, res) => {
         });
     }
 }
-
 
 
 export const getSubjectDetails = async(req, res) => {
