@@ -175,6 +175,10 @@ const SideBar = () => {
         if(item.label === "Students"){
             setPendingStudentsCount(0);
         }
+
+        if(item.label === 'applicants'){
+            setPendingApplicantsCount(0);
+        }
         
 
         if (item.hasDropdown) {

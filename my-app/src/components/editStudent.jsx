@@ -15,6 +15,8 @@ const EditStudent = () => {
         studentData?.repeatedSubjects || []
     );
 
+    const [isAcademicFieldsEditable, setIsAcademicFieldsEditable] = useState(false);    
+
     // Alert Modal states
     const [showAlertModal, setShowAlertModal] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
@@ -195,14 +197,14 @@ const EditStudent = () => {
         console.log("selected: ", selectedStudent);
     },[selectedStudent]);
 
-
+    
     return (
         <>
             <div className="container mt-4">
                 <div className="row">
                     <div className="col">
-                        <div className="card shadow-sm">
-                            <div className="card-header bg-danger text-white">
+                        <div className="card shadow-sm bg-white">
+                            <div className="card-header py-3 bg-danger bg-opacity-10 text-danger">
                                 <h5 className="mb-0">
                                     <i className="fa fa-user-edit me-2"></i>
                                     Edit Student Information
@@ -336,7 +338,30 @@ const EditStudent = () => {
                                     </div>
                                 </div>
 
+                                
 
+                                {/* Add this RIGHT BEFORE the "Academic Fields" row (before line 252) */}
+                                <div className="row mb-2">
+                                    <div className="col-12">
+                                        <div className="form-check">
+                                            <input 
+                                                className="form-check-input" 
+                                                type="checkbox" 
+                                                id="enableAcademicEdit"
+                                                checked={isAcademicFieldsEditable}
+                                                onChange={(e) => setIsAcademicFieldsEditable(e.target.checked)}
+                                            />
+                                            <label className="form-check-label fw-bold text-danger" htmlFor="enableAcademicEdit">
+                                                <i className="fa fa-unlock me-1"></i>
+                                                Enable editing for Grade Level, Track, Strand, and Semester
+                                            </label>
+                                        </div>
+                                        <small className="text-muted d-block ms-4">
+                                            <i className="fa fa-info-circle me-1"></i>
+                                            Check this box to modify academic information
+                                        </small>
+                                    </div>
+                                </div>
 
                                 {/* Academic Fields */}
                                 <div className="row mb-3">
@@ -346,6 +371,7 @@ const EditStudent = () => {
                                             className="form-select"
                                             value={selectedStudent?.gradeLevel || 11}
                                             onChange={(e) => setSelectedStudent({...selectedStudent, gradeLevel: parseInt(e.target.value)})}
+                                            disabled={!isAcademicFieldsEditable}
                                         >
                                             {gradeOptions.map(grade => (
                                                 <option key={grade} value={grade}>Grade {grade}</option>
@@ -358,6 +384,7 @@ const EditStudent = () => {
                                             className="form-select"
                                             value={selectedStudent?.track || ''}
                                             onChange={(e) => setSelectedStudent({...selectedStudent, track: e.target.value, strand: ''})}
+                                            disabled={!isAcademicFieldsEditable}
                                         >
                                             <option value="">Select Track</option>
                                             {trackOptions.map(track => (
@@ -371,6 +398,7 @@ const EditStudent = () => {
                                             className="form-select"
                                             value={selectedStudent?.strand || ''}
                                             onChange={(e) => setSelectedStudent({...selectedStudent, strand: e.target.value})}
+                                            disabled={!isAcademicFieldsEditable}
                                         >
                                             <option value="">Select Strand</option>
                                             {selectedStudent?.track && trackStrandMapping[selectedStudent.track]?.map(strand => (
@@ -384,12 +412,16 @@ const EditStudent = () => {
                                             className="form-select"
                                             value={selectedStudent?.semester || 1}
                                             onChange={(e) => setSelectedStudent({...selectedStudent, semester: parseInt(e.target.value)})}
+                                            disabled={!isAcademicFieldsEditable}
                                         >
                                             <option value={1}>First</option>
                                             <option value={2}>Second</option>
                                         </select>
                                     </div>
                                 </div>
+
+
+
 
                                 {/* Section and Status Fields */}
                                 <div className="row mt-5">

@@ -12,9 +12,12 @@ const RegistrationViewForm = () => {
     const student = location?.state;
     const navigate = useNavigate();
     const formRef = useRef();
+    const [isDownloading, setIsDownloading] = useState(false);
 
 
-
+    useEffect(() =>{
+        console.log(student)
+    },[student]);
 
 
     useEffect(() => {
@@ -27,12 +30,13 @@ const RegistrationViewForm = () => {
 
     useLayoutEffect(() => {
         if (location?.state?.autoDownload) {
-            handleDownloadPDF();
+            handleAutoDownloadPDF(); // ✅ Changed from handleDownloadPDF
         }
     }, [location?.state?.autoDownload]);
 
 
-    const handleDownloadPDF = async () => {
+    // ✅ AUTO-DOWNLOAD (for students - triggered by useLayoutEffect)
+    const handleAutoDownloadPDF = async () => {
         const element = formRef.current;
         
         // Find all images and convert to base64
@@ -80,10 +84,82 @@ const RegistrationViewForm = () => {
             }
         };
         
+        // ✅ Always navigate after auto-download
         html2pdf().set(opt).from(element).save().then(() => {
             navigate("/student/registration_form");
-        });;
+        });
     };
+
+
+
+
+
+        
+    // ✅ MANUAL DOWNLOAD (for admin - triggered by button click)
+    const handleManualDownloadPDF = async () => {
+        setIsDownloading(true); // ✅ Start loading
+        
+        try {
+            const element = formRef.current;
+            
+            // Find all images and convert to base64
+            const images = element.getElementsByTagName('img');
+            const imagePromises = Array.from(images).map(img => {
+                return new Promise((resolve) => {
+                    if (img.complete) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        img.src = canvas.toDataURL('image/png');
+                        resolve();
+                    } else {
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            img.src = canvas.toDataURL('image/png');
+                            resolve();
+                        };
+                    }
+                });
+            });
+
+            await Promise.all(imagePromises);
+
+            const opt = {
+                margin: [10, 10, 10, 10],
+                filename: `Registration-Form-${student?.studentNumber}-Sem${student?.currentSemester || student?.semester}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait' 
+                }
+            };
+            
+            // ✅ NO navigation - just download
+            await html2pdf().set(opt).from(element).save();
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            alert('Failed to download PDF. Please try again.');
+        } finally {
+            setIsDownloading(false); // ✅ Stop loading
+        }
+    };
+
+
+
+
 
     const hiddenStyle = location?.state?.autoDownload
     ? {
@@ -95,6 +171,30 @@ const RegistrationViewForm = () => {
         }
     : {};
 
+    // ✅ Helper function to format time to 12-hour format with AM/PM
+    const formatTime = (time) => {
+        if (!time) return '';
+        
+        // Check if already has AM/PM
+        if (time.toLowerCase().includes('am') || time.toLowerCase().includes('pm')) {
+            return time;
+        }
+        
+        // Parse time (assumes format like "08:00" or "8:00")
+        const [hours, minutes] = time.split(':');
+        let hour = parseInt(hours);
+        
+        // Determine AM/PM
+        const period = hour >= 12 ? 'PM' : 'AM';
+        
+        // Convert to 12-hour format
+        hour = hour % 12 || 12;
+        
+        return `${hour}:${minutes} ${period}`;
+    };
+
+
+
 
 
     return (
@@ -102,7 +202,7 @@ const RegistrationViewForm = () => {
 
         <div className="container-fluid vh-100">
             <div className="row justify-content-center">
-                <div className="col-12 col-md-12 col-lg-9 bg-white py-5">
+                <div className="col-12 col-md-12 col-lg-11 bg-white py-5">
                     {/* Form Content - This will be converted to PDF */}
                     <div ref={formRef}>
                         {/* Header */}
@@ -118,22 +218,7 @@ const RegistrationViewForm = () => {
                             </div>
 
                         </div>
-                        {/* <div className="text-center mb-4">
-                            <img src={logo} alt="School Logo" 
-                            style={{ width: '100px', height: '100px' }} 
-                            className="mb-3" 
-                            crossOrigin="anonymous" />
-                            <h4 className="fw-bold mb-1">FRANCISCO OSORIO INTEGRATED SENIOR</h4>
-                            <h4 className="fw-bold mb-2">HIGH SCHOOL</h4>
-                            <p className="text-muted mb-3">Trece Martires City District</p>
-                            <h5 className="fw-bold mt-4">REGISTRATION FORM</h5>
-                            {student?.currentSemester && (
-                                <p className="text-muted">
-                                    <strong>Semester {student.currentSemester}</strong>
-                                </p>
-                            )}
-                        </div> */}
-
+                     
                         <hr className="my-4" />
 
                         {/* Student Information */}
@@ -149,7 +234,9 @@ const RegistrationViewForm = () => {
                                 </div>
                                 <div className="d-flex gap-2">
                                     <p className="m-0">Student Name: </p>
-                                    <p className="m-0 fw-bold text-capitalize">{`${student?.firstName || ""} ${student?.lastName || ""}`}</p>
+                                    <p className="m-0 fw-bold text-capitalize">
+                                        {student?.lastName || ""}, {student?.firstName || ""} {student?.middleName || ""} {student?.extensionName && student.extensionName !== "N/A" && student.extensionName !== "n/a" ? student.extensionName : ""}
+                                    </p>
                                 </div>
                                 <div className="d-flex gap-2">
                                     <p className="m-0">Track: </p>
@@ -185,6 +272,8 @@ const RegistrationViewForm = () => {
                                     <tr>
                                         <th className="fw-bold text-center">Subject</th>
                                         <th className="fw-bold text-center">Teacher</th>
+                                        <th className="fw-bold text-center">Day & Time</th>
+                                        <th className="fw-bold text-center">Room</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -193,16 +282,38 @@ const RegistrationViewForm = () => {
                                             <tr key={index}>
                                                 <td className="text-capitalize">{subject?.subjectName || 'N/A'}</td>
                                                 <td className="text-capitalize">{subject?.subjectTeacher || 'TBA'}</td>
+                                                <td className="text-capitalize small">
+                                                    {subject?.scheduleDay && subject?.scheduleStartTime && subject?.scheduleEndTime ? (
+                                                        <div className="d-flex flex-column">
+                                                            <span className="fw-semibold">{subject.scheduleDay}</span>
+                                                            <span className="text-muted">
+                                                                {formatTime(subject.scheduleStartTime)} - {formatTime(subject.scheduleEndTime)}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted fst-italic">TBA</span>
+                                                    )}
+                                                </td>
+                                                <td className="text-capitalize">
+                                                    {subject?.room ? (
+                                                        subject.room
+                                                    ) : (
+                                                        <span className="text-muted fst-italic">TBA</span>
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="2" className="text-center text-muted">No subjects enrolled</td>
+                                            <td colSpan="4" className="text-center text-muted">No subjects enrolled</td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
+
+
+
 
                         <hr className="my-4" />
 
@@ -234,6 +345,43 @@ const RegistrationViewForm = () => {
                             </div>
                         </div>
                     </div>
+                    
+                    {/* ✅ Download Button - Only for Admin */}
+                    {!location?.state?.autoDownload && role === 'admin' && (
+                        <div className='d-flex align-items-center gap-3 my-5 justify-content-center'> 
+                            <button 
+                                className='btn btn-secondary  px-4 text-capitalize'
+                                onClick={() => navigate(-1)}
+                                disabled={isDownloading} // ✅ Disable while downloading
+                            >
+                                <i className="fa fa-arrow-left me-2"></i>
+                                Back
+                            </button>
+                            <button 
+                                className='btn btn-danger  text-capitalize px-4'
+                                onClick={handleManualDownloadPDF}
+                                disabled={isDownloading} // ✅ Disable while downloading
+                            >
+                                {isDownloading ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status">
+                                            <span className="visually-hidden">Loading...</span>
+                                        </span>
+                                        Downloading...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fa fa-download me-2"></i>
+                                        Download PDF
+                                    </>
+                                )}
+                            </button>
+                        </div>              
+                    )}
+
+
+
+
                 </div>
             </div>
         </div>

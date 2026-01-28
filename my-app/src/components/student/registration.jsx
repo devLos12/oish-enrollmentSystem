@@ -18,8 +18,9 @@ const Registration = () => {
 
     navigate('/student/download', { 
       state: { 
+        ...profile,
         ...registration,
-        autoDownload: true 
+        autoDownload: false 
       } 
     });
   };

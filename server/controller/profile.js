@@ -226,11 +226,14 @@ export const getStudentProfile = async (req, res) => {
         const section = await Section.findOne({ name: student.section })
         .select("isOpenEnrollment isEnrolled");
 
+
+
         // Merge section data sa response para sa frontend  
         const studentProfile = {
             ...student,
             currentSection: section 
         }
+
 
         res.status(200).json(studentProfile);
     } catch (error) {

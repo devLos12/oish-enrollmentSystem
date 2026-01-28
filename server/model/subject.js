@@ -12,11 +12,11 @@ const SubjectSchema = new mongoose.Schema({
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff'},
   teacher: { type: String, required: false},
   // ✅ ADD SCHEDULE FIELDS
-  scheduleDay: { type: String, required: false },
-  scheduleStartTime: { type: String, required: false },
-  scheduleEndTime: { type: String, required: false },
-  room: { type: String, required: false },
-  students: [{ type: mongoose.Schema.Types.ObjectId, ref: "Student"}],
+  // scheduleDay: { type: String, required: false },
+  // scheduleStartTime: { type: String, required: false },
+  // scheduleEndTime: { type: String, required: false },
+  // room: { type: String, required: false },
+  // students: [{ type: mongoose.Schema.Types.ObjectId, ref: "Student"}],
 
   sections: [{
     sectionId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Section"},

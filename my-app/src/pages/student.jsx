@@ -35,6 +35,8 @@ const Student = () => {
         })
         .then((data) => {
             setProfile(data);
+
+            console.log("Student profile: ", data);
         })
         .catch((error) => {
             console.log("Error: ", error.message);

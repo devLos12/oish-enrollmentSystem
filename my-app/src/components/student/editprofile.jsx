@@ -6,7 +6,6 @@ import imageCompression from 'browser-image-compression';
 
 
 
-
 //student
 const EditProfile = () => {
     const { setTextHeader, profile, setTrigger } = useContext(globalContext);
@@ -45,11 +44,64 @@ const EditProfile = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success');
 
+    const [contactNumberError, setContactNumberError] = useState('');
+
+
+    const extensionNameOptions = [
+        'Jr.',
+        'Sr.',
+        'II',
+        'III',
+        'IV',
+        'V'
+    ];
+
+
     const showAlert = (message, type = 'success') => {
         setAlertMessage(message);
         setAlertType(type);
         setShowAlertModal(true);
     };
+
+
+    // ✅ Helper function to remove numbers and special chars from text fields
+    const removeNumbersAndSpecialChars = (value) => {
+        // Allow: letters (a-z, A-Z), spaces, periods, hyphens, apostrophes only
+        // Good for names like "De La Cruz", "O'Brien", "Santos Jr."
+        return value.replace(/[^a-zA-Z\s\-'\.]/g, '');
+    };
+
+    // ✅ Helper function to format contact number (0XXX XXX XXXX)
+    const formatContactNumber = (value) => {
+        // Remove all non-digit characters
+        let cleaned = value.replace(/\D/g, '');
+        
+        // Limit to 11 digits
+        cleaned = cleaned.substring(0, 11);
+        
+        // Format as 0XXX XXX XXXX
+        let formatted = '';
+        if (cleaned.length > 0) {
+            formatted = cleaned.substring(0, 4);  // 0XXX
+            if (cleaned.length > 4) {
+                formatted += ' ' + cleaned.substring(4, 7);  // XXX
+            }
+            if (cleaned.length > 7) {
+                formatted += ' ' + cleaned.substring(7, 11);  // XXXX
+            }
+        }
+        
+        return formatted;
+    };
+
+    // ✅ Helper function for address fields (letters and spaces only)
+    const removeNumbersAndAllSpecialChars = (value) => {
+        // Allow: letters (a-z, A-Z) and spaces ONLY
+        // NO numbers, NO special characters at all
+        return value.replace(/[^a-zA-Z\s]/g, '');
+    };
+
+
 
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
@@ -82,16 +134,104 @@ const EditProfile = () => {
         }
     }, [profile]);
 
+
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        
+        // ✅ Fields that should not contain numbers and special characters
+        const textOnlyFields = ['firstName', 'middleName', 'lastName'];
+        
+        // ✅ Apply text-only validation for name fields
+        if (textOnlyFields.includes(name)) {
+            const cleanedValue = removeNumbersAndSpecialChars(value);
+            setFormData(prev => ({
+                ...prev,
+                [name]: cleanedValue
+            }));
+            return;
+        }
+        
+        // ✅ Format contact number with validation
+        if (name === 'contactNumber') {
+            const formattedNumber = formatContactNumber(value);
+            
+            // Remove spaces to check digit count
+            const digitsOnly = formattedNumber.replace(/\s/g, '');
+            
+            // Validate: must be exactly 11 digits if not empty
+            if (digitsOnly.length > 0 && digitsOnly.length < 11) {
+                setContactNumberError('Contact number must be exactly 11 digits');
+            } else {
+                setContactNumberError('');
+            }
+            
+            setFormData(prev => ({
+                ...prev,
+                [name]: formattedNumber
+            }));
+            return;
+        }
+        
+        
+        // ✅ Regular fields (no special handling)
         setFormData(prev => ({
             ...prev,
             [name]: value
         }));
     };
 
+
     const handleAddressChange = (e) => {
         const { name, value } = e.target;
+        
+        // ✅ Zip Code - Numbers only, 4 digits max
+        if (name === 'zipCode') {
+            const cleaned = value.replace(/\D/g, '').substring(0, 4);
+            
+            setFormData(prev => ({
+                ...prev,
+                address: {
+                    ...prev.address,
+                    [name]: cleaned
+                }
+            }));
+            return;
+        }
+        
+        // ✅ Strict text-only fields - Letters and spaces ONLY (no numbers, no special chars)
+        // municipality, province, country
+        const strictTextFields = ['municipality', 'province', 'country'];
+        if (strictTextFields.includes(name)) {
+            const cleanedValue = value.replace(/[^a-zA-Z\s]/g, '');
+            
+            setFormData(prev => ({
+                ...prev,
+                address: {
+                    ...prev.address,
+                    [name]: cleanedValue
+                }
+            }));
+            return;
+        }
+        
+        // ✅ Flexible fields - Allow everything (numbers, letters, special chars, spaces)
+        // houseNo, street, barangay
+        const flexibleFields = ['houseNo', 'street', 'barangay'];
+        if (flexibleFields.includes(name)) {
+            const limited = name === 'houseNo' ? value.substring(0, 50) : value;
+            
+            setFormData(prev => ({
+                ...prev,
+                address: {
+                    ...prev.address,
+                    [name]: limited
+                }
+            }));
+            return;
+        }
+        
+        // ✅ Fallback
         setFormData(prev => ({
             ...prev,
             address: {
@@ -100,7 +240,6 @@ const EditProfile = () => {
             }
         }));
     };
-
 
 
 
@@ -289,7 +428,7 @@ const EditProfile = () => {
         <>
             <div className="container mt-4 container">
                 <div className="row justify-content-center">
-                    <div className="col-12 col-md-10 col-lg-10">
+                    <div className="col-12 col-md-10 col-lg-11">
                         <form onSubmit={handleSubmit}>
                             {/* Header */}
                             <div className="row mb-4">
@@ -413,14 +552,17 @@ const EditProfile = () => {
 
                                         <div className="col-md-6">
                                             <label className="form-label fw-semibold">Extension Name</label>
-                                            <input
-                                                type="text"
+                                            <select
                                                 name="extensionName"
-                                                className="form-control"
-                                                placeholder="e.g., Jr., Sr., III"
+                                                className="form-select"
                                                 value={formData.extensionName}
                                                 onChange={handleInputChange}
-                                            />
+                                            >
+                                                <option value="">Select Extension Name (Optional)</option>
+                                                {extensionNameOptions.map(option => (
+                                                    <option key={option} value={option}>{option}</option>
+                                                ))}
+                                            </select>
                                         </div>
 
                                         <div className="col-md-4">
@@ -433,6 +575,7 @@ const EditProfile = () => {
                                                 className={`form-control ${errors.birthDate ? 'is-invalid' : ''}`}
                                                 value={formData.birthDate}
                                                 onChange={handleInputChange}
+                                                max={new Date().toISOString().split('T')[0]}
                                                 required
                                             />
                                             {errors.birthDate && <div className="invalid-feedback">{errors.birthDate}</div>}
@@ -455,17 +598,24 @@ const EditProfile = () => {
                                             </select>
                                             {errors.sex && <div className="invalid-feedback">{errors.sex}</div>}
                                         </div>
-
+                                        
                                         <div className="col-md-4">
                                             <label className="form-label fw-semibold">Contact Number</label>
                                             <input
                                                 type="text"
                                                 name="contactNumber"
-                                                className="form-control"
+                                                className={`form-control ${contactNumberError ? 'is-invalid' : ''}`}
                                                 placeholder="09XX XXX XXXX"
                                                 value={formData.contactNumber}
                                                 onChange={handleInputChange}
+                                                maxLength="13"
                                             />
+                                            {contactNumberError && (
+                                                <div className="invalid-feedback d-block">{contactNumberError}</div>
+                                            )}
+                                            <small className="text-muted">
+                                                Format: 0XXX XXX XXXX (11 digits)
+                                            </small>
                                         </div>
 
                                         <div className="col-12">
@@ -499,9 +649,12 @@ const EditProfile = () => {
                                                 type="text"
                                                 name="houseNo"
                                                 className="form-control"
+                                                placeholder="e.g., 123, Block 5 Lot 10"
                                                 value={formData.address.houseNo}
                                                 onChange={handleAddressChange}
+                                                maxLength="50"
                                             />
+                                            <small className="text-muted">Can include block/lot number (alphanumeric)</small>
                                         </div>
 
                                         <div className="col-md-6">
@@ -565,9 +718,13 @@ const EditProfile = () => {
                                                 type="text"
                                                 name="zipCode"
                                                 className="form-control"
+                                                placeholder="e.g., 4232"
                                                 value={formData.address.zipCode}
                                                 onChange={handleAddressChange}
+                                                maxLength="4"
+                                                inputMode="numeric"
                                             />
+                                            <small className="text-muted">Numbers only (4 digits)</small>
                                         </div>
                                     </div>
                                 </div>

@@ -11,7 +11,7 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-    
+
   profileImage: {  type: String, required: false },
   publicId:{
       type: String, 
@@ -64,7 +64,12 @@ const studentSchema = new mongoose.Schema({
       },
       subjectName: String,
       subjectTeacher: String,
-      semester: Number
+      semester: Number,
+
+      scheduleDay: String,
+      scheduleStartTime: String,
+      scheduleEndTime: String,
+      room: String
     }
   ],
 
@@ -102,7 +107,12 @@ const studentSchema = new mongoose.Schema({
           },
           subjectName: String,
           subjectTeacher: String,
-          semester: Number
+          semester: Number,
+
+          scheduleDay: String,
+          scheduleStartTime: String,
+          scheduleEndTime: String,
+          room: String
         }
       ],
       dateCreated: { type: Date, default: Date.now }

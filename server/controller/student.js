@@ -139,6 +139,8 @@ export const createStudent = async (req, res) => {
 
 
 
+
+
 export const updateStudent = async (req, res) => {
     try {
         const studentId = req.params.id;
@@ -148,6 +150,8 @@ export const updateStudent = async (req, res) => {
             gradeLevel, track, strand, semester, section, status, studentType,
             repeatedSubjects
         } = req.body;
+
+            
 
         // Get current student data
         const currentStudent = await Student.findById(studentId);
@@ -345,11 +349,21 @@ export const updateStudent = async (req, res) => {
                     });
 
                     if (actualSubject) {
+                        // ✅ GET SCHEDULE FOR THIS SECTION
+                        const sectionSchedule = actualSubject.sections?.find(
+                            s => s.sectionName === updatedStudent.section
+                        );
+
+                        // ✅ PUSH WITH SCHEDULE/ROOM
                         updatedStudent.subjects.push({
                             subjectId: actualSubject._id,
                             subjectName: actualSubject.subjectName,
                             subjectTeacher: actualSubject.teacher,
-                            semester: actualSubject.semester
+                            semester: actualSubject.semester,
+                            scheduleDay: sectionSchedule?.scheduleDay || "",
+                            scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+                            scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+                            room: sectionSchedule?.room || ""
                         });
 
                         await Subject.findByIdAndUpdate(actualSubject._id, {
@@ -371,11 +385,16 @@ export const updateStudent = async (req, res) => {
                 gradeLevel: updatedStudent.gradeLevel,
                 section: updatedStudent.section,
                 strand: updatedStudent.strand,
+                // ✅ AUTO-SYNC WITH SCHEDULE (map from updatedStudent.subjects)
                 subjects: updatedStudent.subjects.map(s => ({
                     subjectId: s.subjectId,
                     subjectName: s.subjectName,
                     subjectTeacher: s.subjectTeacher,
-                    semester: s.semester
+                    semester: s.semester,
+                    scheduleDay: s.scheduleDay,
+                    scheduleStartTime: s.scheduleStartTime,
+                    scheduleEndTime: s.scheduleEndTime,
+                    room: s.room
                 })),
                 dateCreated: new Date()
             });
@@ -387,7 +406,6 @@ export const updateStudent = async (req, res) => {
                 student: updatedStudent
             });
         }
-
 
 
         // ========================================
@@ -518,8 +536,6 @@ export const updateStudent = async (req, res) => {
                     students: studentId
                 });
 
-
-
                 if (oldSection && oldSection.name !== section) {
                     oldSection.students.pull(studentId);
                     await oldSection.save();
@@ -555,18 +571,27 @@ export const updateStudent = async (req, res) => {
                         );
 
                         if (!alreadyHas) {
+                            // ✅ GET SCHEDULE FOR THIS SECTION
+                            const sectionSchedule = subj.sections?.find(
+                                s => s.sectionName === updatedStudent.section
+                            );
+
+                            // ✅ PUSH WITH SCHEDULE/ROOM
                             updatedStudent.subjects.push({
                                 subjectId: subj._id,
                                 subjectName: subj.subjectName,
                                 subjectTeacher: subj.teacher,
-                                semester: subj.semester
+                                semester: subj.semester,
+                                scheduleDay: sectionSchedule?.scheduleDay || "",
+                                scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+                                scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+                                room: sectionSchedule?.room || ""
                             });
                         }
 
                         await Subject.findByIdAndUpdate(subj._id, {
                             $addToSet: { students: updatedStudent._id }
                         });
-
                     }
                 }
 
@@ -582,11 +607,16 @@ export const updateStudent = async (req, res) => {
                     gradeLevel: updatedStudent.gradeLevel,
                     section: updatedStudent.section,
                     strand: updatedStudent.strand,
+                    // ✅ AUTO-SYNC WITH SCHEDULE (map from updatedStudent.subjects)
                     subjects: updatedStudent.subjects.map(s => ({
                         subjectId: s.subjectId,
                         subjectName: s.subjectName,
                         subjectTeacher: s.subjectTeacher,
-                        semester: s.semester
+                        semester: s.semester,
+                        scheduleDay: s.scheduleDay,
+                        scheduleStartTime: s.scheduleStartTime,
+                        scheduleEndTime: s.scheduleEndTime,
+                        room: s.room
                     })),
                     dateCreated: new Date()
                 });
@@ -599,6 +629,8 @@ export const updateStudent = async (req, res) => {
                 student: updatedStudent
             });
         }
+
+
 
         return res.status(400).json({ 
             message: "Invalid student type." 

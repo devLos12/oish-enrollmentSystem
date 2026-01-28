@@ -453,8 +453,14 @@ const StudentManagement = () => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
-            setStudentList(data);
-            setFilteredStudents(data);
+            
+            // ✅ SORT BY CREATED DATE (newest first)
+            const sortedData = [...data].sort((a, b) => 
+                new Date(b.createdAt) - new Date(a.createdAt)
+            );
+            
+            setStudentList(sortedData);
+            setFilteredStudents(sortedData);
 
         } catch (error) {
             console.error("Error fetching students:", error.message);
@@ -465,13 +471,11 @@ const StudentManagement = () => {
     };
 
 
- 
-
-
-
+    
     const handleViewStudent = (student) => {
         setOpenDropdown(null);
-        navigate(`/${role}/registration_form`, { state: student})
+        console.log(student);
+        navigate(`/${role}/registration_form`, { state: student});
     };
 
     const handleEditStudent = (student) => {
@@ -500,8 +504,6 @@ const StudentManagement = () => {
     };
 
 
-
-    
     const confirmDelete = async () => {
         try {
             setIsDeleting(true);
@@ -526,7 +528,7 @@ const StudentManagement = () => {
         }
     };
 
-
+        
 
     const confirmGraduate = async () => {
         try {

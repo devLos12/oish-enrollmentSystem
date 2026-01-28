@@ -180,8 +180,6 @@ const SubjectManagement = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
             setTeachersList(data);
-            console.log(data);
-
             
         } catch (error) {
             console.error("Error fetching teachers:", error.message);
@@ -202,8 +200,14 @@ const SubjectManagement = () => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
-            setSubjectList(data);
-            setFilteredSubjects(data);
+            
+            // ✅ SORT BY CREATED DATE (newest first)
+            const sortedData = [...data].sort((a, b) => 
+                new Date(b.createdAt) - new Date(a.createdAt)
+            );
+            
+            setSubjectList(sortedData);
+            setFilteredSubjects(sortedData);
         } catch (error) {
             showAlert("Failed to load subjects data", 'error');
             console.error("Error fetching subjects:", error.message);

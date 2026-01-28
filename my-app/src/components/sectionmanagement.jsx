@@ -28,6 +28,9 @@ const SectionManagement = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('success'); // 'success' or 'error'
 
+
+
+
   // options (adjust to your school's lists)
   const trackOptions = ["Academic", "TVL"];
   const trackToStrand = {
@@ -43,6 +46,7 @@ const SectionManagement = () => {
 
 
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   
 
@@ -204,21 +208,27 @@ const SectionManagement = () => {
 
   // delete
   const confirmDelete = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deleteSection/${selectedSection._id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      try {
+        setDeleting(true); // ← START LOADING
+        
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deleteSection/${selectedSection._id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
 
-      showAlert(data.message, 'success');
-      setShowModal(false);
-      fetchSectionsData();
-    } catch (error) {
-      showAlert(`Failed to delete section: ${error.message}`, 'error');
-    }
-  };
+        showAlert(data.message, 'success');
+        setShowModal(false);
+        fetchSectionsData();
+      } catch (error) {
+        showAlert(`Failed to delete section: ${error.message}`, 'error');
+      } finally {
+        setDeleting(false); // ← STOP LOADING
+      }
+  }; 
+
+
 
   // update enrollment status
   const handleEnrollmentStatusChange = async (sectionId, isOpen) => {
@@ -695,27 +705,49 @@ const SectionManagement = () => {
                 </>
               )}
 
-              {modalType === "delete" && (
-                <>
-                  <div className="modal-body text-center">
-                    <i className="fa fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                    <h5 className="mb-3">Are you sure?</h5>
-                    <p className="text-muted">
-                      Do you really want to delete <strong>{selectedSection?.name}</strong>?
-                      <br />This action cannot be undone. Make sure the section has no students before deleting.
-                    </p>
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                      Cancel
-                    </button>
-                    <button type="button" className="btn btn-danger" onClick={confirmDelete}>
-                      <i className="fa fa-trash me-2"></i>
-                      Yes, Delete
-                    </button>
-                  </div>
-                </>
-              )}
+            {modalType === "delete" && (
+              <>
+                <div className="modal-body text-center">
+                  <i className="fa fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                  <h5 className="mb-3">Are you sure?</h5>
+                  <p className="text-muted">
+                    Do you really want to delete <strong>{selectedSection?.name}</strong>?
+                    <br />This action cannot be undone. Make sure the section has no students before deleting.
+                  </p>
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowModal(false)}
+                    disabled={deleting} // ← DISABLE WHEN DELETING
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-danger" 
+                    onClick={confirmDelete}
+                    disabled={deleting} // ← DISABLE WHEN DELETING
+                  >
+                    {deleting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa fa-trash me-2"></i>
+                        Yes, Delete
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+
+
+
             </div>
           </div>
         </div>

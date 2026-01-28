@@ -108,7 +108,6 @@ export const updateSubjectSection = async(req, res) => {
 }
 
 
-
 export const addSubjectSection = async(req, res) => {
     try {
         const { id } = req.params;
@@ -143,10 +142,6 @@ export const addSubjectSection = async(req, res) => {
             });
         }
 
-        // const students = await Student.find({ section: sectionName });
-        // const studentIds = students.map(student => student._id);
-
-
         const studentSec = await Section.find({ 
             name: sectionName,
             gradeLevel: gradeLevel
@@ -154,7 +149,7 @@ export const addSubjectSection = async(req, res) => {
 
         const secId = studentSec.map(secId => secId._id);
 
-        // Add new section
+        // Add new section to subject
         subject.sections.push({
             sectionId: secId, 
             sectionName,
@@ -162,14 +157,58 @@ export const addSubjectSection = async(req, res) => {
             scheduleStartTime,
             scheduleEndTime,
             room,
-            // students: studentIds
         });
 
         await subject.save();
 
+        // ✅ NOW SYNC TO STUDENTS
+        // Find all enrolled students in this section with this subject
+        const studentsToUpdate = await Student.find({
+            section: sectionName,
+            status: "enrolled",
+            "subjects.subjectId": subject._id
+        });
+
+        if (studentsToUpdate.length > 0) {
+            const updatePromises = studentsToUpdate.map(async (student) => {
+                
+                // ✅ Update subjects[] array
+                const subjectIndex = student.subjects.findIndex(
+                    s => s.subjectId.toString() === subject._id.toString()
+                );
+
+                if (subjectIndex !== -1) {
+                    student.subjects[subjectIndex].scheduleDay = scheduleDay;
+                    student.subjects[subjectIndex].scheduleStartTime = scheduleStartTime;
+                    student.subjects[subjectIndex].scheduleEndTime = scheduleEndTime;
+                    student.subjects[subjectIndex].room = room;
+                }
+
+                // ✅ Update registrationHistory[last].subjects[] array
+                const lastHistoryIndex = student.registrationHistory.length - 1;
+                
+                if (lastHistoryIndex >= 0) {
+                    const historySubjectIndex = student.registrationHistory[lastHistoryIndex].subjects.findIndex(
+                        s => s.subjectId.toString() === subject._id.toString()
+                    );
+
+                    if (historySubjectIndex !== -1) {
+                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleDay = scheduleDay;
+                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleStartTime = scheduleStartTime;
+                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleEndTime = scheduleEndTime;
+                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].room = room;
+                    }
+                }
+
+                return student.save();
+            });
+
+            await Promise.all(updatePromises);
+        }
+
         return res.status(200).json({
             success: true,
-            message: "Section added successfully",
+            message: `Section added successfully and synced to ${studentsToUpdate.length} student(s)`,
             data: subject
         });
 
@@ -180,8 +219,6 @@ export const addSubjectSection = async(req, res) => {
         });
     }
 }
-
-
 
 
 
@@ -238,9 +275,6 @@ export const getSubjectDetails = async(req, res) => {
         });
     }
 }
-
-
-
 
 
 export const getSubjectSection = async (req, res) => {
@@ -308,7 +342,6 @@ export const getSubjectSection = async (req, res) => {
         });
     }
 };
-
 
 
 
@@ -488,7 +521,6 @@ export const bulkAddSubjects = async (req, res) => {
         });
     }
 };
-
 
 
 

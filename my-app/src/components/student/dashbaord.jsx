@@ -111,7 +111,7 @@ const Dashboard = () => {
                         </div>
                         <div className="col">
                             <h4 className="fw-bold text-capitalize mb-2">
-                                {profile?.lastName}, {profile?.firstName} {profile?.middleName}
+                                {profile?.lastName}, {profile?.firstName} {profile?.middleName} {profile?.extensionName === "N/A" || profile?.extensionName === "N/A" ? "" : profile?.extensionName}
                             </h4>
                             
                             <div className="mb-2">
@@ -194,7 +194,7 @@ const Dashboard = () => {
                                     { label: "School Year", value: profile.enrollmentYear || 'N/A' },
                                     { label: "Track", value: profile.track || 'N/A' },
                                     { label: "Strand", value: profile.strand || 'N/A' },
-                                    { label: "Semester", value: `Semester ${profile.semester}`},
+                                    { label: "Semester", value: `${profile.semester === 1 ? "First"  : "Second"}`},
                                     { label: "Enrolled Since", value: formatDate(profile.createdAt) }
                                 ].map((item, i) => (
                                     <div key={i} className="col-12">

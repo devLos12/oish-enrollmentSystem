@@ -15,8 +15,8 @@ const EnrollmentFormPDF = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const enrollmentData = location?.state?.applicant || {};
+  const [isDownloading, setIsDownloading] = useState(false);
   
-
 
   useEffect(() => {
     if (!location?.state) {
@@ -32,59 +32,68 @@ const EnrollmentFormPDF = () => {
   }, [location?.state?.autoDownload]);
 
 
-
   const handleDownloadPDF = async () => {
-    const element = formRef.current;
-    
-    const images = element.getElementsByTagName('img');
-    const imagePromises = Array.from(images).map(img => {
-      return new Promise((resolve) => {
-        if (img.complete) {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          img.src = canvas.toDataURL('image/png');
-          resolve();
-        } else {
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            img.src = canvas.toDataURL('image/png');
-            resolve();
+      setIsDownloading(true); // ✅ Start loading
+      
+      try {
+          const element = formRef.current;
+          
+          const images = element.getElementsByTagName('img');
+          const imagePromises = Array.from(images).map(img => {
+              return new Promise((resolve) => {
+                  if (img.complete) {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = img.naturalWidth;
+                      canvas.height = img.naturalHeight;
+                      const ctx = canvas.getContext('2d');
+                      ctx.drawImage(img, 0, 0);
+                      img.src = canvas.toDataURL('image/png');
+                      resolve();
+                  } else {
+                      img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          canvas.width = img.naturalWidth;
+                          canvas.height = img.naturalHeight;
+                          const ctx = canvas.getContext('2d');
+                          ctx.drawImage(img, 0, 0);
+                          img.src = canvas.toDataURL('image/png');
+                          resolve();
+                      };
+                  }
+              });
+          });
+
+          await Promise.all(imagePromises);
+
+          const opt = {
+              margin: [10, 10, 10, 10],
+              filename: `Enrollment-Form-${enrollmentData?.learnerInfo?.lastName || 'Unknown'}-${enrollmentData?.schoolYear || ''}.pdf`,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { 
+                  scale: 2,
+                  useCORS: true,
+                  allowTaint: true,
+                  logging: false
+              },
+              jsPDF: { 
+                  unit: 'mm', 
+                  format: 'a4', 
+                  orientation: 'portrait' 
+              }
           };
-        }
-      });
-    });
-
-    await Promise.all(imagePromises);
-
-    const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `Enrollment-Form-${enrollmentData?.learnerInfo?.lastName || 'Unknown'}-${enrollmentData?.schoolYear || ''}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait' 
+          
+          await html2pdf().set(opt).from(element).save();
+          
+          // ✅ Only navigate if auto-download
+          if(location?.state?.autoDownload){
+              navigate(`/${role}/applicants`);
+          }
+      } catch (error) {
+          console.error('Error downloading PDF:', error);
+          alert('Failed to download PDF. Please try again.');
+      } finally {
+          setIsDownloading(false); // ✅ Stop loading
       }
-    };
-    
-    html2pdf().set(opt).from(element).save().then(() => {
-      if(location?.state?.autoDownload){
-        navigate(`/${role}/applicants`);
-      }
-    });
   };
 
 
@@ -557,27 +566,48 @@ const EnrollmentFormPDF = () => {
 
             </div>
 
+            
             {/* Download Button */}
             {!location?.state?.autoDownload && (
-              <div className='d-flex align-items-center gap-3 my-4 justify-content-start'> 
-                <button className='btn btn-secondary px-4 text-capitalize'
-                onClick={() => navigate(-1)}
-                >
-                  back
-                </button>
-                <button 
-                className='btn btn-danger text-capitalize'
-                onClick={handleDownloadPDF}
-                >donwload pdf</button>
-                <button className='btn btn-success text-capitalize'
-                onClick={() => setOpenModal(true)}
-                disabled={enrollmentData?.status === "approved"}
-                >
-                  {enrollmentData?.status === "approved" 
-                  ? "apporved"
-                  : "approve"
-                  }</button>
-              </div>              
+                <div className='d-flex align-items-center gap-3 my-4 justify-content-start'> 
+                    <button 
+                        className='btn btn-secondary px-4 text-capitalize'
+                        onClick={() => navigate(-1)}
+                        disabled={isDownloading} // ✅ Disable while downloading
+                    >
+                        <i className="fa fa-arrow-left me-2"></i>
+                        Back
+                    </button>
+                    <button 
+                        className='btn btn-danger text-capitalize px-4'
+                        onClick={handleDownloadPDF}
+                        disabled={isDownloading} // ✅ Disable while downloading
+                    >
+                        {isDownloading ? (
+                            <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </span>
+                                Downloading...
+                            </>
+                        ) : (
+                            <>
+                                <i className="fa fa-download me-2"></i>
+                                Download PDF
+                            </>
+                        )}
+                    </button>
+                    <button 
+                        className='btn btn-success text-capitalize'
+                        onClick={() => setOpenModal(true)}
+                        disabled={enrollmentData?.status === "approved" || isDownloading} // ✅ Also disable while downloading
+                    >
+                        {enrollmentData?.status === "approved" 
+                            ? "Approved"
+                            : "Approve"
+                        }
+                    </button>
+                </div>              
             )}
 
             {openModal &&  (

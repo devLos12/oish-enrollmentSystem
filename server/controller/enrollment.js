@@ -1624,6 +1624,8 @@ export const ApplicantApproval = async (req, res) => {
     const { enrollmentId } = req.body;
 
 
+    
+
     // 1. Find the enrollment applicant
     const applicant = await Enrollment.findOne({ _id: enrollmentId });
     if (!applicant) {
