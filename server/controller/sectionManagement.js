@@ -131,19 +131,18 @@ export const updateSection = async (req, res) => {
         const insertHistoryBatch = [];
         const updateHistoryBatch = [];
 
-        // 🔥 Process each student individually based on studentType
+        
+     // 🔹 Process each student individually based on studentType
         for (const student of students) {
             let assignedSubjects = [];
 
-            // 🔥 REPEATER LOGIC: Only assign subjects that match repeatedSubjects AND current semester
+            // 🔥 REPEATER LOGIC
             if (student.studentType === 'repeater' && student.repeatedSubjects?.length > 0) {
                 for (const repeatedRef of student.repeatedSubjects) {
-                    // 🔥 FILTER: Only match subjects with same semester as section
                     if (Number(repeatedRef.semester) !== Number(newSemester)) {
-                        continue; // Skip subjects from different semester
+                        continue;
                     }
 
-                    // Find matching subject from available subjects
                     const matchedSubject = subjects.find(sub => 
                         sub.subjectCode === repeatedRef.subjectCode &&
                         sub.subjectName === repeatedRef.subjectName &&
@@ -151,14 +150,23 @@ export const updateSection = async (req, res) => {
                     );
 
                     if (matchedSubject) {
+                        // ✅ GET SCHEDULE FOR THIS SECTION
+                        const sectionSchedule = matchedSubject.sections?.find(
+                            s => s.sectionName === section.name
+                        );
+
+                        // ✅ PUSH WITH SCHEDULE/ROOM
                         assignedSubjects.push({
                             subjectId: matchedSubject._id,
                             subjectName: matchedSubject.subjectName,
                             subjectTeacher: matchedSubject.teacher || "",
-                            semester: matchedSubject.semester
+                            semester: matchedSubject.semester,
+                            scheduleDay: sectionSchedule?.scheduleDay || "",
+                            scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+                            scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+                            room: sectionSchedule?.room || ""
                         });
 
-                        // Add student to this subject's roster
                         await Subject.findByIdAndUpdate(matchedSubject._id, {
                             $addToSet: { students: student._id }
                         });
@@ -166,37 +174,44 @@ export const updateSection = async (req, res) => {
                 }
             } else {
                 // 🔥 REGULAR STUDENT: Assign ALL subjects
-                assignedSubjects = subjects.map(sub => ({
-                    subjectId: sub._id,
-                    subjectName: sub.subjectName,
-                    subjectTeacher: sub.teacher || "",
-                    semester: sub.semester
-                }));
+                assignedSubjects = subjects.map(sub => {
+                    // ✅ GET SCHEDULE FOR THIS SECTION
+                    const sectionSchedule = sub.sections?.find(
+                        s => s.sectionName === section.name
+                    );
 
-                // Add student to all subject rosters
+                    return {
+                        subjectId: sub._id,
+                        subjectName: sub.subjectName,
+                        subjectTeacher: sub.teacher || "",
+                        semester: sub.semester,
+                        scheduleDay: sectionSchedule?.scheduleDay || "",
+                        scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+                        scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+                        room: sectionSchedule?.room || ""
+                    };
+                });
+
                 await Subject.updateMany(
                     { _id: { $in: subjects.map(s => s._id) } },
                     { $addToSet: { students: student._id } }
                 );
             }
 
+
+
             // 🔥 LOG TO REGISTRATION HISTORY
-            // ✅ For section updates, we don't track status changes (unlike updateStudent)
-            // ✅ We check for duplicate entries based on gradeLevel + semester
-            
             if (student.status === 'enrolled') {
                 if (student.studentType === 'repeater') {
-                    // 🔥 REPEATER: Check if already logged for THIS semester/grade
-                    // If yes, UPDATE. If no, INSERT new entry.
                     insertHistoryBatch.push({
                         updateOne: {
-                            filter: { 
-                                _id: student._id,
-                            },
+                            filter: { _id: student._id },
                             update: {
                                 $set: {
                                     semester: newSemester,
-                                    subjects: assignedSubjects,
+                                    gradeLevel: newGradeLevel,
+                                    section: section.name,
+                                    subjects: assignedSubjects, // ← WITH SCHEDULE
                                 },
                                 $push: {
                                     registrationHistory: {
@@ -210,7 +225,17 @@ export const updateSection = async (req, res) => {
                                         gradeLevel: newGradeLevel,
                                         section: section.name,
                                         strand: section.strand,
-                                        subjects: assignedSubjects,
+                                        // ✅ AUTO-SYNC WITH SCHEDULE (same as updateStudent)
+                                        subjects: assignedSubjects.map(s => ({
+                                            subjectId: s.subjectId,
+                                            subjectName: s.subjectName,
+                                            subjectTeacher: s.subjectTeacher,
+                                            semester: s.semester,
+                                            scheduleDay: s.scheduleDay,
+                                            scheduleStartTime: s.scheduleStartTime,
+                                            scheduleEndTime: s.scheduleEndTime,
+                                            room: s.room
+                                        })),
                                         dateCreated: new Date()
                                     }
                                 }
@@ -218,7 +243,6 @@ export const updateSection = async (req, res) => {
                         }
                     });
 
-                    // Update existing entry if meron na
                     updateHistoryBatch.push({
                         updateOne: {
                             filter: { 
@@ -233,10 +257,22 @@ export const updateSection = async (req, res) => {
                             update: {
                                 $set: {
                                     semester: newSemester,
-                                    subjects: assignedSubjects,
+                                    gradeLevel: newGradeLevel,
+                                    section: section.name,
+                                    subjects: assignedSubjects, // ← WITH SCHEDULE
                                     "registrationHistory.$[elem].section": section.name,
                                     "registrationHistory.$[elem].strand": section.strand,
-                                    "registrationHistory.$[elem].subjects": assignedSubjects,
+                                    // ✅ AUTO-SYNC WITH SCHEDULE
+                                    "registrationHistory.$[elem].subjects": assignedSubjects.map(s => ({
+                                        subjectId: s.subjectId,
+                                        subjectName: s.subjectName,
+                                        subjectTeacher: s.subjectTeacher,
+                                        semester: s.semester,
+                                        scheduleDay: s.scheduleDay,
+                                        scheduleStartTime: s.scheduleStartTime,
+                                        scheduleEndTime: s.scheduleEndTime,
+                                        room: s.room
+                                    })),
                                     "registrationHistory.$[elem].schoolYear": schoolYear
                                 }
                             },
@@ -249,8 +285,7 @@ export const updateSection = async (req, res) => {
                         }
                     });
                 } else {
-                    // 🔥 REGULAR: Check if already logged, then insert or update
-                    // OPERATION 1: Insert NEW history entry (if wala pa)
+                    // 🔥 REGULAR STUDENT
                     insertHistoryBatch.push({
                         updateOne: {
                             filter: { 
@@ -267,7 +302,9 @@ export const updateSection = async (req, res) => {
                             update: {
                                 $set: {
                                     semester: newSemester,
-                                    subjects: assignedSubjects,
+                                    gradeLevel: newGradeLevel,
+                                    section: section.name,
+                                    subjects: assignedSubjects, // ← WITH SCHEDULE
                                 },
                                 $push: {
                                     registrationHistory: {
@@ -281,7 +318,17 @@ export const updateSection = async (req, res) => {
                                         gradeLevel: newGradeLevel,
                                         section: section.name,
                                         strand: section.strand,
-                                        subjects: assignedSubjects,
+                                        // ✅ AUTO-SYNC WITH SCHEDULE (same as updateStudent)
+                                        subjects: assignedSubjects.map(s => ({
+                                            subjectId: s.subjectId,
+                                            subjectName: s.subjectName,
+                                            subjectTeacher: s.subjectTeacher,
+                                            semester: s.semester,
+                                            scheduleDay: s.scheduleDay,
+                                            scheduleStartTime: s.scheduleStartTime,
+                                            scheduleEndTime: s.scheduleEndTime,
+                                            room: s.room
+                                        })),
                                         dateCreated: new Date()
                                     }
                                 }
@@ -289,7 +336,6 @@ export const updateSection = async (req, res) => {
                         }
                     });
 
-                    // OPERATION 2: Update EXISTING history entry (if meron na)
                     updateHistoryBatch.push({
                         updateOne: {
                             filter: { 
@@ -304,10 +350,22 @@ export const updateSection = async (req, res) => {
                             update: {
                                 $set: {
                                     semester: newSemester,
-                                    subjects: assignedSubjects,
+                                    gradeLevel: newGradeLevel,
+                                    section: section.name,
+                                    subjects: assignedSubjects, // ← WITH SCHEDULE
+                                    // ✅ AUTO-SYNC WITH SCHEDULE
                                     "registrationHistory.$[elem].section": section.name,
                                     "registrationHistory.$[elem].strand": section.strand,
-                                    "registrationHistory.$[elem].subjects": assignedSubjects,
+                                    "registrationHistory.$[elem].subjects": assignedSubjects.map(s => ({
+                                        subjectId: s.subjectId,
+                                        subjectName: s.subjectName,
+                                        subjectTeacher: s.subjectTeacher,
+                                        semester: s.semester,
+                                        scheduleDay: s.scheduleDay,
+                                        scheduleStartTime: s.scheduleStartTime,
+                                        scheduleEndTime: s.scheduleEndTime,
+                                        room: s.room
+                                    })),
                                     "registrationHistory.$[elem].schoolYear": schoolYear
                                 }
                             },
@@ -321,20 +379,35 @@ export const updateSection = async (req, res) => {
                     });
                 }
             } else {
-                // 🔥 NOT ENROLLED: Just update subjects, no history logging
+                // 🔥 NOT ENROLLED: Just update subjects WITH SCHEDULE
                 insertHistoryBatch.push({
                     updateOne: {
                         filter: { _id: student._id },
                         update: {
                             $set: {
                                 semester: newSemester,
-                                subjects: assignedSubjects,
+                                gradeLevel: newGradeLevel,
+                                section: section.name,
+                                subjects: assignedSubjects, // ← WITH SCHEDULE
                             }
                         }
                     }
                 });
             }    
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

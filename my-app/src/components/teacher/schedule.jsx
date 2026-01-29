@@ -36,9 +36,11 @@ const TeacherScheduleTable = () => {
                     setTeacherInfo({
                         name: data.data[0].teacher || 'N/A',
                         semester: data.data[0].semester || '1',
-                        schoolYear: '2025-2026'
+                        schoolYear: data.data[0].schoolYear,
                     });
                 }
+
+                console.log(data);
             }
         })
         .catch((error) => {
@@ -153,11 +155,13 @@ const TeacherScheduleTable = () => {
                         <div className="card shadow-sm">
                             <div className="card-body">
                                 <div className="row align-items-center">
-                                    <div className="col-md-8">
-                                        <p className="m-0 mb-1 fw-bold fs-3">Teacher Schedule</p>
-                                        <p className="text-muted mb-0">2nd Semester, S.Y. 2025-2026</p>
+                                    <div className="col-12">
+                                        <p className='fs-4 text-capitalize fw-semibold'>teacher schedule</p>
                                     </div>
-                                    <div className="col-md-4 text-md-end">
+                                    <div className="col-md-6 ">
+                                        <p className="text-muted m-0">{`${teacherInfo?.semester === 1 ? "First Semester" : "Second Semester"}, S.Y ${teacherInfo?.schoolYear}`}</p>
+                                    </div>
+                                    <div className="col-md-6 text-md-end">
                                         <p className="text-muted mb-1 small">Name of Teacher</p>
                                         <p className="m-0 fw-bold mb-1 text-uppercase">{teacherInfo.name}</p>
                                     </div>
@@ -220,7 +224,7 @@ const TeacherScheduleTable = () => {
                                                                             {subject.subjectName}
                                                                         </div>
                                                                         <div className="text-muted small text-capitalize">
-                                                                            {subject.sectionName || subject.section}
+                                                                            {subject.gradeLevel} {subject.sectionName || subject.section}
                                                                         </div>
                                                                         {subject.room && (
                                                                             <div className="text-muted small">

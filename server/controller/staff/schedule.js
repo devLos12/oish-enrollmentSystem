@@ -1,13 +1,12 @@
 import Subject from "../../model/subject.js";
 import Student from "../../model/student.js"; 
 
-
 export const getTeacherSubjectSchedule = async(req, res) => {
     try {   
         const { id } = req.account;
         
         const subjects = await Subject.find({ teacherId: id });
-
+        
         // Check if teacher has any subjects
         if (!subjects || subjects.length === 0) {
             return res.status(200).json({ 
@@ -20,9 +19,22 @@ export const getTeacherSubjectSchedule = async(req, res) => {
         // Flatten the sections array - each section becomes a separate entry
         const scheduleData = [];
         
-        subjects.forEach(subject => {
+        for (const subject of subjects) {
             // Loop through each section in the subject
-            subject.sections.forEach(section => {
+            for (const section of subject.sections) {
+                // Find students enrolled in this specific section
+                const studentsInSection = await Student.find({
+                    section: section.sectionName,
+                    strand: subject.strand,
+                    semester: subject.semester,
+                    status: "enrolled" // Only enrolled students
+                });
+
+                // Get school year from first enrolled student (or null if none)
+                const schoolYear = studentsInSection.length > 0 
+                    ? studentsInSection[0].enrollmentYear 
+                    : null;
+
                 scheduleData.push({
                     // Subject info
                     subjectId: subject._id,
@@ -39,22 +51,22 @@ export const getTeacherSubjectSchedule = async(req, res) => {
                     // Section info
                     sectionId: section.sectionId,
                     sectionName: section.sectionName,
-                    section: section.sectionName, // for compatibility with frontend
-                    // scheduleDay: section.scheduleDay,
+                    section: section.sectionName,
                     scheduleStartTime: section.scheduleStartTime,
                     scheduleEndTime: section.scheduleEndTime,
                     room: section.room,
                     
-                    // Student count (optional)
-                    studentCount: section.students?.length || 0
+                    // Student and School Year info
+                    studentCount: studentsInSection.length,
+                    schoolYear: schoolYear, // ← School year from students
                 });
-            });
-        });
+            }
+        }
         
         return res.status(200).json({ 
             success: true,
             message: "Teacher schedule fetched successfully", 
-            data: scheduleData, 
+            data: scheduleData
         });
         
     } catch (error) {

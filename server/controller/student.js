@@ -139,8 +139,6 @@ export const createStudent = async (req, res) => {
 
 
 
-
-
 export const updateStudent = async (req, res) => {
     try {
         const studentId = req.params.id;
@@ -798,7 +796,6 @@ export const setStudentsPending = async (req, res) => {
 
 
 
-
 export const EnrollStudentFromPortal = async (req, res) => {
   try {
     const studentId = req.account.id; // Logged-in student from token
@@ -808,6 +805,9 @@ export const EnrollStudentFromPortal = async (req, res) => {
     if (!student) return res.status(404).json({ message: "Student not found." });
 
     
+    // ========================================
+    // 🔥 REPEATER ENROLLMENT
+    // ========================================
     if(student.studentType === 'repeater' && student.repeatedSubjects.length > 0){
         
         if(student.status === 'unenrolled'){
@@ -816,13 +816,16 @@ export const EnrollStudentFromPortal = async (req, res) => {
         }
         
         await student.save();
-        return res.status(200).json({ message: "Enrollment successful" });
-
+        return res.status(200).json({ message: "Enrollment request submitted" });
     }
 
+
+    // ========================================
+    // 🔥 REGULAR STUDENT ENROLLMENT
+    // ========================================
     const nextGrade = 12;
     const nextSemester = 1;
-    const currentSection = student.section;
+    const currentSection = student.section; // Keep same section
 
     // 2️⃣ Update grade, semester, status
     student.gradeLevel = nextGrade;
@@ -831,30 +834,60 @@ export const EnrollStudentFromPortal = async (req, res) => {
     student.createdAt = new Date();
 
 
+    // 3️⃣ Find section for auto-assignment
+    const findSection = await Section.findOne({
+      name: currentSection,
+      gradeLevel: nextGrade,
+      track: student.track,
+      strand: student.strand,
+      semester: nextSemester
+    });
 
-    // 3️⃣ Auto-assign subjects for new level
+    // If section exists, add student to it
+    if (findSection) {
+      if (!findSection.students.includes(studentId)) {
+        findSection.students.push(studentId);
+        await findSection.save();
+      }
+    }
+
+
+    // 4️⃣ Auto-assign subjects for new level WITH SCHEDULE
     const matchedSubjects = await Subject.find({
       gradeLevel: nextGrade,
       strand: student.strand,
+      track: student.track,
       semester: nextSemester
     });
 
     student.subjects = []; // reset subjects
 
     for (const subj of matchedSubjects) {
+      // ✅ GET SCHEDULE FOR THIS SECTION
+      const sectionSchedule = subj.sections?.find(
+        s => s.sectionName === currentSection
+      );
+
+      // ✅ PUSH WITH SCHEDULE/ROOM (same as updateStudent)
       student.subjects.push({
         subjectId: subj._id,
         subjectName: subj.subjectName,
         subjectTeacher: subj.teacher,
-        semester: subj.semester
+        semester: subj.semester,
+        scheduleDay: sectionSchedule?.scheduleDay || "",
+        scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+        scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+        room: sectionSchedule?.room || ""
       });
 
+      // Add student to subject's students array
       await Subject.findByIdAndUpdate(subj._id, {
         $addToSet: { students: student._id }
       });
     }
 
-    // 4️⃣ Update registration history
+
+    // 5️⃣ Update registration history WITH SCHEDULE
     student.registrationHistory.push({
       lrn: student.lrn,
       studentNumber: student.studentNumber,
@@ -866,20 +899,37 @@ export const EnrollStudentFromPortal = async (req, res) => {
       gradeLevel: nextGrade,
       section: currentSection,
       strand: student.strand,
-      subjects: student.subjects,
+      // ✅ AUTO-SYNC WITH SCHEDULE (map from student.subjects)
+      subjects: student.subjects.map(s => ({
+        subjectId: s.subjectId,
+        subjectName: s.subjectName,
+        subjectTeacher: s.subjectTeacher,
+        semester: s.semester,
+        scheduleDay: s.scheduleDay,
+        scheduleStartTime: s.scheduleStartTime,
+        scheduleEndTime: s.scheduleEndTime,
+        room: s.room
+      })),
       dateCreated: new Date()
     });
 
-    // 5️⃣ Save student
+
+    // 6️⃣ Save student
     await student.save();
 
-    // 6️⃣ ADD STUDENT TO SECTION.isEnrolled ARRAY
-    await Section.findOneAndUpdate(
-      { name: currentSection },
-      { $addToSet: { isEnrolled: student._id } } // para iwas duplicate
-    );
 
-    return res.status(200).json({ message: "Enrollment successful" });
+    // 7️⃣ ADD STUDENT TO SECTION.isEnrolled ARRAY
+    if (findSection) {
+      await Section.findOneAndUpdate(
+        { name: currentSection },
+        { $addToSet: { isEnrolled: student._id } } // para iwas duplicate
+      );
+    }
+
+    return res.status(200).json({ 
+      message: "Enrollment successful",
+      student: student
+    });
 
   } catch (error) {
     return res.status(500).json({ message: error.message });
