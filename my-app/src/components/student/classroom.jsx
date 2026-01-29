@@ -25,7 +25,6 @@ const ClassRoom = () => {
             return data;
         })
         .then((data) => {
-            console.log(data);
             setSubjectClass(data);
         })
         .catch((error) => {
@@ -35,6 +34,8 @@ const ClassRoom = () => {
             setLoading(false);
         });
     },[]);
+
+    
 
     const formatTo12Hour = (time) => {
         if (!time) return 'N/A';

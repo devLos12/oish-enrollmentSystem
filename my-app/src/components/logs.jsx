@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { globalContext } from "../context/global";
 import { useLocation } from "react-router-dom";
+import html2pdf from "html2pdf.js";
 
 const Logs = () => {
   const { setTextHeader } = useContext(globalContext);
@@ -26,6 +27,15 @@ const Logs = () => {
   const roleOptions = ["admin", "teacher", "student"];
   const statusOptions = ["Logged In", "Logged Out"];
 
+  // ✅ GET TODAY'S DATE (for max date restriction)
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // fetch logs
   useEffect(() => {
     fetchLogsData();
@@ -41,6 +51,7 @@ const Logs = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to fetch logs");
 
+      // ✅ REVERSE: Newest records first (keep the reverse)
       setLogs(data.reverse());
     } catch (error) {
       console.error("Error fetching logs:", error.message || error);
@@ -211,6 +222,122 @@ const Logs = () => {
     setFilterDate("");
   };
 
+  // 🖨️ PRINT FUNCTION
+  const handlePrint = () => {
+    const printWindow = window.open('', '', 'height=600,width=800');
+    printWindow.document.write('<html><head><title>Activity Logs</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
+    printWindow.document.write('h2 { text-align: center; color: #dc3545; margin-bottom: 10px; }');
+    printWindow.document.write('h3 { text-align: center; color: #6c757d; margin-bottom: 20px; }');
+    printWindow.document.write('.info { margin-bottom: 20px; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; font-size: 12px; }');
+    printWindow.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+    printWindow.document.write('th { background-color: #dc3545; color: white; }');
+    printWindow.document.write('tr:nth-child(even) { background-color: #f8f9fa; }');
+    printWindow.document.write('.badge { padding: 3px 6px; border-radius: 3px; font-size: 11px; color: white; }');
+    printWindow.document.write('</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write('<h2>Activity Logs</h2>');
+    printWindow.document.write('<h3>User Login & Logout Report</h3>');
+    printWindow.document.write('<div class="info">');
+    printWindow.document.write('<strong>Date Generated:</strong> ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + '<br>');
+    printWindow.document.write('<strong>Total Records:</strong> ' + filtered.length);
+    printWindow.document.write('</div>');
+    printWindow.document.write('<table>');
+    printWindow.document.write('<thead><tr>');
+    printWindow.document.write('<th>#</th><th>Log ID</th><th>Name</th><th>Role</th><th>Date</th><th>Time</th><th>Status</th>');
+    printWindow.document.write('</tr></thead><tbody>');
+    
+    filtered.forEach((log, index) => {
+      const statusColor = log.status === 'Logged In' ? '#198754' : '#6c757d';
+      const roleColor = log.role === 'admin' ? '#dc3545' : log.role === 'teacher' ? '#0d6efd' : '#0dcaf0';
+      
+      printWindow.document.write('<tr>');
+      printWindow.document.write('<td>' + (index + 1) + '</td>');
+      printWindow.document.write('<td style="font-family: monospace;">ID' + log._id.slice(0, 12) + '</td>');
+      printWindow.document.write('<td style="text-transform: capitalize; font-weight: 600;">' + log.participantName + '</td>');
+      printWindow.document.write('<td><span class="badge" style="background-color: ' + roleColor + '; text-transform: capitalize;">' + log.role + '</span></td>');
+      printWindow.document.write('<td>' + formatReadableDate(log.Date) + '</td>');
+      printWindow.document.write('<td>' + log.time + '</td>');
+      printWindow.document.write('<td><span class="badge" style="background-color: ' + statusColor + ';">' + log.status + '</span></td>');
+      printWindow.document.write('</tr>');
+    });
+    
+    printWindow.document.write('</tbody></table>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  // 📄 DOWNLOAD PDF FUNCTION
+  const handleDownloadPDF = () => {
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <div style="padding: 20px; font-family: Arial, sans-serif;">
+        <h2 style="text-align: center; color: #dc3545; margin-bottom: 10px;">Activity Logs</h2>
+        <h3 style="text-align: center; color: #6c757d; margin-bottom: 20px;">User Login & Logout Report</h3>
+        <p style="margin-bottom: 20px;">
+          <strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br>
+          <strong>Total Records:</strong> ${filtered.length}
+        </p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+          <thead>
+            <tr style="background-color: #dc3545; color: white;">
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">#</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Log ID</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Name</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Role</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Date</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Time</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map((log, index) => {
+              const statusColor = log.status === 'Logged In' ? '#198754' : '#6c757d';
+              const roleColor = log.role === 'admin' ? '#dc3545' : log.role === 'teacher' ? '#0d6efd' : '#0dcaf0';
+              
+              return `
+                <tr style="${index % 2 === 0 ? 'background-color: #f8f9fa;' : ''}">
+                  <td style="border: 1px solid #ddd; padding: 6px;">${index + 1}</td>
+                  <td style="border: 1px solid #ddd; padding: 6px; font-family: monospace;">ID${log._id.slice(0, 12)}</td>
+                  <td style="border: 1px solid #ddd; padding: 6px; text-transform: capitalize; font-weight: 600;">
+                    ${log.participantName}
+                  </td>
+                  <td style="border: 1px solid #ddd; padding: 6px;">
+                    <span style="padding: 3px 6px; border-radius: 3px; font-size: 10px; 
+                      background-color: ${roleColor}; color: white; text-transform: capitalize;">
+                      ${log.role}
+                    </span>
+                  </td>
+                  <td style="border: 1px solid #ddd; padding: 6px;">${formatReadableDate(log.Date)}</td>
+                  <td style="border: 1px solid #ddd; padding: 6px;">${log.time}</td>
+                  <td style="border: 1px solid #ddd; padding: 6px;">
+                    <span style="padding: 3px 6px; border-radius: 3px; font-size: 10px; 
+                      background-color: ${statusColor}; color: white;">
+                      ${log.status}
+                    </span>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const opt = {
+      margin: 10,
+      filename: `activity_logs_${new Date().toISOString().split('T')[0]}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    html2pdf().set(opt).from(element).save();
+  };
+
   return (
     <>
       <div className="container-fluid py-4 g-0 g-md-5">
@@ -224,7 +351,7 @@ const Logs = () => {
                 </p>
               </div>
               <button
-                className="btn btn-outline-secondary btn-sm"  // ← Fixed typo: "outine" to "outline"
+                className="btn btn-outline-secondary btn-sm"
                 onClick={fetchLogsData}
                 disabled={loading}
               >
@@ -294,6 +421,7 @@ const Logs = () => {
                 className="form-control border-start-0"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
+                max={getTodayDate()}
               />
               
               {filterDate && (
@@ -371,12 +499,11 @@ const Logs = () => {
                               </td>
                               <td className="align-middle">
                                 <span
-                                  className={`badge ${getRoleBadgeClass(
-                                    log.role
+                                  className={`badge text-capitalize  ${getRoleBadgeClass(
+                                    log.role === "staff" ? "teacher" : log.role
                                   )}`}
                                 >
-                                  {log.role.charAt(0).toUpperCase() +
-                                    log.role.slice(1)}
+                                  {log.role === "staff" ? "teacher" : log.role}
                                 </span>
                               </td>
                               <td className="align-middle">{formatReadableDate(log.Date)}</td>
@@ -398,15 +525,43 @@ const Logs = () => {
 
                     {/* Pagination */}
                     {totalPages > 0 && (
-                      <div className="d-flex justify-content-between align-items-center p-3 border-top">
-                        <div className="text-muted small">
-                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filtered.length)} of {filtered.length} entries
+                      <div className="p-3 border-top">
+                        <div className="row align-items-center g-2">
+                          {/* Left: Showing entries */}
+                          <div className="col-12 col-md-6">
+                            <div className="text-muted small text-center text-md-start">
+                              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filtered.length)} of {filtered.length} entries
+                            </div>
+                          </div>
+
+                          {/* Right: Print/PDF buttons + Pagination */}
+                          <div className="col-12 col-md-6 d-flex justify-content-end gap-3 mt-3 mt-md-0 flex-column flex-md-row">
+                            <div className="d-flex justify-content-center gap-2">
+                              <button 
+                                type="button" 
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={handlePrint}
+                                title="Print Activity Logs"
+                              >
+                                <i className="fa fa-print me-1"></i>Print
+                              </button>
+                              <button 
+                                type="button" 
+                                className="btn btn-outline-danger btn-sm"
+                                onClick={handleDownloadPDF}
+                                title="Download as PDF"
+                              >
+                                <i className="fa fa-file-pdf me-1"></i>PDF
+                              </button>
+                            </div>
+
+                            <nav className="d-flex justify-content-md-end justify-content-center">
+                              <ul className="pagination mb-0">
+                                {renderPagination()}
+                              </ul>
+                            </nav>
+                          </div>
                         </div>
-                        <nav>
-                          <ul className="pagination mb-0">
-                            {renderPagination()}
-                          </ul>
-                        </nav>
                       </div>
                     )}
                   </>

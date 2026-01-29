@@ -631,7 +631,7 @@ const SubjectManagement = () => {
                     );
                     
                     if (!teacher) {
-                        errors.push(`Row ${rowNum}: Teacher "${normalizedRow.teacherName}" not found`);
+                        errors.push(`Row ${rowNum}: Teacher "${normalizedRow.teacherName}" not found. Please create an account for this teacher.`);
                     } else {
                         validatedData.push({
                             subjectCode: normalizedRow.subjectCode.toString().trim().toUpperCase(),

@@ -13,8 +13,7 @@ const SideBar = () => {
     const location = useLocation();
     
 
-    
-
+     
     // State para sa dropdown
     const [isAccessCodeOpen, setIsAccessCodeOpen] = useState(false);
     

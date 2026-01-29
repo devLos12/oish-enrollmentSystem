@@ -289,6 +289,15 @@ const ClassRoom = () => {
                                             }
                                         </p>
                                     </div>
+
+                                    
+                                    <div className="d-flex gap-2 align-items-center">
+                                        <p className="m-0 text-capitalize small fw-semibold">semester:</p>
+                                        <p className="m-0 text-capitalize small fw-bold badge bg-primary">
+                                            {data.semester === 1 ? "First" : "Second"}
+                                        </p>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>

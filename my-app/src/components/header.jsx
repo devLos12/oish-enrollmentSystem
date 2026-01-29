@@ -20,10 +20,6 @@ const Header = () => {
         setIsStudent(role === "student");
     }, [role]);
 
-    useLayoutEffect(() => {
-        console.log(textHeader);
-    },[textHeader])
-
     // Close menu when clicking overlay
     const handleOverlayClick = (e) => {
         if (e.target === e.currentTarget) {
@@ -91,7 +87,7 @@ const Header = () => {
                             </p>
                         </div>
                         )}
-                        <p className="text-capitalize fw-semibold m-0 text-dark">
+                        <p className="text-capitalize fw-semibold m-0 text-dark d-none d-md-flex">
                             {`${profile?.firstName} ${profile?.lastName}`}
                         </p>
                     </div>
@@ -123,7 +119,7 @@ const Header = () => {
                             </div>
                         )}
                         
-                        <p className="text-capitalize m-0 small fw-semibold">
+                        <p className="text-capitalize m-0 small fw-semibold d-none d-md-flex">
                             {`${profile?.firstName} ${profile?.lastName}`}
                         </p>
                     </div>

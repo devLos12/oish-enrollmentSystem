@@ -9,15 +9,21 @@ import logo from "../assets/image/logo.png";
 
 
 const EnrollmentFormPDF = () => {
-  const { role} = useContext(globalContext);
+  const { role, setTextHeader } = useContext(globalContext);
   const formRef = useRef();
   const [openModal, setOpenModal] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const enrollmentData = location?.state?.applicant || {};
   const [isDownloading, setIsDownloading] = useState(false);
-  
 
+
+  useLayoutEffect(() => {
+    setTextHeader(location?.state?.title);
+  },[location?.state?.title]);
+
+
+  
   useEffect(() => {
     if (!location?.state) {
       navigate(`/admin`, { replace: true });

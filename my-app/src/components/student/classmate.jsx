@@ -21,9 +21,7 @@ const StudentTable = () => {
         setTextHeader(location?.state?.title);
     },[location?.state?.title]);
 
-    useEffect(() => {
-        console.log(location?.state?.data);
-    })
+    
 
     // Fetch student data from location state
     useEffect(() => {
@@ -38,14 +36,24 @@ const StudentTable = () => {
 
     // Search filter
     useEffect(() => {
-        const filtered = studentList.filter(student => 
-            student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.section.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.studentNumber.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        const searchLower = searchTerm.toLowerCase().trim();
+        
+        const filtered = studentList.filter(student => {
+            const fullName = student.name.toLowerCase();
+            
+            return (
+                fullName.includes(searchLower) ||
+                student.studentNumber.toLowerCase().includes(searchLower)
+            );
+        });
+        
         setFilteredStudents(filtered);
         setCurrentPage(1);
     }, [searchTerm, studentList]);
+
+
+    
+
 
     const handleViewStudent = (student) => {
         setSelectedStudent(student);
@@ -158,7 +166,7 @@ const StudentTable = () => {
             <div className="container-fluid py-4 ">
                 {/* Header Section with Schedule */}
                 <div className="row justify-content-center mb-4">
-                    <div className="col-12 col-md-11 col-lg-11">
+                    <div className="col-12 ">
                         <div className="card shadow-sm border-0">
                             <div className="card-body">
                                 <div className="row">
@@ -170,21 +178,19 @@ const StudentTable = () => {
                                             <div>|</div>
                                             <p className="m-0 badge bg-info">{subjectData?.subjectCode}</p>
                                         </div>
-                                       
-                                       <div>
-                                        <p className="m-0 fw-semibold">
-                                            {subjectData?.gradeLevel} - {subjectData.sectionName}
-                                        </p>
-                                       </div>
+                                       <div className="mt-3">
+                                            <p className="m-0 fw-semibold">
+                                                {subjectData?.gradeLevel} - {subjectData.sectionName}
+                                            </p>
 
-                                        <p className="m-0 text-muted  ">
-                                            List of students enrolled in this subject
-                                        </p>
+                                            <p className="m-0 text-muted  ">
+                                                List of students enrolled in this subject
+                                            </p>
+                                       </div>
                                     </div>
-                                    <div className="col-md-4">
+                                    <div className="col-md-4 mt-3 mt-md-0">
                                         <div className="d-flex flex-column gap-1">
                                       
-                                           
                                             {subjectData?.scheduleDay && (
                                                 <div className="d-flex align-items-center gap-2">
                                                     <i className="fa fa-calendar text-muted small"></i>
@@ -219,7 +225,7 @@ const StudentTable = () => {
 
                 {/* Search Bar */}
                 <div className="row justify-content-center mb-3">
-                    <div className="col-12 col-md-11 ">
+                    <div className="col-12 ">
                         <div className="input-group">
                             <span className="input-group-text bg-white">
                                 <i className="fa fa-search text-muted"></i>
@@ -227,13 +233,13 @@ const StudentTable = () => {
                             <input 
                                 type="text" 
                                 className="form-control border-start-0" 
-                                placeholder="Search by name, section, or student number..."
+                                placeholder="Search by name or student number..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
-                    <div className="col-12 col-md-11 text-end">
+                    <div className="col-12  text-end">
                         <p className="text-muted mb-0 mt-2">
                             Total Students: <strong>{filteredStudents.length}</strong>
                         </p>
@@ -242,7 +248,7 @@ const StudentTable = () => {
 
                 {/* Table */}
                 <div className="row justify-content-center">
-                    <div className="col-12 col-md-11 col-lg-11">
+                    <div className="col-12 ">
                         <div className="card shadow-sm">
                             <div className="card-body p-0">
                                 {loading ? (
@@ -267,6 +273,7 @@ const StudentTable = () => {
                                                         <th className="text-capitalize fw-bold">Student Number</th>
                                                         <th className="text-capitalize fw-bold">Name</th>
                                                         <th className="text-capitalize fw-bold">Email</th>
+                                                        <th className="text-capitalize fw-bold">Sex</th>
                                                         <th className="text-capitalize  fw-bold">Grade & Section</th>
                                                     </tr>
                                                 </thead>
@@ -286,6 +293,9 @@ const StudentTable = () => {
                                                             </td>
                                                             <td className="align-middle">
                                                                 {student.email}
+                                                            </td>
+                                                            <td className="align-middle">
+                                                                {student.sex}
                                                             </td>
                                                             <td className="align-middle">
                                                                 {student.gradeLevel} - {student.section}

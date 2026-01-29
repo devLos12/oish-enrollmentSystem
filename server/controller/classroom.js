@@ -20,7 +20,7 @@ const getClassrooms = async (req, res) => {
     }).populate({
       path: "students",
       match: { section: student.section },
-      select: "studentNumber firstName lastName section gradeLevel email"
+      select: "studentNumber firstName lastName section gradeLevel email sex"
     });
 
     // 🔹 Filter out subjects na:
@@ -66,7 +66,8 @@ const getClassrooms = async (req, res) => {
           name: `${s.firstName} ${s.lastName}`,
           section: s.section,
           gradeLevel: s.gradeLevel,
-          email: s.email
+          email: s.email,
+          sex: s.sex
         }))
       };
     }).filter(Boolean);  // ✅ Remove null entries

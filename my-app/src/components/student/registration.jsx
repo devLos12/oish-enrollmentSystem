@@ -20,7 +20,7 @@ const Registration = () => {
       state: { 
         ...profile,
         ...registration,
-        autoDownload: false 
+        autoDownload: true
       } 
     });
   };

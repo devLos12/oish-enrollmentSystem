@@ -35,9 +35,11 @@ const EditStudent = () => {
     
     const trackOptions = Object.keys(trackStrandMapping);
 
-    // useLayoutEffect(() => {
-    //     setTextHeader(location?.state?.title || 'Edit Student');
-    // }, [location?.state?.title, setTextHeader]);
+    useLayoutEffect(() => {
+        setTextHeader(location?.state?.title);
+    }, [location?.state?.title]);
+
+
 
     const showAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -190,12 +192,6 @@ const EditStudent = () => {
     };
 
 
-
-
-
-    useEffect(()=>{
-        console.log("selected: ", selectedStudent);
-    },[selectedStudent]);
 
     
     return (

@@ -443,7 +443,6 @@ const StudentManagement = () => {
     };
 
    
-
     const fetchStudentsData = async () => {
         try {
             setLoading(true);
@@ -474,7 +473,6 @@ const StudentManagement = () => {
     
     const handleViewStudent = (student) => {
         setOpenDropdown(null);
-        console.log(student);
         navigate(`/${role}/registration_form`, { state: student});
     };
 
@@ -482,7 +480,7 @@ const StudentManagement = () => {
         setOpenDropdown(null);
         navigate(`/${role}/edit_student`, { 
             state: { 
-                title: "Update Student", 
+                title: "student management", 
                 selectedStudent: student
             }
         })

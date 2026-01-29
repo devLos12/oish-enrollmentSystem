@@ -12,6 +12,7 @@ const Students = () => {
     const [students, setStudents] = useState([]);
     const [subjectInfo, setSubjectInfo] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -32,6 +33,8 @@ const Students = () => {
         }
     }, [subjectId, sectionId]);
 
+
+    
     const getStudents = async() => {
         try {
             setLoading(true);
@@ -59,13 +62,42 @@ const Students = () => {
         }
     }
 
+    // ✅ Format time to 12-hour format (e.g., "10:39 AM")
+    const formatTime = (time) => {
+        if (!time) return '';
+        const [hours, minutes] = time.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const formattedHour = hour % 12 || 12;
+        return `${formattedHour}:${minutes} ${ampm}`;
+    };
+
+    // Filter students based on search query
+    const filteredStudents = students.filter(student => {
+        const searchLower = searchQuery.toLowerCase().trim();
+        const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+        
+        return (
+            fullName.includes(searchLower) ||
+            student.firstName.toLowerCase().includes(searchLower) ||
+            student.lastName.toLowerCase().includes(searchLower) ||
+            student.studentNumber.toLowerCase().includes(searchLower) ||
+            student.section.toLowerCase().includes(searchLower) ||
+            student.email.toLowerCase().includes(searchLower)
+        );
+    });
 
 
-    // Pagination logic
+    // Pagination logic (using filtered students)
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentStudents = students.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(students.length / itemsPerPage);
+    const currentStudents = filteredStudents.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+
+    // Reset to page 1 when search query changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
@@ -173,23 +205,29 @@ const Students = () => {
                         <div className="card border-0 shadow-sm">
                             <div className="card-body">
                                 <div className="row">
-                                    <div className="col-12">
-                                        
-                                        <p className="m-0 fs-4 fw-bold mb-1 text-capitalize">{subjectInfo.subjectName}</p>
-
+                                    {/* Left Column - Subject Info */}
+                                    <div className="col-12 col-lg-8">
+                                        <div className="d-flex align-items-center gap-2 mb-2">
+                                            <h2 className="m-0 fw-bold text-capitalize">{subjectInfo.subjectName}</h2>
+                                            <span className="badge bg-info text-white">{subjectInfo.subjectCode}</span>
+                                        </div>
+                                        <p className="text-muted mb-2">
+                                            {students.length > 0 ? `${students[0].gradeLevel} - ${students[0].section}` : 'No section info'}
+                                        </p>
+                                        <p className="text-muted mb-0">List of students enrolled in this subject</p>
                                     </div>
-                                    <div className="col-12 d-flex gap-2 align-items-center  text-muted">
-                                        <p className="m-0 text-capitalize fw-bold">subject code:</p>
-                                        <p className="m-0 badge bg-info bg-opacity-10 text-info border-info border">{subjectInfo.subjectCode}</p>
-                                    </div>
-
-                                    <div className="col-6 mt-1 d-flex gap-2 align-items-center  text-muted">
-                                        <p className="m-0 text-capitalize fw-bold">semester: </p>
-                                        <p className="m-0 text-capitalize small badge bg-primary">{subjectInfo?.semester === 1 ? "First" : "Second"}</p>
-                                    </div>
-
-                                    <div className="col-6 mt-1 text-end text-muted">
-                                        <strong>Total Students:</strong> {students.length}
+                                    
+                                    {/* Right Column - Time and Teacher */}
+                                    <div className="col-12 col-lg-4">
+                                        <div className="text-lg-end mt-3 mt-lg-0">
+                                            <div className="mb-2">
+                                                <i className="fa fa-clock me-2 text-muted"></i>
+                                                <span className="text-muted">Time: </span>
+                                                <span className="fw-semibold">
+                                                    {formatTime(subjectInfo.scheduleStartTime)} - {formatTime(subjectInfo.scheduleEndTime)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -197,6 +235,33 @@ const Students = () => {
                     </div>
                 </div>
             )}
+
+            {/* Search Bar and Total Students */}
+            <div className="row mb-3">
+                <div className="col-12">
+                    <div className="position-relative">
+                        {/* Search Input with Icon */}
+                        <div className="input-group input-group-lg">
+                            <span className="input-group-text bg-white border-end-0 ps-3">
+                                <i className="fa fa-search text-muted"></i>
+                            </span>
+                            <input
+                                type="text"
+                                className="form-control border-start-0 ps-2"
+                                placeholder="Search by name, section, or student number..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{ fontSize: '1rem' }}
+                            />
+                        </div>
+                        {/* Total Students - Below Search Bar, Right Aligned */}
+                        <div className="text-end mt-2">
+                            <span className="text-muted">Total Students: </span>
+                            <span className="fw-bold fs-5">{students.length}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div className="row">
                 <div className="col-12">
@@ -206,10 +271,12 @@ const Students = () => {
                                 <h5 className="fw-bold mb-0">Enrolled Students</h5>
                             </div>
                             
-                            {students.length === 0 ? (
+                            {filteredStudents.length === 0 ? (
                                 <div className="text-center py-5">
                                     <i className="fa fa-users fa-3x text-muted mb-3"></i>
-                                    <p className="text-muted">No students enrolled yet</p>
+                                    <p className="text-muted">
+                                        {searchQuery ? 'No students found matching your search' : 'No students enrolled yet'}
+                                    </p>
                                 </div>
                             ) : (
                                 <>
@@ -251,7 +318,7 @@ const Students = () => {
                                     {totalPages >= 1 && (
                                         <div className="d-flex justify-content-between align-items-center pt-3 border-top">
                                             <div className="text-muted small">
-                                                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, students.length)} of {students.length} entries
+                                                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredStudents.length)} of {filteredStudents.length} entries
                                             </div>
                                             <nav>
                                                 <ul className="pagination mb-0">
