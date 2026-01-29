@@ -1,6 +1,7 @@
 import Subject from "../../model/subject.js";
 import Student from "../../model/student.js"; 
 
+
 export const getTeacherSubjectSchedule = async(req, res) => {
     try {   
         const { id } = req.account;
@@ -39,7 +40,7 @@ export const getTeacherSubjectSchedule = async(req, res) => {
                     sectionId: section.sectionId,
                     sectionName: section.sectionName,
                     section: section.sectionName, // for compatibility with frontend
-                    scheduleDay: section.scheduleDay,
+                    // scheduleDay: section.scheduleDay,
                     scheduleStartTime: section.scheduleStartTime,
                     scheduleEndTime: section.scheduleEndTime,
                     room: section.room,

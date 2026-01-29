@@ -282,20 +282,13 @@ export const getSubjectDetails = async(req, res) => {
 }
 
 
+
 export const getSubjectSection = async (req, res) => {
     try {
         const { gradeLevel, track, strand, semester, subjectId } = req.query;
-        
-        // ✅ Check if subject already has sections
-        if (subjectId) {
-            const currentSubject = await Subject.findById(subjectId);
-            
-            if (currentSubject && currentSubject.sections && currentSubject.sections.length > 0) {
-                // ✅ Subject already has sections, return empty array
-                return res.status(200).json([]);
-            }
-        }
-        
+
+
+
         // Build filter object
         const filter = {};
         
@@ -318,8 +311,25 @@ export const getSubjectSection = async (req, res) => {
         // ✅ Get all sections matching the filter
         const sections = await Section.find(filter).sort({ name: 1 });
 
+        // ✅ IMPROVED: Filter out sections already assigned to THIS subject
+        let availableSections = sections;
+        
+        if (subjectId) {
+            const currentSubject = await Subject.findById(subjectId);
+            
+            if (currentSubject && currentSubject.sections && currentSubject.sections.length > 0) {
+                // Get list of already-assigned section names
+                const assignedSectionNames = currentSubject.sections.map(s => s.sectionName);
+                
+                // Filter out already-assigned sections
+                availableSections = sections.filter(
+                    section => !assignedSectionNames.includes(section.name)
+                );
+            }
+        }
+
         // ✅ Add computed fields for available slots
-        const sectionsWithSlots = sections.map(section => {
+        const sectionsWithSlots = availableSections.map(section => {
             const currentStudents = section.students?.length || 0;
             const availableSlots = section.maxCapacity - currentStudents;
             return {
@@ -347,6 +357,8 @@ export const getSubjectSection = async (req, res) => {
         });
     }
 };
+
+
 
 
 

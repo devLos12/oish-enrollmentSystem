@@ -49,10 +49,7 @@ const SubjectDetails = () => {
             fetchAvailableSections();
         }
     }, [subjectData?.gradeLevel, subjectData?.strand, subjectData?.track, subjectData?.semester]);
-
-
-
-
+    
 
     const getSubjectDetails = async () => {
         try {
@@ -65,8 +62,15 @@ const SubjectDetails = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
             if (data.success) {
-                setSubjectData(data.data);
-                console.log(data);
+                
+                // ✅ Reverse sections - latest first
+                const reversedData = {
+                    ...data.data,
+                    sections: data.data.sections ? [...data.data.sections].reverse() : []
+                };
+                setSubjectData(reversedData);
+
+
             }
         } catch (error) {
             console.log("Error: ", error.message);
@@ -80,7 +84,8 @@ const SubjectDetails = () => {
         try {
             setLoadingSections(true);
             const res = await fetch(
-                `${import.meta.env.VITE_API_URL}/api/getSubjetSections?gradeLevel=${subjectData.gradeLevel}&track=${subjectData.track}&strand=${subjectData.strand}&semester=${subjectData.semester}}&subjectId=${subjectId}`,
+                `${import.meta.env.VITE_API_URL}/api/getSubjetSections?gradeLevel=${subjectData.gradeLevel}&track=${subjectData.track}&strand=${subjectData.strand}&semester=${subjectData.semester}&subjectId=${subjectId}`,
+                // ✅ Removed extra }                                                                                                                                                               ↑ no more }
                 {
                     method: "GET",
                     credentials: "include",
@@ -97,7 +102,6 @@ const SubjectDetails = () => {
             setLoadingSections(false);
         }
     };
-
 
     const handleAddSection = () => {
         setSelectedSection({

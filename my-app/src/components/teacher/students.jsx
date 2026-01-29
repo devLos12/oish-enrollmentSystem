@@ -192,9 +192,6 @@ const Students = () => {
                                         <strong>Total Students:</strong> {students.length}
                                     </div>
                                 </div>
-
-
-                               
                             </div>
                         </div>
                     </div>
