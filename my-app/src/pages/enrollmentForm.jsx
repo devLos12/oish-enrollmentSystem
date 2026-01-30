@@ -542,8 +542,6 @@ export const Step1 = () => {
             } else {
                 setFormData(prev => ({ ...prev, [name]: value }));
             }
-
-
         }
 
         setHasChanges(true);

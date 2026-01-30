@@ -150,7 +150,6 @@ const EditProfile = () => {
             if (year > 2011) {
                 return; // Don't update if year exceeds 2011
             }
-            
             setFormData(prev => ({
                 ...prev,
                 [name]: value
@@ -593,7 +592,8 @@ const EditProfile = () => {
                                                 className={`form-control ${errors.birthDate ? 'is-invalid' : ''}`}
                                                 value={formData.birthDate}
                                                 onChange={handleInputChange}
-                                                max={new Date().toISOString().split('T')[0]}
+                                                max="2011-12-31"
+                                                min="1990-01-01"
                                                 required
                                             />
                                             {errors.birthDate && <div className="invalid-feedback">{errors.birthDate}</div>}

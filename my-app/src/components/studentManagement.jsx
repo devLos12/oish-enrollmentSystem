@@ -1457,7 +1457,7 @@ const StudentManagement = () => {
                         </div>
                     </div>
                 </div>
-            
+                                
                 {/* EMAIL HISTORY TABLE */}
                 <div className="row mt-4">
                     <div className="col-12">

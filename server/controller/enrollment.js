@@ -1618,13 +1618,9 @@ const sendStudentAccount = async (email, studentNo, password, studentName) => {
 // }
 
 
-
 export const ApplicantApproval = async (req, res) => {
   try {
     const { enrollmentId } = req.body;
-
-
-    
 
     // 1. Find the enrollment applicant
     const applicant = await Enrollment.findOne({ _id: enrollmentId });
@@ -1632,17 +1628,27 @@ export const ApplicantApproval = async (req, res) => {
       return res.status(404).json({ message: "Applicant not found." });
     }
 
-      // 1. Define unique counter ID per grade + strand/track + year
+    // 2. Generate student number (SEQUENTIAL, hindi na ma-duplicate)
     const gradeNumber = parseInt(applicant.gradeLevelToEnroll.replace(/\D/g, ""), 10);
     const year = new Date().getFullYear();
 
-    // Bilangin lahat ng student
-    const studentCount = await Student.countDocuments({}); // walang filter
-    const nextNumber = studentCount + 1;
+    // ✅ UPDATED: Kumuha ng last student number
+    const lastStudent = await Student.findOne({ 
+      studentNumber: new RegExp(`^${year}-`) 
+    })
+      .sort({ studentNumber: -1 })
+      .select('studentNumber');
+
+    let nextNumber = 1;
+
+    if (lastStudent) {
+      const lastNumber = parseInt(lastStudent.studentNumber.split('-')[1]);
+      nextNumber = lastNumber + 1;
+    }
+
     const studentNumber = `${year}-${String(nextNumber).padStart(4, "0")}`;
 
-
-     // 3. CHECK DUPLICATE: studentNumber
+    // 3. CHECK DUPLICATE: studentNumber
     const existingStudentNumber = await Student.findOne({ studentNumber });
     
     if (existingStudentNumber) {
@@ -1651,8 +1657,7 @@ export const ApplicantApproval = async (req, res) => {
       });
     }
 
-
-     // 4. CHECK DUPLICATE: LRN (✅ Only check if LRN is valid, not "N/A" or empty)
+    // 4. CHECK DUPLICATE: LRN
     const lrnValue = applicant.learnerInfo.lrn?.trim();
     const isValidLRN = lrnValue && 
                        lrnValue !== '' && 
@@ -1670,13 +1675,10 @@ export const ApplicantApproval = async (req, res) => {
       }
     }
 
-
     // Default password setup
     const defaultPass = Math.random().toString(36).slice(-6);
     const salt = await bcrypt.genSalt(10);
     const hashedPass = await bcrypt.hash(defaultPass, salt);
-
-
 
     await Student.create({
       studentNumber,
@@ -1698,18 +1700,16 @@ export const ApplicantApproval = async (req, res) => {
       enrollmentYear: applicant.schoolYear
     });
 
-    applicant.status = "approved",
+    applicant.status = "approved";
     await applicant.save();
     
-
     const studentName = `${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.lastName}`;
 
     sendStudentAccount(applicant.learnerInfo.email, studentNumber, defaultPass, studentName)
-    .catch(err => console.log("Email sending failed: ", err));
+      .catch(err => console.log("Email sending failed: ", err));
 
-    
-    io.emit("new-approve", { message: "new approve applicant."});
-    res.status(200).json({ message: "Applicant approved successfully"});
+    io.emit("new-approve", { message: "new approve applicant." });
+    res.status(200).json({ message: "Applicant approved successfully" });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
