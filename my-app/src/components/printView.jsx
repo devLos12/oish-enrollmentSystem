@@ -16,6 +16,12 @@ const EnrollmentFormPDF = () => {
   const navigate = useNavigate();
   const enrollmentData = location?.state?.applicant || {};
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState('success');
+
 
 
   useLayoutEffect(() => {
@@ -36,6 +42,13 @@ const EnrollmentFormPDF = () => {
       handleDownloadPDF();
     }
   }, [location?.state?.autoDownload]);
+
+
+  const showAlert = (message, type = 'success') => {
+      setAlertMessage(message);
+      setAlertType(type);
+      setShowAlertModal(true);
+  };
 
 
   const handleDownloadPDF = async () => {
@@ -204,6 +217,7 @@ const EnrollmentFormPDF = () => {
   };
 
   return (
+    <>
     <div style={hiddenStyle}>
       <div className="container-fluid min-vh-100 bg-light">
         <div className="row justify-content-center">
@@ -606,11 +620,16 @@ const EnrollmentFormPDF = () => {
                     <button 
                         className='btn btn-success text-capitalize'
                         onClick={() => setOpenModal(true)}
-                        disabled={enrollmentData?.status === "approved" || isDownloading} // ✅ Also disable while downloading
+                        disabled={enrollmentData?.status === "approved" || isDownloading || isApproving}
                     >
                         {enrollmentData?.status === "approved" 
                             ? "Approved"
-                            : "Approve"
+                            : isApproving 
+                                ? <>
+                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                    Approving...
+                                  </>
+                                : "Approve"
                         }
                     </button>
                 </div>              
@@ -649,39 +668,58 @@ const EnrollmentFormPDF = () => {
                                 </p>
                             </div>
                             <div className="modal-footer">
-                                <button 
-                                    type="button" 
-                                    className="btn btn-secondary"
-                                    onClick={()=>setOpenModal(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className="btn btn-success"
-                                    onClick={async()=>{
-
-                                        try {
-                                            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/approveApplicant`, {
-                                                method: "PATCH",
-                                                headers: {"Content-Type": "application/json"},
-                                                body: JSON.stringify({ enrollmentId: enrollmentData._id }),
-                                                credentials: "include",
-                                            })
-                                            const data = await res.json();
-                                            if(!res.ok) throw new Error(data.message);
-                                            
-                                            alert(data.message);
-                                            navigate(`/${role}/applicants`, {replace: true })
-                                            
-                                        } catch (error) {
-                                            alert("Error: ", error.message);
-                                        }
-                                    }}
-                                >
-                                    <i className="fa fa-check me-2"></i>
-                                    Yes, Approve
-                                </button>
+                              <button 
+                                  type="button" 
+                                  className="btn btn-secondary"
+                                  onClick={()=>setOpenModal(false)}
+                              >
+                                  Cancel
+                              </button>
+                                
+                              <button 
+                                type="button" 
+                                className="btn btn-success"
+                                onClick={async()=>{
+                                  try {
+                                      setIsApproving(true); // ✅ START LOADING
+                                      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/approveApplicant`, {
+                                          method: "PATCH",
+                                          headers: {"Content-Type": "application/json"},
+                                          body: JSON.stringify({ enrollmentId: enrollmentData._id }),
+                                          credentials: "include",
+                                      })
+                                      const data = await res.json();
+                                      if(!res.ok) throw new Error(data.message);
+                                      
+                                      setOpenModal(false); // ✅ CLOSE MODAL
+                                      showAlert(data.message, 'success'); // ✅ SHOW SUCCESS ALERT
+                                      
+                                      // ✅ OPTIONAL: Navigate after short delay
+                                      setTimeout(() => {
+                                          navigate(`/${role}/applicants`, {replace: true })
+                                      }, 1500);
+                                      
+                                  } catch (error) {
+                                      setOpenModal(false);
+                                      showAlert(error.message, 'error'); // ✅ SHOW ERROR ALERT
+                                  } finally {
+                                      setIsApproving(false); // ✅ STOP LOADING
+                                  }
+                                }}
+                                disabled={isApproving} // ✅ DISABLE WHILE APPROVING
+                              >
+                                {isApproving ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                        Approving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fa fa-check me-2"></i>
+                                        Yes, Approve
+                                    </>
+                                )}
+                              </button>
                             </div>
                         </div>
                     </div>  
@@ -690,7 +728,34 @@ const EnrollmentFormPDF = () => {
           </div>
         </div>
       </div>
+
     </div>
+    {/* Alert Modal - Success/Error Messages */}
+    {showAlertModal && (
+        <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999}}>
+            <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content border-0 shadow-lg">
+                    <div className="modal-body text-center p-4">
+                        <div className={`mb-3 ${alertType === 'success' ? 'text-success' : 'text-danger'}`}>
+                            <i className={`fa ${alertType === 'success' ? 'fa-check-circle' : 'fa-times-circle'} fa-3x`}></i>
+                        </div>
+                        <h5 className="fw-bold mb-2">{alertType === 'success' ? 'Success!' : 'Error!'}</h5>
+                        <p className="text-muted mb-4">{alertMessage}</p>
+                        <button 
+                            type="button" 
+                            className={`btn ${alertType === 'success' ? 'btn-success' : 'btn-danger'} px-4`}
+                            onClick={() => setShowAlertModal(false)}
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )}
+    </>
+
+    
   );
 };
 

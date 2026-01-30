@@ -142,6 +142,25 @@ const EditProfile = () => {
         // ✅ Fields that should not contain numbers and special characters
         const textOnlyFields = ['firstName', 'middleName', 'lastName'];
         
+
+         // ✅ NEW: Birth Date validation - Block years > 2011
+        if (name === 'birthDate' && value) {
+            const [year] = value.split('-').map(Number);
+            
+            // Block years greater than 2011
+            if (year > 2011) {
+                return; // Don't update if year exceeds 2011
+            }
+            
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+            return;
+        }
+
+
+
         // ✅ Apply text-only validation for name fields
         if (textOnlyFields.includes(name)) {
             const cleanedValue = removeNumbersAndSpecialChars(value);
@@ -569,13 +588,14 @@ const EditProfile = () => {
                                             <label className="form-label fw-semibold">
                                                 Birth Date <span className="text-danger">*</span>
                                             </label>
-                                            <input
+                                           <input
                                                 type="date"
                                                 name="birthDate"
                                                 className={`form-control ${errors.birthDate ? 'is-invalid' : ''}`}
                                                 value={formData.birthDate}
                                                 onChange={handleInputChange}
-                                                max={new Date().toISOString().split('T')[0]}
+                                                max="2011-12-31"  // ✅ Fixed to December 31, 2011
+                                                min="1990-01-01"  // ✅ Optional: Add minimum year
                                                 required
                                             />
                                             {errors.birthDate && <div className="invalid-feedback">{errors.birthDate}</div>}

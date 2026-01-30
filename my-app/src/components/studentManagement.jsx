@@ -91,6 +91,10 @@ const StudentManagement = () => {
         return `${year}-${month}-${day}`;
     };
 
+    const getMaxBirthDate = () => {
+        return '2011-12-31';
+    };
+
     const getEndOfYearDate = () => {
         const today = new Date();
         const year = today.getFullYear();
@@ -586,6 +590,21 @@ const StudentManagement = () => {
                 [name]: formatted
             }));
         } 
+
+        else if (name === 'birthDate' && value) {
+            const [year, month, day] = value.split('-').map(Number);
+            
+            // Block years greater than 2011
+            if (year > 2011) {
+                return; // Don't update if year exceeds 2011
+            }
+            
+            setAddFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
+
         // ✅ Special handling for LRN
         else if (name === 'lrn') {
             let cleaned = value.replace(/\D/g, '');
@@ -1165,7 +1184,7 @@ const StudentManagement = () => {
                                     onClick={handleScheduleRequirements}
                                     disabled={selectedStudentsForEmail.length === 0}
                                 >
-                                    <i className="fa fa-calendar me-2"></i>Schedule ({selectedStudentsForEmail.length})
+                                    <i className="fa fa-calendar me-2"></i>Set Schedule ({selectedStudentsForEmail.length})
                                 </button>
                             </>
                         )}
@@ -1691,12 +1710,38 @@ const StudentManagement = () => {
                                             Date <span className="text-danger">*</span>
                                         </label>
                                         <input 
-                                            type="date" 
-                                            className="form-control"
-                                            value={scheduleData.date}
-                                            onChange={(e) => setScheduleData({...scheduleData, date: e.target.value})}
-                                            min={getTodayDate()}       
-                                            max={getEndOfYearDate()}    
+                                        type="date" 
+                                        className="form-control"
+                                        value={scheduleData.date}
+                                        onChange={(e) => {
+                                            const selectedDate = e.target.value;
+                                            if (selectedDate) {
+                                                const [year] = selectedDate.split('-').map(Number);
+                                                const currentYear = new Date().getFullYear();
+                                                
+                                                // Force current year only
+                                                if (year !== currentYear) {
+                                                    // Auto-correct to current year
+                                                    const [, month, day] = selectedDate.split('-');
+                                                    const correctedDate = `${currentYear}-${month || '01'}-${day || '01'}`;
+                                                    setScheduleData({...scheduleData, date: correctedDate});
+                                                    return;
+                                                }
+                                            }
+                                            setScheduleData({...scheduleData, date: selectedDate});
+                                        }}
+                                        onFocus={(e) => {
+                                            // ✅ Auto-set to current year if empty
+                                            if (!scheduleData.date) {
+                                                const today = new Date();
+                                                const currentYear = today.getFullYear();
+                                                const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+                                                const currentDay = String(today.getDate()).padStart(2, '0');
+                                                setScheduleData({...scheduleData, date: `${currentYear}-${currentMonth}-${currentDay}`});
+                                            }
+                                        }}
+                                        min={getTodayDate()}       
+                                        max={getEndOfYearDate()}    
                                         />
                                         <small className="text-muted">Schedule within this year only</small>
                                     </div>
@@ -2048,7 +2093,7 @@ const StudentManagement = () => {
 
                                         {/* Right Column */}
                                         <div className="col-md-6 border-start">
-                                            {/* Birth Date */}
+                                           {/* Birth Date */}
                                             <div className="mb-3">
                                                 <div className="d-flex align-items-center gap-1 mb-2">
                                                     <i className="fa fa-calendar text-muted"></i>
@@ -2062,7 +2107,7 @@ const StudentManagement = () => {
                                                     name="birthDate"
                                                     value={addFormData.birthDate}
                                                     onChange={handleAddFormChange}
-                                                    max={getTodayDate()}
+                                                    max={getMaxBirthDate()}
                                                     min="1990-01-01"
                                                     required
                                                 />

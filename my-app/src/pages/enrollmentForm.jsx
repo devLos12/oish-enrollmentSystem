@@ -482,28 +482,30 @@ export const Step1 = () => {
             if (fieldName === 'birthDate' && value) {
                 // Fix timezone issue by parsing date correctly
                 const [year, month, day] = value.split('-').map(Number);
+                
+                // ✅ NEW: Block years greater than 2011
+                if (year > 2011) {
+                    return; // Don't update if year exceeds 2011
+                }
+                
                 const birthDate = new Date(year, month - 1, day); // month is 0-indexed
                 const today = new Date();
-                
                 let age = today.getFullYear() - birthDate.getFullYear();
                 const monthDiff = today.getMonth() - birthDate.getMonth();
-                
                 // Adjust age if birthday hasn't occurred this year yet
                 if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                     age--;
                 }
-                
                 setFormData(prev => ({
                     ...prev,
                     learnerInfo: {
-                        ...prev.learnerInfo,
-                        birthDate: value,
-                        age: age >= 0 ? age.toString() : '0'  // ✅ Prevent negative age
+                    ...prev.learnerInfo,
+                    birthDate: value,
+                    age: age >= 0 ? age.toString() : '0' // ✅ Prevent negative age
                     }
                 }));
-
-
-            } else {
+                
+            }else {
                 // ✅ Fields that should not contain numbers and special characters
                 const textOnlyFields = ['lastName', 'firstName', 'middleName', 'placeOfBirth', 'motherTongue'];
                 
@@ -1109,6 +1111,8 @@ export const Step1 = () => {
 
     // ✅ Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
+    // ✅ Set max date to December 31, 2011
+    const maxDate = '2011-12-31';
 
 
     return (
@@ -1155,7 +1159,7 @@ export const Step1 = () => {
                                                         className="form-control"
                                                         disabled={viewOnly || field.name === 'age'}
                                                         style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}
-                                                        max={field.type === 'date' ? today : undefined}  // ✅ Add this
+                                                        max={field.type === 'date' ? maxDate : undefined}
                                                     />
                                                 </div>
                                             ))}
@@ -1294,13 +1298,6 @@ export const Step1 = () => {
         </div>
     );
 };
-
-
-
-
-
-
-
 
 
 

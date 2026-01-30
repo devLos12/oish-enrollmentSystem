@@ -44,6 +44,5 @@ const StaffSchema = new mongoose.Schema({
 
 })
 
-
 const Staff = new mongoose.model("Staff", StaffSchema);
 export default Staff;
