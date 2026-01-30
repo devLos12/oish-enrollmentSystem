@@ -474,38 +474,40 @@ export const Step1 = () => {
                 }));
                 return;
             }
-
-
-            // For learnerInfo fields
             
             // ✅ Auto-calculate age if birthDate changes
             if (fieldName === 'birthDate' && value) {
                 // Fix timezone issue by parsing date correctly
                 const [year, month, day] = value.split('-').map(Number);
                 
-                // ✅ NEW: Block years greater than 2011
+
+                // ✅ Block years outside 1990-2011 range
                 if (year > 2011) {
-                    return; // Don't update if year exceeds 2011
+                    return; // Don't update if year is outside valid range
                 }
                 
                 const birthDate = new Date(year, month - 1, day); // month is 0-indexed
                 const today = new Date();
                 let age = today.getFullYear() - birthDate.getFullYear();
                 const monthDiff = today.getMonth() - birthDate.getMonth();
+                
                 // Adjust age if birthday hasn't occurred this year yet
                 if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                     age--;
                 }
+                
                 setFormData(prev => ({
                     ...prev,
                     learnerInfo: {
-                    ...prev.learnerInfo,
-                    birthDate: value,
-                    age: age >= 0 ? age.toString() : '0' // ✅ Prevent negative age
+                        ...prev.learnerInfo,
+                        birthDate: value,
+                        age: age >= 0 ? age.toString() : '0'
                     }
                 }));
-                
-            }else {
+            }
+            
+            
+            else {
                 // ✅ Fields that should not contain numbers and special characters
                 const textOnlyFields = ['lastName', 'firstName', 'middleName', 'placeOfBirth', 'motherTongue'];
                 
@@ -840,8 +842,6 @@ export const Step1 = () => {
         }
 
 
-
-        
         // ✅ Regular fields (existing code)
         return (
             <div key={field.name} className="mb-3">
@@ -1148,21 +1148,22 @@ export const Step1 = () => {
                                 <div className="card border-0 h-100">
                                     <div className="card-body">
                                         <div className="row mb-3">
-                                            {rightFields.map(field => (
-                                                <div key={field.name} className={field.colClass}>
-                                                    <label className="form-label small">{field.label}</label>
-                                                    <input
-                                                        type={field.type}
-                                                        name={`learnerInfo.${field.name}`}
-                                                        value={formData?.learnerInfo?.[field.name] || ''}
-                                                        onChange={handleChange}
-                                                        className="form-control"
-                                                        disabled={viewOnly || field.name === 'age'}
-                                                        style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}
-                                                        max={field.type === 'date' ? maxDate : undefined}
-                                                    />
-                                                </div>
-                                            ))}
+                                           {rightFields.map(field => (
+                                            <div key={field.name} className={field.colClass}>
+                                                <label className="form-label small">{field.label}</label>
+                                                <input
+                                                    type={field.type}
+                                                    name={`learnerInfo.${field.name}`}
+                                                    value={formData?.learnerInfo?.[field.name] || ''}
+                                                    onChange={handleChange}
+                                                    className="form-control"
+                                                    disabled={viewOnly || field.name === 'age'}
+                                                    style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}
+                                                    min={field.type === 'date' ? '1990-01-01' : undefined}  // ✅ Add this
+                                                    max={field.type === 'date' ? maxDate : undefined}
+                                                />
+                                            </div>
+                                        ))}
                                         </div>
 
                                         {/* Sex */}

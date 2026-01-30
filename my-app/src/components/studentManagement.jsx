@@ -1184,7 +1184,7 @@ const StudentManagement = () => {
                                     onClick={handleScheduleRequirements}
                                     disabled={selectedStudentsForEmail.length === 0}
                                 >
-                                    <i className="fa fa-calendar me-2"></i>Set Schedule ({selectedStudentsForEmail.length})
+                                    <i className="fa fa-calendar me-2"></i>Schedule ({selectedStudentsForEmail.length})
                                 </button>
                             </>
                         )}
@@ -1457,7 +1457,6 @@ const StudentManagement = () => {
                         </div>
                     </div>
                 </div>
-
             
                 {/* EMAIL HISTORY TABLE */}
                 <div className="row mt-4">
@@ -1742,7 +1741,7 @@ const StudentManagement = () => {
                                         }}
                                         min={getTodayDate()}       
                                         max={getEndOfYearDate()}    
-                                        />
+                                    />
                                         <small className="text-muted">Schedule within this year only</small>
                                     </div>
                                     <div className="col-6">
