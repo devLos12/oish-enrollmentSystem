@@ -482,7 +482,7 @@ export const Step1 = () => {
                 
 
                 // ✅ Block years outside 1990-2011 range
-                if (year > 2011) {
+                if (year > 2012) {
                     return; // Don't update if year is outside valid range
                 }
                 
@@ -505,7 +505,6 @@ export const Step1 = () => {
                     }
                 }));
             }
-            
             
             else {
                 // ✅ Fields that should not contain numbers and special characters
@@ -1110,7 +1109,7 @@ export const Step1 = () => {
     // ✅ Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
     // ✅ Set max date to December 31, 2011
-    const maxDate = '2011-12-31';
+    const maxDate = '2012-12-31'; 
 
 
     return (

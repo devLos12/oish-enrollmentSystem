@@ -92,7 +92,7 @@ const StudentManagement = () => {
     };
 
     const getMaxBirthDate = () => {
-        return '2011-12-31';
+        return '2012-12-31';
     };
 
     const getEndOfYearDate = () => {
@@ -563,8 +563,7 @@ const StudentManagement = () => {
     const handleAddStudent = () => {
         setShowAddModal(true);
     };
-
-
+    
 
     const handleAddFormChange = (e) => {
         const { name, value } = e.target;
@@ -595,7 +594,7 @@ const StudentManagement = () => {
             const [year, month, day] = value.split('-').map(Number);
             
             // Block years greater than 2011
-            if (year > 2011) {
+            if (year > 2012) {
                 return; // Don't update if year exceeds 2011
             }
             
@@ -1184,7 +1183,7 @@ const StudentManagement = () => {
                                     onClick={handleScheduleRequirements}
                                     disabled={selectedStudentsForEmail.length === 0}
                                 >
-                                    <i className="fa fa-calendar me-2"></i>Schedule ({selectedStudentsForEmail.length})
+                                    <i className="fa fa-calendar me-2"></i>Set Schedule ({selectedStudentsForEmail.length})
                                 </button>
                             </>
                         )}

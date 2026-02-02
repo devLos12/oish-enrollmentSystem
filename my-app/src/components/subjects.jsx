@@ -667,7 +667,6 @@ const SubjectManagement = () => {
 
     const handleBulkImport = async () => {
 
-
         // ✅ VALIDATE MANUAL ROWS
         const validManualRows = [];
         const errors = [];
@@ -1761,7 +1760,12 @@ const SubjectManagement = () => {
                                     type="button"
                                     className="btn btn-success"
                                     onClick={handleBulkImport}
-                                    disabled={excelData.length === 0 && manualRows.length === 0 || isProcessingExcel}
+                                    disabled={
+                                        (excelData.length === 0 && 
+                                        manualRows.length === 0) || 
+                                        isProcessingExcel || 
+                                        importErrors.length > 0  // ✅ DISABLE if there are errors
+                                    }
                                 >
                                     {isProcessingExcel ? (
                                         <>

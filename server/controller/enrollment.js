@@ -12,9 +12,6 @@ import cloudinary from "../config/cloudinary.js";
 import { isObjectIdOrHexString } from "mongoose";
 
 
-
-
-
 const uploadToCloudinary = (fileBuffer, originalname, folder) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -1169,7 +1166,6 @@ export const EnrollmentRegistration = async (req, res) => {
     });
     }
 };
-
 
 
 
