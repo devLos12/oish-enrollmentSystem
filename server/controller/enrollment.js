@@ -12,6 +12,7 @@ import cloudinary from "../config/cloudinary.js";
 import { isObjectIdOrHexString } from "mongoose";
 
 
+
 const uploadToCloudinary = (fileBuffer, originalname, folder) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -605,7 +606,6 @@ export const EnrollmentRegistration = async (req, res) => {
         { field: 'email', message: 'Email is required' },
         { field: 'lastName', message: 'Last Name is required' },
         { field: 'firstName', message: 'First Name is required' },
-        { field: 'middleName', message: 'Middle Name is required' },
         { field: 'birthDate', message: 'Birth Date is required' },
         { field: 'age', message: 'Age is required' },
         { field: 'sex', message: 'Sex is required' },
@@ -738,7 +738,7 @@ export const EnrollmentRegistration = async (req, res) => {
           psaNo: psaNo,
           lastName: learnerInfo.lastName,
           firstName: learnerInfo.firstName,
-          middleName: learnerInfo.middleName,
+          middleName: learnerInfo.middleName?.trim() || 'N/A',
           extensionName: extensionName,
           birthDate: learnerInfo.birthDate,
           age: learnerInfo.age,
@@ -762,7 +762,9 @@ export const EnrollmentRegistration = async (req, res) => {
           },
         },
 
-        statusRegistration: "incomplete"
+        statusRegistration: "incomplete",
+        
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000)
       };
 
 
@@ -1016,7 +1018,6 @@ export const EnrollmentRegistration = async (req, res) => {
     }
 
 
-
     // ==========================================
     // STEP 3: UPLOAD DOCUMENTS & FINALIZE
     // ==========================================
@@ -1139,7 +1140,8 @@ export const EnrollmentRegistration = async (req, res) => {
           $set: {
             requiredDocuments,
             status: 'pending',
-            statusRegistration: 'complete'
+            statusRegistration: 'complete',
+            expiresAt: null 
           }
         },
         { new: true }

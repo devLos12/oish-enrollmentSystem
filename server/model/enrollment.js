@@ -136,13 +136,29 @@ const enrollmentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 
   statusRegistration: { type: String },
-
+  
+  
+  expiresAt: { 
+    type: Date, 
+    default: null  // Only set if incomplete
+  },
+  
   rejectionReason: { 
     type: String, 
     default: null 
   },
 
 });
+
+enrollmentSchema.index(
+  { expiresAt: 1 }, 
+  { 
+    expireAfterSeconds: 0,  // Delete immediately when expiresAt is reached
+    partialFilterExpression: { 
+      statusRegistration: "incomplete" 
+    }
+  }
+);
 
 const Enrollment = new mongoose.model("Enrollment", enrollmentSchema);
 export default Enrollment;

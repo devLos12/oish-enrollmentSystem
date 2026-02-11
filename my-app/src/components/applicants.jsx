@@ -502,7 +502,7 @@ const Applicants = () => {
                                                             </td>
                                                             <td className="align-middle">
                                                                 <span className="text-capitalize fw-semibold">
-                                                                    {`${applicant.learnerInfo?.lastName}, ${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.middleName || ''} ${
+                                                                    {`${applicant.learnerInfo?.lastName}, ${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.middleName ===  'N/A' ? '' : applicant.learnerInfo?.middleName} ${
                                                                     applicant.learnerInfo?.extensionName && 
                                                                     applicant.learnerInfo.extensionName.toLowerCase() !== 'n/a' 
                                                                         ? applicant.learnerInfo.extensionName 

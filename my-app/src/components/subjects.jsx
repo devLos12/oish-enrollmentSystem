@@ -1404,9 +1404,6 @@ const SubjectManagement = () => {
             )}
 
 
-
-
-
             {/* Alert Modal - Success/Error Messages */}
             {showAlertModal && (
                 <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999999999}}>

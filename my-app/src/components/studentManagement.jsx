@@ -1328,7 +1328,7 @@ const StudentManagement = () => {
                                                                 </span>
                                                             </td>
                                                             <td className="align-middle fw-semibold text-capitalize">
-                                                                {`${student.lastName}, ${student.firstName} ${student.middleName } 
+                                                                {`${student.lastName}, ${student.firstName} ${student.middleName === "N/A" ? student.middleName = "" : student.middleName} 
                                                                 ${(student.extensionName === "N/A") || (student.extensionName === "n/a") ? "" : student.extensionName }`.trim()}
                                                             </td>
                                                             <td className="align-middle">Grade {student.gradeLevel}</td>

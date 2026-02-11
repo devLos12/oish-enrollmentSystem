@@ -87,6 +87,7 @@ const studentSchema = new mongoose.Schema({
   studentType: { type: String, enum: ["regular", "repeater", "graduated"], default: "regular"},
   
   
+    
   registrationHistory: [
     {
       lrn: { type: String, required: true},

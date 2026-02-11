@@ -185,8 +185,8 @@ export const Step1 = () => {
     ];
 
     const learnerFields = [
-        { label: 'First Name', name: 'firstName', type: 'text' },
-        { label: 'Middle Name', name: 'middleName', type: 'text' },
+        { label: 'First Name', name: 'firstName', type: 'text', },
+        { label: 'Middle Name', name: 'middleName', type: 'text', optional: true },
         { label: 'Last Name', name: 'lastName', type: 'text' },
         { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: '', optional: true },
         { label: 'Email Address', name: 'email', type: 'email' },
@@ -780,9 +780,6 @@ export const Step1 = () => {
                         placeholder="Enter 12-digit PSA Certificate No."  // ✅ Updated placeholder
                     />
                     {psaError && <div className="invalid-feedback d-block">{psaError}</div>}
-                    <small className="text-muted">
-                        {formData?.learnerInfo?.psaNo?.length || 0}/12 digits  {/* ✅ Show counter */}
-                    </small>
                 </div>
             );
         }
@@ -794,6 +791,7 @@ export const Step1 = () => {
                 <div key={field.name} className="mb-3">
                     <label className="form-label small">
                         {field.label}
+                        {!field.optional && <span className="text-danger ms-1">*</span>}  
                         {field.note && <span className="text-muted ms-2">({field.note})</span>}
                     </label>
                     <input
@@ -807,9 +805,6 @@ export const Step1 = () => {
                         placeholder="Enter 12-digit LRN"  // ✅ Changed message
                     />
                     {lrnError && <div className="invalid-feedback d-block">{lrnError}</div>}
-                    <small className="text-muted">
-                        {formData?.learnerInfo?.lrn?.length || 0}/12 digits  {/* ✅ Changed from 13 to 12 */}
-                    </small>
                 </div>
             );
         }
@@ -839,12 +834,13 @@ export const Step1 = () => {
         }
 
 
-        // ✅ Regular fields (existing code)
         return (
             <div key={field.name} className="mb-3">
                 <label className="form-label small">
                     {field.label}
+                    {!field.optional && <span className="text-danger ms-1">*</span>}  {/* ✅ ADD RED ASTERISK */}
                     {field.note && <span className="text-muted ms-2">({field.note})</span>}
+                    {field.optional && <span className="text-muted ms-2">(Optional)</span>}
                 </label>
                 <input
                     type={field.type}
@@ -860,7 +856,6 @@ export const Step1 = () => {
     };
 
 
-
     const renderRadioGroup = (group, path = null) => {
         const value = path 
             ? formData?.learnerInfo?.[path]?.[group.name]
@@ -868,7 +863,10 @@ export const Step1 = () => {
 
         return (
             <div className="mb-3" key={group.name}>
-                <label className="fw-semibold d-block mb-2">{group.label}</label>
+                <label className="fw-semibold d-block mb-2 w-100">
+                    {group.label}
+                    {group.name === 'isReturning' && <span className="text-danger ms-1">*</span>} 
+                </label>
                 {group.options.map(option => (
                     <div className="form-check form-check-inline" key={option}>
                         <input 
@@ -883,7 +881,7 @@ export const Step1 = () => {
                         />
                         <label className="form-check-label" htmlFor={`${group.name}${option}`}>
                             {option}
-                        </label>
+                        </label>    
                     </div>
                 ))}
             </div>
@@ -902,7 +900,10 @@ export const Step1 = () => {
 
         return (
             <div className="mb-3" key={section.path}>
-                <label className="form-label small">{section.label}</label>
+                <label className="form-label small">
+                    {section.label}
+                    <span className="text-danger ms-1">*</span>
+                </label>
                 <div className="mb-2">
                     {renderRadioGroup(
                         { name: section.radioName, options: ['Yes', 'No'], label: '' },
@@ -939,9 +940,6 @@ export const Step1 = () => {
                             maxLength="12"
                         />
                         {fourPsError && <div className="invalid-feedback d-block">{fourPsError}</div>}
-                        <small className="text-muted">
-                            {formData?.learnerInfo?.[section.path]?.[section.inputName]?.length || 0}/12 digits
-                        </small>
                     </>
                 )   :   (
                     <input
@@ -1146,26 +1144,32 @@ export const Step1 = () => {
                                     <div className="card-body">
                                         <div className="row mb-3">
                                            {rightFields.map(field => (
-                                            <div key={field.name} className={field.colClass}>
-                                                <label className="form-label small">{field.label}</label>
-                                                <input
-                                                    type={field.type}
-                                                    name={`learnerInfo.${field.name}`}
-                                                    value={formData?.learnerInfo?.[field.name] || ''}
-                                                    onChange={handleChange}
-                                                    className="form-control"
-                                                    disabled={viewOnly || field.name === 'age'}
-                                                    style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}
-                                                    min={field.type === 'date' ? '1990-01-01' : undefined}  // ✅ Add this
-                                                    max={field.type === 'date' ? maxDate : undefined}
-                                                />
-                                            </div>
-                                        ))}
+                                                <div key={field.name} className={field.colClass}>
+                                                    <label className="form-label small">
+                                                        {field.label}
+                                                        <span className="text-danger ms-1">*</span>  {/* ✅ ADD - all required */}
+                                                    </label>
+                                                    <input
+                                                        type={field.type}
+                                                        name={`learnerInfo.${field.name}`}
+                                                        value={formData?.learnerInfo?.[field.name] || ''}
+                                                        onChange={handleChange}
+                                                        className="form-control"
+                                                        disabled={viewOnly || field.name === 'age'}
+                                                        style={field.name === 'age' ? { backgroundColor: '#e9ecef' } : {}}
+                                                        min={field.type === 'date' ? '1990-01-01' : undefined}
+                                                        max={field.type === 'date' ? maxDate : undefined}
+                                                    />
+                                                </div>
+                                            ))}
                                         </div>
 
                                         {/* Sex */}
                                         <div className="mb-3">
-                                            <label className="form-label small d-block">Sex</label>
+                                            <label className="form-label small d-block">
+                                                Sex
+                                                <span className="text-danger ms-1">*</span>    
+                                            </label>
                                             {['Male', 'Female'].map(sex => (
                                                 <div className="form-check form-check-inline" key={sex}>
                                                     <input 
@@ -1199,7 +1203,10 @@ export const Step1 = () => {
                                         
                                         {/* Grade Level Dropdown */}
                                         <div className="mb-3">
-                                            <label className="form-label fw-semibold">Grade level to Enroll:</label>
+                                            <label className="form-label fw-semibold">
+                                                Grade level to Enroll:
+                                                <span className="text-danger ms-1">*</span>    
+                                            </label>
                                             <select
                                                 name="gradeLevelToEnroll"
                                                 value={formData.gradeLevelToEnroll || ''}
@@ -1219,6 +1226,7 @@ export const Step1 = () => {
                                         <p className="mb-3">Check the appropriate circle only</p>
                                         {radioGroups.map(group => renderRadioGroup(group))}
                                     </div>
+                                    
                                 </div>
                             </div>
                         </div>
@@ -1228,7 +1236,9 @@ export const Step1 = () => {
                             <div className="card h-100 border-0 mt-4 p-3">
                                 <label className="form-label small fw-semibold">
                                     Is the child a Learner with Disability?
+                                    <span className="text-danger ms-1">*</span> 
                                 </label>
+
                                 {renderRadioGroup(
                                     { name: 'isDisabled', options: ['Yes', 'No'], label: '' },
                                     'learnerWithDisability'
@@ -1309,8 +1319,6 @@ export const Step1 = () => {
 
 
 
-
-
 // Constants moved outside component
 const STRAND_OPTIONS = {
     Academic: [
@@ -1329,7 +1337,7 @@ const FORM_FIELDS = {
     parentInfo: [
         { label: 'Last Name', name: 'lastName', type: 'text' }, 
         { label: 'First Name', name: 'firstName', type: 'text' },
-        { label: 'Middle Name', name: 'middleName', type: 'text' },
+        { label: 'Middle Name', name: 'middleName', type: 'text', optional: true },
         { label: 'Contact Number', name: 'contactNumber', type: 'tel' }
     ],
     schoolHistory: [
@@ -1594,18 +1602,16 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
                 const response = await fetch('https://psgc.gitlab.io/api/regions/');
                 const data = await response.json();
                 
-                // Add NCR (National Capital Region) which includes Manila
-                const ncrRegion = {
-                    code: '130000000',
-                    name: 'National Capital Region (NCR)',
-                    regionName: 'National Capital Region'
-                };
+                // ✅ FILTER: Only show CALABARZON (Region IV-A)
+                const calabarzonRegion = data.find(r => 
+                    r.code === '040000000' || 
+                    r.name?.includes('CALABARZON') || 
+                    r.regionName?.includes('CALABARZON')
+                );
                 
-                // Check if NCR is already in the data
-                const hasNCR = data.some(r => r.code === '130000000');
-                const regionsWithNCR = hasNCR ? data : [ncrRegion, ...data];
+                // Set only CALABARZON, or empty array if not found
+                setRegions(calabarzonRegion ? [calabarzonRegion] : []);
                 
-                setRegions(regionsWithNCR);
             } catch (error) {
                 console.error('Error fetching regions:', error);
             } finally {
@@ -1738,16 +1744,17 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
         const fetchProvinces = async () => {
             setLoading(prev => ({ ...prev, provinces: true }));
             try {
-                if (selectedCodes.regionCode === '130000000') {
-                    const response = await fetch(`https://psgc.gitlab.io/api/regions/${selectedCodes.regionCode}/cities-municipalities/`);
-                    const data = await response.json();
-                    setMunicipalities(data);
-                    setProvinces([{ code: 'NCR', name: 'Metro Manila' }]);
-                } else {
-                    const response = await fetch(`https://psgc.gitlab.io/api/regions/${selectedCodes.regionCode}/provinces/`);
-                    const data = await response.json();
-                    setProvinces(data);
-                }
+                const response = await fetch(`https://psgc.gitlab.io/api/regions/${selectedCodes.regionCode}/provinces/`);
+                const data = await response.json();
+                
+                // ✅ FILTER: Only Cavite, Laguna, Batangas
+                const allowedProvinces = data.filter(province => 
+                    province.name === 'Cavite' || 
+                    province.name === 'Laguna' || 
+                    province.name === 'Batangas'
+                );
+                
+                setProvinces(allowedProvinces);
             } catch (error) {
                 console.error('Error fetching provinces:', error);
             } finally {
@@ -1906,7 +1913,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
     return (
         <>
             <div className="mb-3" >
-                <label className="form-label small">Region</label>
+                <label className="form-label small">
+                    Region
+                    <span className="text-danger ms-1">*</span>    
+                </label>
                 <select
                     name="region"
                     value={selectedCodes.regionCode}
@@ -1924,7 +1934,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             </div>
 
             <div className="mb-3">
-                <label className="form-label small">Province</label>
+                <label className="form-label small">
+                    Province
+                    <span className="text-danger ms-1">*</span>    
+                </label>
                 <select
                     name="province"
                     value={selectedCodes.provinceCode}
@@ -1943,7 +1956,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             </div>
 
             <div className="mb-3">
-                <label className="form-label small">Municipality/City</label>
+                <label className="form-label small">
+                    Municipality/City
+                    <span className="text-danger ms-1">*</span>
+                </label>
                 <select
                     name="municipality"
                     value={selectedCodes.municipalityCode}
@@ -1962,7 +1978,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             </div>
 
             <div className="mb-3">
-                <label className="form-label small">Barangay</label>
+                <label className="form-label small">
+                    Barangay
+                    <span className="text-danger ms-1">*</span>
+                </label>
                 <select
                     name="barangay"
                     value={selectedCodes.barangayCode}
@@ -1981,7 +2000,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             </div>
 
             <div className="mb-3">
-                <label className="form-label small">Country</label>
+                <label className="form-label small">
+                    Country
+                    <span className="text-danger ms-1">*</span>
+                </label>
                 <input
                     type="text"
                     name="country"
@@ -1996,14 +2018,19 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
 };
 
 
-const FormField = ({ label, name, type, value, onChange, disabled }) => {
+const FormField = ({ label, name, type, value, onChange, disabled, required = false }) => {
     
     
     // ✅ Special handling for Zip Code (numbers only)
     if (name === 'zipCode') {
         return (
             <div className="mb-3">
-                <label className="form-label small">{label}</label>
+                <label className="form-label small">
+                    {label}
+                    {required && <span className="text-danger ms-1">*</span>}
+
+                </label>
+                
                 <input
                     type="text"
                     name={name}
@@ -2025,7 +2052,11 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
     if (name === 'contactNumber') {
         return (
             <div className="mb-3">
-                <label className="form-label small">{label}</label>
+                <label className="form-label small">
+                    {label}
+                    {required && <span className="text-danger ms-1">*</span>}
+
+                </label>
                 <input
                     type="text"
                     name={name}
@@ -2044,7 +2075,11 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
     if (name === 'houseNo') {
         return (
             <div className="mb-3">
-                <label className="form-label small">{label}</label>
+                <label className="form-label small">
+                    {label}
+                    {required && <span className="text-danger ms-1">*</span>}
+
+                </label>
                 <input
                     type="text"
                     name={name}
@@ -2063,7 +2098,11 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
     // ✅ Regular fields
     return (
         <div className="mb-3">
-            <label className="form-label small">{label}</label>
+            
+            <label className="form-label small">
+                {label}
+                {required && <span className="text-danger ms-1">*</span>}
+            </label>
             <input
                 type={type}
                 name={name}
@@ -2077,6 +2116,9 @@ const FormField = ({ label, name, type, value, onChange, disabled }) => {
 };
 
 
+
+
+
 // Reusable Section Component
 const FormSection = ({ title, fields, values, onChange, disabled, parentType }) => (
     <div className="mb-4">
@@ -2087,7 +2129,9 @@ const FormSection = ({ title, fields, values, onChange, disabled, parentType }) 
                 if (field.name === 'contactNumber') {
                     return (
                         <div key={field.name} className="col-md-6 mb-3">
-                            <label className="form-label small">{field.label}</label>
+                            <label className="form-label small">
+                                {field.label}
+                                </label>
                             <input
                                 type="text"
                                 name={field.name}
@@ -2105,7 +2149,11 @@ const FormSection = ({ title, fields, values, onChange, disabled, parentType }) 
                 // ✅ Regular fields
                 return (
                     <div key={field.name} className="col-md-6 mb-3">
-                        <label className="form-label small">{field.label}</label>
+                        <label className="form-label small">
+                            {field.label}
+                            {field.required && <span className="text-danger ms-1">*</span>}
+                            {field.optional && <span className="text-muted ms-2">(Optional)</span>}  {/* ✅ ADD THIS */}
+                        </label>
                         <input
                             type={field.type}
                             name={field.name}
@@ -2120,6 +2168,8 @@ const FormSection = ({ title, fields, values, onChange, disabled, parentType }) 
         </div>
     </div>
 );
+
+
 
 
 
@@ -2666,7 +2716,7 @@ export const Step2 = () => {
                                 <h2 className="h5 fw-bold mb-4">PARENT/GUARDIAN INFORMATION</h2>
                                 
                                 <FormSection
-                                    title="Father's Information"
+                                    title="Father's Information (Optional)"
                                     fields={FORM_FIELDS.parentInfo}
                                     values={formData.parentGuardianInfo?.father}
                                     onChange={handleParentGuardianChange}
@@ -2675,7 +2725,7 @@ export const Step2 = () => {
                                 />
 
                                 <FormSection
-                                    title="Mother's Information"
+                                    title="Mother's Information (Optional)"
                                     fields={FORM_FIELDS.parentInfo}
                                     values={formData.parentGuardianInfo?.mother}
                                     onChange={handleParentGuardianChange}
@@ -2685,12 +2735,16 @@ export const Step2 = () => {
 
                                 <FormSection
                                     title="Guardian's Information (Required)"
-                                    fields={FORM_FIELDS.parentInfo}
+                                    fields={FORM_FIELDS.parentInfo.map(field => ({
+                                        ...field,
+                                        required: field.name === 'lastName' || field.name === 'firstName'  // ✅ ADD THIS
+                                    }))}
                                     values={formData.parentGuardianInfo?.guardian}
                                     onChange={handleParentGuardianChange}
                                     disabled={viewOnly}
                                     parentType="guardian"
                                 />
+
                             </div>
                         </div>
 
@@ -2710,6 +2764,7 @@ export const Step2 = () => {
                                             value={formData.address?.current?.houseNo}
                                             onChange={(e) => handleAddressChange(e, 'current')}
                                             disabled={viewOnly}
+                                            required={true}
                                         />
                                         
                                         <FormField
@@ -2719,6 +2774,8 @@ export const Step2 = () => {
                                             value={formData.address?.current?.street}
                                             onChange={(e) => handleAddressChange(e, 'current')}
                                             disabled={viewOnly}
+                                            required={true}
+
                                         />
 
                                         <AddressDropdowns
@@ -2736,6 +2793,7 @@ export const Step2 = () => {
                                             value={formData.address?.current?.zipCode}
                                             onChange={(e) => handleAddressChange(e, 'current')}
                                             disabled={viewOnly}
+                                            required={true} 
                                         />
 
                                         <FormField
@@ -2745,6 +2803,7 @@ export const Step2 = () => {
                                             value={formData.address?.current?.contactNumber}
                                             onChange={(e) => handleAddressChange(e, 'current')}
                                             disabled={viewOnly}
+                                            required={true}
                                         />
                                     </div>
                                 </div>
@@ -2780,6 +2839,7 @@ export const Step2 = () => {
                                             value={formData.address?.permanent?.houseNo}
                                             onChange={(e) => handleAddressChange(e, 'permanent')}
                                             disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
+                                            required={!formData.address?.permanent?.sameAsCurrent} 
                                         />
 
                                         <FormField
@@ -2789,6 +2849,8 @@ export const Step2 = () => {
                                             value={formData.address?.permanent?.street}
                                             onChange={(e) => handleAddressChange(e, 'permanent')}
                                             disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
+                                            required={!formData.address?.permanent?.sameAsCurrent} 
+
                                         />
 
                                         <AddressDropdowns
@@ -2806,6 +2868,8 @@ export const Step2 = () => {
                                             value={formData.address?.permanent?.zipCode}
                                             onChange={(e) => handleAddressChange(e, 'permanent')}
                                             disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
+                                            required={!formData.address?.permanent?.sameAsCurrent} 
+
                                         />
                                     </div>
                                 </div>
@@ -2893,7 +2957,10 @@ export const Step2 = () => {
                                 
                                 <div className="row">
                                     <div className="col-md-4 mb-3">
-                                        <label className="form-label small">Semester</label>
+                                        <label className="form-label small">
+                                            Semester
+                                            <span className="text-danger ms-1">*</span> 
+                                        </label>
                                         <select
                                             name="semester"
                                             value={formData.seniorHigh?.semester || ''}
@@ -2908,7 +2975,10 @@ export const Step2 = () => {
                                     </div>
 
                                     <div className="col-md-4 mb-3">
-                                        <label className="form-label small">Track</label>
+                                        <label className="form-label small">
+                                          Track
+                                          <span className="text-danger ms-1">*</span>  
+                                        </label>
                                         <select
                                             name="track"
                                             value={formData.seniorHigh?.track || ''}
@@ -2923,7 +2993,11 @@ export const Step2 = () => {
                                     </div>
 
                                     <div className="col-md-4 mb-3">
-                                        <label className="form-label small">Strand</label>
+
+                                        <label className="form-label small">
+                                            Strand
+                                            <span className="text-danger ms-1">*</span>  
+                                        </label>
                                         <select
                                             name="strand"
                                             value={formData.seniorHigh?.strand || ''}
@@ -3460,6 +3534,7 @@ export const Step3 = () => {
                                         <div className="mb-3">
                                             <label className="form-label small fw-semibold text-muted">
                                                 PSA BIRTH CERTIFICATE
+                                                <span className="text-danger ms-1">*</span>
                                                 <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
                                                     (JPG, PNG only)
                                                 </span>
@@ -3507,6 +3582,7 @@ export const Step3 = () => {
                                             
                                             <label className="form-label small fw-semibold text-muted">
                                                 REPORT CARD (FORM 138)
+                                                <span className="text-danger ms-1">*</span>
                                                 <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
                                                     (JPG, PNG only)
                                                 </span>
@@ -3594,6 +3670,7 @@ export const Step3 = () => {
                                         <div className="mb-3">
                                             <label className="form-label small fw-semibold text-muted">
                                                 2X2 ID PICTURE
+                                                 <span className="text-danger ms-1">*</span>
                                                 <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
                                                     (JPG, PNG only)
                                                 </span>
