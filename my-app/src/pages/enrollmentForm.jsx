@@ -180,7 +180,7 @@ export const Step1 = () => {
     const gradeLevelOptions = ['Grade 11', 'Grade 12'];
 
     const radioGroups = [
-        { label: '1. With LRN?', name: 'withLRN', options: ['Yes', 'No'] },
+        // { label: '1. With LRN?', name: 'withLRN', options: ['Yes', 'No'] },
         { label: '2. Returning (Balik-Aral)', name: 'isReturning', options: ['Yes', 'No'] }
     ];
 
@@ -191,7 +191,7 @@ export const Step1 = () => {
         { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: '', optional: true },
         { label: 'Email Address', name: 'email', type: 'email' },
         { label: 'PSA Birth Certificate No. (if available upon registration)', name: 'psaNo', type: 'text', note: '', optional: true },
-        { label: 'Learner Reference No.', name: 'lrn', type: 'text', conditionalDisable: 'withLRN' },  // ✅ Added flag
+        { label: 'Learner Reference No.', name: 'lrn', type: 'text', optional: true },  // ✅ Added flag
     ];
 
 
@@ -232,8 +232,8 @@ export const Step1 = () => {
         { label: 'Birthdate (Day/Month/Year)', name: 'birthDate', type: 'date', colClass: 'col-md-6' },
 
         { label: 'Place of Birth (Municipality/City)', name: 'placeOfBirth', type: 'text', colClass: 'col-md-6' },
-        { label: 'Age', name: 'age', type: 'number', colClass: 'col-md-3' },
-        { label: 'Mother Tongue (e.g., Tagalog, Bisaya, Ilocano)', name: 'motherTongue', type: 'text', colClass: 'col-md-9' }
+        { label: 'Age', name: 'age', type: 'number', colClass: 'col-md-6 mt-2' },
+        { label: 'Mother Tongue (e.g., Tagalog, Bisaya, Ilocano)', name: 'motherTongue', type: 'text', colClass: 'col-md-6 mt-2' }
     ];
 
     const conditionalSections = [
@@ -524,23 +524,7 @@ export const Step1 = () => {
             }
         } else {
 
-            // For top-level fields like schoolYear, gradeLevelToEnroll, etc.
-
-
-            // ✅ If "With LRN?" is set to "No", clear the LRN value
-            if (name === 'withLRN' && value === 'No') {
-                setFormData(prev => ({ 
-                    ...prev, 
-                    [name]: value,
-                    learnerInfo: {
-                        ...prev.learnerInfo,
-                        lrn: ''  // ✅ Clear LRN when "No" is selected
-                    }
-                }));
-                setLrnError('');  // ✅ Also clear any LRN error
-            } else {
-                setFormData(prev => ({ ...prev, [name]: value }));
-            }
+            setFormData(prev => ({ ...prev, [name]: value }));
         }
 
         setHasChanges(true);
@@ -584,7 +568,6 @@ export const Step1 = () => {
                     step: "step1",
                     enrollmentId: enrollmentId,
                     gradeLevelToEnroll: formData.gradeLevelToEnroll,
-                    withLRN: formData.withLRN,
                     isReturning: formData.isReturning,
                     learnerInfo: JSON.stringify(formData.learnerInfo)
                 })
@@ -758,7 +741,6 @@ export const Step1 = () => {
 
     // Reusable render functions
     const renderTextField = (field, isNested = false) => {
-        const isLRNDisabled = field.conditionalDisable === 'withLRN' && formData.withLRN === 'No';
         
         // ✅ Special handling for PSA No. field (add after LRN check)
         if (field.name === 'psaNo') {
@@ -800,7 +782,7 @@ export const Step1 = () => {
                         value={formData?.learnerInfo?.lrn || ''}
                         onChange={handleChange}
                         className={`form-control ${lrnError ? 'is-invalid' : ''}`}
-                        disabled={viewOnly || isLRNDisabled}
+                        disabled={viewOnly}
                         maxLength="12"  // ✅ Changed from 13 to 12
                         placeholder="Enter 12-digit LRN"  // ✅ Changed message
                     />
@@ -849,7 +831,7 @@ export const Step1 = () => {
                     value={isNested ? (formData?.learnerInfo?.[field.name] || '') : (formData[field.name] || '')}
                     onChange={handleChange}
                     className="form-control"
-                    disabled={viewOnly || isLRNDisabled}
+                    disabled={viewOnly}
                 />
             </div>
         );
@@ -1014,23 +996,15 @@ export const Step1 = () => {
     // ✅ Check if all required fields are filled
     const isFormValid = () => {
 
-        // LRN required if "With LRN?" is "Yes"
-        if (formData.withLRN === 'Yes') {
-            const lrn = formData?.learnerInfo?.lrn || '';
-            if (lrn.trim() === '' || lrn.length !== 12) {  // ✅ Changed from 13 to 12
-                return false;
-            }
-        }
-
-
+        
         // ✅ If already submitted (incomplete status exists), allow to proceed
         const statusRegistration = sessionStorage.getItem("statusRegistration");
         if (statusRegistration === "incomplete") {
             return true;
         }
 
-        // Check top-level required fields
-        if (!formData.gradeLevelToEnroll || !formData.withLRN || !formData.isReturning) {
+     // Check top-level required fields
+        if (!formData.gradeLevelToEnroll || !formData.isReturning) {
             return false;
         }
 
@@ -1047,10 +1021,7 @@ export const Step1 = () => {
             }
         }
 
-        // LRN required if "With LRN?" is "Yes"
-        if (formData.withLRN === 'Yes' && (!formData?.learnerInfo?.lrn || formData.learnerInfo.lrn.trim() === '')) {
-            return false;
-        }
+        
 
         return true;
     };
@@ -1116,7 +1087,7 @@ export const Step1 = () => {
             style={{marginTop: "120px"}}
 
             >
-                <div className="col-12 col-md-12 col-lg-12">
+                <div className="col-12 col-md-12 col-lg-12 ">
 
                     {!location?.state?.forPrint && !viewOnly && (
                         <ProgressStepper currentStep={1} />
@@ -1127,9 +1098,9 @@ export const Step1 = () => {
                     
 
                         {/* Main Form Grid */}
-                        <div className="row">
+                        <div className="row justify-content-center">
                             {/* Left Column - Learner Information */}
-                            <div className="col-md-6">
+                            <div className="col-12 col-md-8">
                                 <div className="card border-0 h-100">
                                     <div className="card-body">
                                         <h2 className="h5 fw-bold mb-4">STUDENT INFORMATION</h2>
@@ -1139,10 +1110,10 @@ export const Step1 = () => {
                             </div>
 
                             {/* Right Column - Additional Info */}
-                            <div className="col-md-6">
+                            <div className="col-12 col-md-8">
                                 <div className="card border-0 h-100">
                                     <div className="card-body">
-                                        <div className="row mb-3">
+                                        <div className="row mb-3 ">
                                            {rightFields.map(field => (
                                                 <div key={field.name} className={field.colClass}>
                                                     <label className="form-label small">
@@ -1194,11 +1165,12 @@ export const Step1 = () => {
                             </div>
                         </div>
 
-                            {/* School Year & Grade Level Section */}
-                        <div className="card border-0 mt-4">
-                            <div className="card-body">
-                                <div className="row">
-                                    <div className="col-md-6">
+                        {/* School Year & Grade Level Section */}
+                        <div className="row justify-content-center mt-2">
+                            <div className="col-12 col-md-8 ">
+                                
+                                <div className="card border-0 h-100">
+                                    <div className="card-body">
                                         {headerFields.map(field => renderTextField(field, false))}
                                         
                                         {/* Grade Level Dropdown */}
@@ -1221,46 +1193,54 @@ export const Step1 = () => {
                                             </select>
                                         </div>
                                     </div>
-                                    
-                                    <div className="col-md-6 border-start">
+                                </div>
+
+                            </div>
+                            
+                            <div className="col-12 col-md-8 mt-2">
+                                <div className="card border-0 h-100">
+                                    <div className="card-body">
                                         <p className="mb-3">Check the appropriate circle only</p>
                                         {radioGroups.map(group => renderRadioGroup(group))}
                                     </div>
-                                    
                                 </div>
                             </div>
                         </div>
 
                         {/* Learner with Disability */}
-                        <div className="col-12">
-                            <div className="card h-100 border-0 mt-4 p-3">
-                                <label className="form-label small fw-semibold">
-                                    Is the child a Learner with Disability?
-                                    <span className="text-danger ms-1">*</span> 
-                                </label>
+                        <div className="row justify-content-center mt-2 
+                        ">
+                            <div className="col-12 col-md-8">
+                                <div className="card h-100 border-0  p-3">
+                                    <label className="form-label small fw-semibold">
+                                        Is the child a Learner with Disability?
+                                        <span className="text-danger ms-1">*</span> 
+                                    </label>
 
-                                {renderRadioGroup(
-                                    { name: 'isDisabled', options: ['Yes', 'No'], label: '' },
-                                    'learnerWithDisability'
-                                )}
-                                
-                                {formData?.learnerInfo?.learnerWithDisability?.isDisabled === 'Yes' && (
-                                    <>
-                                        <label className="form-label small fw-semibold mb-3">
-                                            If Yes, specify the type of disability:
-                                        </label>
-                                        
-                                        <div className="row">
-                                            {disabilityTypes.map(column => (
-                                                <div className="col-md-6" key={column.column}>
-                                                    {column.items.map(item => renderDisabilityCheckbox(item))}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
+                                    {renderRadioGroup(
+                                        { name: 'isDisabled', options: ['Yes', 'No'], label: '' },
+                                        'learnerWithDisability'
+                                    )}
+                                    
+                                    {formData?.learnerInfo?.learnerWithDisability?.isDisabled === 'Yes' && (
+                                        <>
+                                            <label className="form-label small fw-semibold mb-3">
+                                                If Yes, specify the type of disability:
+                                            </label>
+                                            
+                                            <div className="row">
+                                                {disabilityTypes.map(column => (
+                                                    <div className="col-md-6" key={column.column}>
+                                                        {column.items.map(item => renderDisabilityCheckbox(item))}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
+
                     </div>
                     
                     {!location?.state?.forPrint && (
@@ -2123,12 +2103,15 @@ const FormField = ({ label, name, type, value, onChange, disabled, required = fa
 const FormSection = ({ title, fields, values, onChange, disabled, parentType }) => (
     <div className="mb-4">
         {title && <h3 className="h6 fw-semibold mb-3">{title}</h3>}
-        <div className="row">
+
+        <div className="row justify-content-center">
+
+
             {fields.map(field => {
                 // ✅ Special handling for Contact Number
                 if (field.name === 'contactNumber') {
                     return (
-                        <div key={field.name} className="col-md-6 mb-3">
+                        <div key={field.name} className="col-12 mb-3 ">
                             <label className="form-label small">
                                 {field.label}
                                 </label>
@@ -2148,7 +2131,7 @@ const FormSection = ({ title, fields, values, onChange, disabled, parentType }) 
 
                 // ✅ Regular fields
                 return (
-                    <div key={field.name} className="col-md-6 mb-3">
+                    <div key={field.name} className="col-12 mb-3">
                         <label className="form-label small">
                             {field.label}
                             {field.required && <span className="text-danger ms-1">*</span>}
@@ -2214,6 +2197,8 @@ export const Step2 = () => {
         }
     }, [setFormData]);
 
+
+
     // Prefill for admin/staff view
     useEffect(() => {
         if (role !== "admin" && role !== "staff") return;
@@ -2226,7 +2211,6 @@ export const Step2 = () => {
             ...prev,
             schoolYear: prefill?.schoolYear ?? '',
             gradeLevelToEnroll: prefill?.gradeLevelToEnroll ?? '',
-            withLRN: prefill?.withLRN ? "Yes" : "No",
             isReturning: prefill?.isReturning ? "Yes" : "No",
             studentType: prefill?.studentType ?? "regular",
             learnerInfo: { ...prev.learnerInfo, ...prefill?.learnerInfo },
@@ -2646,7 +2630,6 @@ export const Step2 = () => {
 
 
 
-
     // ✅ Error Modal Component (add bago return)
     const ErrorModal = () => {
         if (!showErrorModal) return null;
@@ -2710,49 +2693,58 @@ export const Step2 = () => {
 
                     <div className="p-0 p-md-4">
 
+                        
                         {/* Parent/Guardian Information */}
-                        <div className="card border-0 mb-4">
-                            <div className="card-body">
-                                <h2 className="h5 fw-bold mb-4">PARENT/GUARDIAN INFORMATION</h2>
-                                
-                                <FormSection
-                                    title="Father's Information (Optional)"
-                                    fields={FORM_FIELDS.parentInfo}
-                                    values={formData.parentGuardianInfo?.father}
-                                    onChange={handleParentGuardianChange}
-                                    disabled={viewOnly}
-                                    parentType="father"
-                                />
+                        <div className="row justify-content-center">
+                            <div className="col-md-8">
+                                <div className="card border-0 mb-4">
+                                    <div className="card-body">
 
-                                <FormSection
-                                    title="Mother's Information (Optional)"
-                                    fields={FORM_FIELDS.parentInfo}
-                                    values={formData.parentGuardianInfo?.mother}
-                                    onChange={handleParentGuardianChange}
-                                    disabled={viewOnly}
-                                    parentType="mother"
-                                />
+                                        <h2 className="h5 fw-bold mb-4">PARENT/GUARDIAN INFORMATION</h2>
 
-                                <FormSection
-                                    title="Guardian's Information (Required)"
-                                    fields={FORM_FIELDS.parentInfo.map(field => ({
-                                        ...field,
-                                        required: field.name === 'lastName' || field.name === 'firstName'  // ✅ ADD THIS
-                                    }))}
-                                    values={formData.parentGuardianInfo?.guardian}
-                                    onChange={handleParentGuardianChange}
-                                    disabled={viewOnly}
-                                    parentType="guardian"
-                                />
+                                        
+                                        <FormSection
+                                            title="Father's Information (Optional)"
+                                            fields={FORM_FIELDS.parentInfo}
+                                            values={formData.parentGuardianInfo?.father}
+                                            onChange={handleParentGuardianChange}
+                                            disabled={viewOnly}
+                                            parentType="father"
+                                        />
 
+                                        <FormSection
+                                            title="Mother's Information (Optional)"
+                                            fields={FORM_FIELDS.parentInfo}
+                                            values={formData.parentGuardianInfo?.mother}
+                                            onChange={handleParentGuardianChange}
+                                            disabled={viewOnly}
+                                            parentType="mother"
+                                        />
+
+                                        <FormSection
+                                            title="Guardian's Information (Required)"
+                                            fields={FORM_FIELDS.parentInfo.map(field => ({
+                                                ...field,
+                                                required: field.name === 'lastName' || field.name === 'firstName'  // ✅ ADD THIS
+                                            }))}
+                                            values={formData.parentGuardianInfo?.guardian}
+                                            onChange={handleParentGuardianChange}
+                                            disabled={viewOnly}
+                                            parentType="guardian"
+                                        />
+
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
 
 
+
                         {/* Address Section */}
-                        <div className="row mb-4">
+                        <div className="row mb-4 justify-content-center ">
                             {/* Current Address */}
-                            <div className="col-md-6">
+                            <div className="col-md-8">
                                 <div className="card border-0 h-100">
                                     <div className="card-body">
                                         <h2 className="h5 fw-bold mb-4">CURRENT ADDRESS</h2>
@@ -2810,7 +2802,7 @@ export const Step2 = () => {
                             </div>
 
                             {/* Permanent Address */}
-                            <div className="col-md-6">
+                            <div className="col-md-8 mt-2">
                                 <div className="card border-0 h-100">
                                     <div className="card-body">
                                         <h2 className="h5 fw-bold mb-3">PERMANENT ADDRESS</h2>
@@ -2878,148 +2870,166 @@ export const Step2 = () => {
 
                         {/* School History - ✅ Only show if isReturning is "Yes" */}
                         {formData.isReturning === 'Yes' && (
-                            <div className="card border-0 mb-4">
-                                <div className="card-body">
-                                    <h2 className="h5 fw-bold mb-3">
-                                        FOR RETURNING LEARNER (BALIK-ARAL) AND THOSE WHO WILL TRANSFER/MOVE IN
-                                    </h2>
-                                    
-                                    <div className="mb-4">
-                                        <div className="form-check">
-                                            <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
-                                                name="returningLearner"
-                                                checked={formData.schoolHistory?.returningLearner || false}
-                                                onChange={handleSchoolHistoryChange}
-                                                id="returningLearner"
-                                                disabled={viewOnly}
-                                            />
-                                            <label className="form-check-label" htmlFor="returningLearner">
-                                                I am a Returning Learner or Transferee
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div className="d-flex gap-4 my-2">
-                                        <div className="form-check">
-                                            <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
-                                                checked={formData.studentType === 'transferee'}
-                                                onChange={() => handleAcademicStatusChange('transferee')}
-                                                disabled={!formData.schoolHistory?.returningLearner || viewOnly}
-                                                id="transferee"
-                                            />
-                                            <label className="form-check-label" htmlFor="transferee">
-                                                Transferee
-                                            </label>
-                                        </div>
-                                        
-                                        <div className="form-check">
-                                            <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
-                                                checked={formData.studentType === 'returnee'}
-                                                onChange={() => handleAcademicStatusChange('returnee')}
-                                                disabled={!formData.schoolHistory?.returningLearner || viewOnly}
-                                                id="returnee"
-                                            />
-                                            <label className="form-check-label" htmlFor="returnee">
-                                                Returning Learner (Balik-Aral)
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div className="row">
-                                        {FORM_FIELDS.schoolHistory.map(field => (
-                                            <div key={field.name} className="col-md-6 mb-3">
-                                                <label className="form-label small">{field.label}</label>
-                                                <input
-                                                    type={field.type}
-                                                    name={field.name}
-                                                    value={formData.schoolHistory?.[field.name] || ''}
-                                                    onChange={handleSchoolHistoryChange}
-                                                    className="form-control"
-                                                    disabled={!formData.schoolHistory?.returningLearner || viewOnly}
-                                                />
+                            <div className="row justify-content-center">
+                                <div className="col-md-8">
+                                    <div className="card border-0 mb-4">
+                                        <div className="card-body">
+                                            <h2 className="h5 fw-bold mb-3">
+                                                FOR RETURNING LEARNER (BALIK-ARAL) AND THOSE WHO WILL TRANSFER/MOVE IN
+                                            </h2>
+                                            
+                                            <div className="mb-4">
+                                                <div className="form-check">
+                                                    <input 
+                                                        className="form-check-input" 
+                                                        type="checkbox" 
+                                                        name="returningLearner"
+                                                        checked={formData.schoolHistory?.returningLearner || false}
+                                                        onChange={handleSchoolHistoryChange}
+                                                        id="returningLearner"
+                                                        disabled={viewOnly}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="returningLearner">
+                                                        I am a Returning Learner or Transferee
+                                                        <span className="text-danger ms-1">*</span>
+                                                    </label>
+                                                </div>
                                             </div>
-                                        ))}
+
+                                            <div className="d-flex gap-4 my-2">
+                                                <div className="form-check">
+                                                    <input 
+                                                        className="form-check-input" 
+                                                        type="checkbox" 
+                                                        checked={formData.studentType === 'transferee'}
+                                                        onChange={() => handleAcademicStatusChange('transferee')}
+                                                        disabled={!formData.schoolHistory?.returningLearner || viewOnly}
+                                                        id="transferee"
+                                                    />
+                                                    <label className="form-check-label" htmlFor="transferee">
+                                                        Transferee
+                                                        <span className="text-danger ms-1">*</span>
+                                                    </label>
+                                                </div>
+                                                
+                                                <div className="form-check">
+                                                    <input 
+                                                        className="form-check-input" 
+                                                        type="checkbox" 
+                                                        checked={formData.studentType === 'returnee'}
+                                                        onChange={() => handleAcademicStatusChange('returnee')}
+                                                        disabled={!formData.schoolHistory?.returningLearner || viewOnly}
+                                                        id="returnee"
+                                                    />
+                                                    <label className="form-check-label" htmlFor="returnee">
+                                                        Returning Learner (Balik-Aral)
+                                                        <span className="text-danger ms-1">*</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div className="row">
+                                                {FORM_FIELDS.schoolHistory.map(field => (
+                                                    <div key={field.name} className="col-12 mb-3">
+                                                        <label className="form-label small">
+                                                            {field.label}
+                                                            <span className="text-danger ms-1">*</span>
+                                                        </label>
+                                                        <input
+                                                            type={field.type}
+                                                            name={field.name}
+                                                            value={formData.schoolHistory?.[field.name] || ''}
+                                                            onChange={handleSchoolHistoryChange}
+                                                            className="form-control"
+                                                            disabled={!formData.schoolHistory?.returningLearner || viewOnly}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+
                             </div>
+
                         )}
 
                         {/* Senior High School */}
-                        <div className="card border-0 mb-4">
-                            <div className="card-body">
-                                <h2 className="h5 fw-bold mb-4">FOR LEARNERS IN SENIOR HIGH SCHOOL</h2>
-                                
-                                <div className="row">
-                                    <div className="col-md-4 mb-3">
-                                        <label className="form-label small">
-                                            Semester
-                                            <span className="text-danger ms-1">*</span> 
-                                        </label>
-                                        <select
-                                            name="semester"
-                                            value={formData.seniorHigh?.semester || ''}
-                                            onChange={handleSeniorHighChange}
-                                            className="form-select"
-                                            disabled={viewOnly}
-                                        >
-                                            <option value="">Select Semester</option>
-                                            <option value="1st">First</option>
-                                            <option value="2nd">Second</option>
-                                        </select>
-                                    </div>
+                        
+                        <div className="row justify-content-center">
+                            <div className="col-12 col-md-8">
+                                <div className="card border-0 mb-4">
+                                    <div className="card-body">
+                                        <h2 className="h5 fw-bold mb-4">FOR LEARNERS IN SENIOR HIGH SCHOOL</h2>
+                                        
+                                        <div className="row">
+                                            <div className="col-12 mb-3">
+                                                <label className="form-label small">
+                                                    Semester
+                                                    <span className="text-danger ms-1">*</span> 
+                                                </label>
+                                                <select
+                                                    name="semester"
+                                                    value={formData.seniorHigh?.semester || ''}
+                                                    onChange={handleSeniorHighChange}
+                                                    className="form-select"
+                                                    disabled={viewOnly}
+                                                >
+                                                    <option value="">Select Semester</option>
+                                                    <option value="1st">First</option>
+                                                    <option value="2nd">Second</option>
+                                                </select>
+                                            </div>
 
-                                    <div className="col-md-4 mb-3">
-                                        <label className="form-label small">
-                                          Track
-                                          <span className="text-danger ms-1">*</span>  
-                                        </label>
-                                        <select
-                                            name="track"
-                                            value={formData.seniorHigh?.track || ''}
-                                            onChange={handleSeniorHighChange}
-                                            className="form-select"
-                                            disabled={viewOnly}
-                                        >
-                                            <option value="">Select Track</option>
-                                            <option value="Academic">Academic</option>
-                                            <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
-                                        </select>
-                                    </div>
+                                            <div className="col-12 mb-3">
+                                                <label className="form-label small">
+                                                Track
+                                                <span className="text-danger ms-1">*</span>  
+                                                </label>
+                                                <select
+                                                    name="track"
+                                                    value={formData.seniorHigh?.track || ''}
+                                                    onChange={handleSeniorHighChange}
+                                                    className="form-select"
+                                                    disabled={viewOnly}
+                                                >
+                                                    <option value="">Select Track</option>
+                                                    <option value="Academic">Academic</option>
+                                                    <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
+                                                </select>
+                                            </div>
 
-                                    <div className="col-md-4 mb-3">
+                                            <div className="col-12 mb-3">
 
-                                        <label className="form-label small">
-                                            Strand
-                                            <span className="text-danger ms-1">*</span>  
-                                        </label>
-                                        <select
-                                            name="strand"
-                                            value={formData.seniorHigh?.strand || ''}
-                                            onChange={handleSeniorHighChange}
-                                            className="form-select"
-                                            disabled={!formData.seniorHigh?.track || viewOnly}
-                                        >
-                                            <option value="">
-                                                {!formData.seniorHigh?.track ? 'Select Track First' : 'Select Strand'}
-                                            </option>
-                                            {formData.seniorHigh?.track && 
-                                                STRAND_OPTIONS[formData.seniorHigh.track]?.map(option => (
-                                                    <option key={option.value} value={option.value}>
-                                                        {option.label}
+                                                <label className="form-label small">
+                                                    Strand
+                                                    <span className="text-danger ms-1">*</span>  
+                                                </label>
+                                                <select
+                                                    name="strand"
+                                                    value={formData.seniorHigh?.strand || ''}
+                                                    onChange={handleSeniorHighChange}
+                                                    className="form-select"
+                                                    disabled={!formData.seniorHigh?.track || viewOnly}
+                                                >
+                                                    <option value="">
+                                                        {!formData.seniorHigh?.track ? 'Select Track First' : 'Select Strand'}
                                                     </option>
-                                                ))
-                                            }
-                                        </select>
+                                                    {formData.seniorHigh?.track && 
+                                                        STRAND_OPTIONS[formData.seniorHigh.track]?.map(option => (
+                                                            <option key={option.value} value={option.value}>
+                                                                {option.label}
+                                                            </option>
+                                                        ))
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                       
 
                         {/* Navigation Buttons */}
                         <div className="d-flex align-items-center justify-content-center gap-3 my-3">
@@ -3059,10 +3069,6 @@ export const Step2 = () => {
         </div>
     );
 };
-
-
-
-
 
 
 
@@ -3508,214 +3514,218 @@ export const Step3 = () => {
                     
                     <div className="p-0 p-md-4">
                         {/* Certification */}
-                        <div className="card border-0 my-4">
-                            <div className="card-body">
-                                <h2 className="h5 fw-bold mb-4 text-muted">CERTIFICATION & REQUIRED DOCUMENTS</h2>
-                                
-                                <div className="alert alert-info mb-4">
-                                    <p className="mb-2 small">
-                                        <strong>I CERTIFY that:</strong>
-                                    </p>
-                                    <ul className="small mb-0">
-                                        <li>All information provided in this form is true and correct</li>
-                                        <li>I understand that any false information may result in the cancellation of my enrollment</li>
-                                        <li>I agree to comply with all school policies and regulations</li>
-                                    </ul>
-                                </div>
 
-                                <div className="row">
-                                
-
-                                    {/* Right Column - Upload Required Documents */}
-                                    <div className="col-md-6">
-                                        <h3 className="h6 fw-semibold mb-3">Upload Required Documents</h3>
+                        <div className="row justify-content-center">
+                            <div className="col-12 col-md-8">
+                                <div className="card border-0 my-4">
+                                    <div className="card-body">
+                                        <h2 className="h5 fw-bold mb-4 text-muted">CERTIFICATION & REQUIRED DOCUMENTS</h2>
                                         
-                                        {/* PSA Birth Certificate */}
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-semibold text-muted">
-                                                PSA BIRTH CERTIFICATE
-                                                <span className="text-danger ms-1">*</span>
-                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                    (JPG, PNG only)
-                                                </span>
-                                            </label>
-                                            
-                                            
-                                            
-                                            <div className="input-group">
-                                                <input
-                                                    ref={(el) => (fileRef.current['psaBirthCert'] = el)}
-                                                    type="file"
-                                                    accept=".jpg,.jpeg,.png"
-                                                    onChange={(e) => handleFileUpload(e, 'psaBirthCert')}
-                                                    className="form-control"
-                                                    disabled={viewOnly}
-                                                />
-                                            </div>
-                                            {formData.certification?.psaBirthCertFileName && (
-                                                <div className="mt-2 d-flex align-items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                        onClick={() => handleViewImage(formData.certification.psaBirthCertPreview)}
-                                                        title={formData.certification.psaBirthCertFileName} 
-                                                    >
-                                                        📄 {truncateFilename(formData.certification.psaBirthCertFileName, 25)} 
-                                                    </button>
-                                                    {!role && (
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-danger rounded-circle p-0"
-                                                            style={{ width: '24px', height: '24px' }}
-                                                            onClick={() => handleRemoveFile('psaBirthCert')}
-                                                            title="Remove file"
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
+                                        <div className="alert alert-info mb-4">
+                                            <p className="mb-2 small">
+                                                <strong>I CERTIFY that:</strong>
+                                            </p>
+                                            <ul className="small mb-0">
+                                                <li>All information provided in this form is true and correct</li>
+                                                <li>I understand that any false information may result in the cancellation of my enrollment</li>
+                                                <li>I agree to comply with all school policies and regulations</li>
+                                            </ul>
                                         </div>
 
-                                        {/* Report Card (Form 138) */}
-                                        <div className="mb-3">
-                                            
-                                            <label className="form-label small fw-semibold text-muted">
-                                                REPORT CARD (FORM 138)
-                                                <span className="text-danger ms-1">*</span>
-                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                    (JPG, PNG only)
-                                                </span>
-                                            </label>
-                                            <div className="input-group">
-                                                <input
-                                                    ref={(el) => (fileRef.current['reportCard'] = el)}
-                                                    type="file"
-                                                    accept=".jpg,.jpeg,.png"
-                                                    onChange={(e) => handleFileUpload(e, 'reportCard')}
-                                                    className="form-control"
-                                                    disabled={viewOnly}
-                                                />
-                                            </div>
-                                            {formData.certification?.reportCardFileName && (
-                                                <div className="mt-2 d-flex align-items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                        onClick={() => handleViewImage(formData.certification.reportCardPreview)}
-                                                        title={formData.certification.reportCardFileName}  
-                                                    >
-                                                        📄 {truncateFilename(formData.certification.reportCardFileName, 25)} 
-                                                    </button>
-                                                    {!role && (
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-danger rounded-circle p-0"
-                                                            style={{ width: '24px', height: '24px' }}
-                                                            onClick={() => handleRemoveFile('reportCard')}
-                                                            title="Remove file"
-                                                        >
-                                                            ✕
-                                                        </button>
+                                        <div className="row">
+                                            {/* Right Column - Upload Required Documents */}
+                                            <div className="col-md-12">
+                                                <h3 className="h6 fw-semibold mb-3">Upload Required Documents</h3>
+                                                
+                                                {/* PSA Birth Certificate */}
+                                                <div className="mb-3">
+                                                    <label className="form-label small fw-semibold text-muted">
+                                                        PSA BIRTH CERTIFICATE
+                                                        <span className="text-danger ms-1">*</span>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                            (JPG, PNG only)
+                                                        </span>
+                                                    </label>
+                                                    
+                                                    
+                                                    
+                                                    <div className="input-group">
+                                                        <input
+                                                            ref={(el) => (fileRef.current['psaBirthCert'] = el)}
+                                                            type="file"
+                                                            accept=".jpg,.jpeg,.png"
+                                                            onChange={(e) => handleFileUpload(e, 'psaBirthCert')}
+                                                            className="form-control"
+                                                            disabled={viewOnly}
+                                                        />
+                                                    </div>
+                                                    {formData.certification?.psaBirthCertFileName && (
+                                                        <div className="mt-2 d-flex align-items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
+                                                                onClick={() => handleViewImage(formData.certification.psaBirthCertPreview)}
+                                                                title={formData.certification.psaBirthCertFileName} 
+                                                            >
+                                                                📄 {truncateFilename(formData.certification.psaBirthCertFileName, 25)} 
+                                                            </button>
+                                                            {!role && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
+                                                                    style={{ width: '24px', height: '24px' }}
+                                                                    onClick={() => handleRemoveFile('psaBirthCert')}
+                                                                    title="Remove file"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
 
-                                        {/* Good Moral */}
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-semibold text-muted">
-                                                GOOD MORAL
-                                                <small className="text-muted ms-2">{"(optional)"}</small>
-                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                    (JPG, PNG only)
-                                                </span>
-                                            </label>
-                                            <div className="input-group">
-                                                <input
-                                                    ref={(el) => (fileRef.current['goodMoral'] = el)}
-                                                    type="file"
-                                                    accept=".jpg,.jpeg,.png"
-                                                    onChange={(e) => handleFileUpload(e, 'goodMoral')}
-                                                    className="form-control"
-                                                    disabled={viewOnly}
-                                                />
-                                            </div>
-                                            {formData.certification?.goodMoralFileName && (
-                                                <div className="mt-2 d-flex align-items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                        onClick={() => handleViewImage(formData.certification.goodMoralPreview)}
-                                                        title={formData.certification.goodMoralFileName}  
-                                                    >
-                                                        📄 {truncateFilename(formData.certification.goodMoralFileName, 25)}  
-                                                    </button>
-                                                    {!role && (
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-danger rounded-circle p-0"
-                                                            style={{ width: '24px', height: '24px' }}
-                                                            onClick={() => handleRemoveFile('goodMoral')}
-                                                            title="Remove file"
-                                                        >
-                                                            ✕
-                                                        </button>
+                                                {/* Report Card (Form 138) */}
+                                                <div className="mb-3">
+                                                    
+                                                    <label className="form-label small fw-semibold text-muted">
+                                                        REPORT CARD (FORM 138)
+                                                        <span className="text-danger ms-1">*</span>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                            (JPG, PNG only)
+                                                        </span>
+                                                    </label>
+                                                    <div className="input-group">
+                                                        <input
+                                                            ref={(el) => (fileRef.current['reportCard'] = el)}
+                                                            type="file"
+                                                            accept=".jpg,.jpeg,.png"
+                                                            onChange={(e) => handleFileUpload(e, 'reportCard')}
+                                                            className="form-control"
+                                                            disabled={viewOnly}
+                                                        />
+                                                    </div>
+                                                    {formData.certification?.reportCardFileName && (
+                                                        <div className="mt-2 d-flex align-items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
+                                                                onClick={() => handleViewImage(formData.certification.reportCardPreview)}
+                                                                title={formData.certification.reportCardFileName}  
+                                                            >
+                                                                📄 {truncateFilename(formData.certification.reportCardFileName, 25)} 
+                                                            </button>
+                                                            {!role && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
+                                                                    style={{ width: '24px', height: '24px' }}
+                                                                    onClick={() => handleRemoveFile('reportCard')}
+                                                                    title="Remove file"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
 
-                                        {/* 2x2 ID Picture */}
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-semibold text-muted">
-                                                2X2 ID PICTURE
-                                                 <span className="text-danger ms-1">*</span>
-                                                <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                    (JPG, PNG only)
-                                                </span>
-                                            </label>
-
-                                            
-                                            <div className="input-group">
-                                                <input
-                                                    ref={(el) => (fileRef.current['idPicture'] = el)}
-                                                    type="file"
-                                                    accept=".jpg,.jpeg,.png"
-                                                    onChange={(e) => handleFileUpload(e, 'idPicture')}
-                                                    className="form-control"
-                                                    disabled={viewOnly}
-                                                />
-                                            </div>
-                                            {formData.certification?.idPictureFileName && (
-                                                <div className="mt-2 d-flex align-items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                        onClick={() => handleViewImage(formData.certification.idPicturePreview)}
-                                                        title={formData.certification.idPictureFileName}  
-                                                    >
-                                                        📄 {truncateFilename(formData.certification.idPictureFileName, 25)}  
-                                                    </button>
-                                                    {!role && (
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-danger rounded-circle p-0"
-                                                            style={{ width: '24px', height: '24px' }}
-                                                            onClick={() => handleRemoveFile('idPicture')}
-                                                            title="Remove file"
-                                                        >
-                                                            ✕
-                                                        </button>
+                                                {/* Good Moral */}
+                                                <div className="mb-3">
+                                                    <label className="form-label small fw-semibold text-muted">
+                                                        GOOD MORAL
+                                                        <small className="text-muted ms-2">{"(optional)"}</small>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                            (JPG, PNG only)
+                                                        </span>
+                                                    </label>
+                                                    <div className="input-group">
+                                                        <input
+                                                            ref={(el) => (fileRef.current['goodMoral'] = el)}
+                                                            type="file"
+                                                            accept=".jpg,.jpeg,.png"
+                                                            onChange={(e) => handleFileUpload(e, 'goodMoral')}
+                                                            className="form-control"
+                                                            disabled={viewOnly}
+                                                        />
+                                                    </div>
+                                                    {formData.certification?.goodMoralFileName && (
+                                                        <div className="mt-2 d-flex align-items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
+                                                                onClick={() => handleViewImage(formData.certification.goodMoralPreview)}
+                                                                title={formData.certification.goodMoralFileName}  
+                                                            >
+                                                                📄 {truncateFilename(formData.certification.goodMoralFileName, 25)}  
+                                                            </button>
+                                                            {!role && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
+                                                                    style={{ width: '24px', height: '24px' }}
+                                                                    onClick={() => handleRemoveFile('goodMoral')}
+                                                                    title="Remove file"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
 
+                                                {/* 2x2 ID Picture */}
+                                                <div className="mb-3">
+                                                    <label className="form-label small fw-semibold text-muted">
+                                                        2X2 ID PICTURE
+                                                        <span className="text-danger ms-1">*</span>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
+                                                            (JPG, PNG only)
+                                                        </span>
+                                                    </label>
+
+                                                    
+                                                    <div className="input-group">
+                                                        <input
+                                                            ref={(el) => (fileRef.current['idPicture'] = el)}
+                                                            type="file"
+                                                            accept=".jpg,.jpeg,.png"
+                                                            onChange={(e) => handleFileUpload(e, 'idPicture')}
+                                                            className="form-control"
+                                                            disabled={viewOnly}
+                                                        />
+                                                    </div>
+                                                    {formData.certification?.idPictureFileName && (
+                                                        <div className="mt-2 d-flex align-items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
+                                                                onClick={() => handleViewImage(formData.certification.idPicturePreview)}
+                                                                title={formData.certification.idPictureFileName}  
+                                                            >
+                                                                📄 {truncateFilename(formData.certification.idPictureFileName, 25)}  
+                                                            </button>
+                                                            {!role && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
+                                                                    style={{ width: '24px', height: '24px' }}
+                                                                    onClick={() => handleRemoveFile('idPicture')}
+                                                                    title="Remove file"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
 
                         {/* Navigation Buttons */}
                         <div className="d-flex align-items-center justify-content-center gap-3 my-3">

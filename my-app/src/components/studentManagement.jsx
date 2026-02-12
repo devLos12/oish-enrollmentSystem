@@ -159,7 +159,6 @@ const StudentManagement = () => {
             setFilteredEmailHistory(reversed);
         } catch (error) {
             console.log("Error fetching email history: ", error.message);
-            showAlert("Failed to load email history", 'error');
         } finally {
             setLoadingHistory(false);
         }

@@ -4,7 +4,6 @@ const enrollmentSchema = new mongoose.Schema({
   schoolYear: { type: String, required: false },
   gradeLevelToEnroll: { type: String, required: false },
   
-  withLRN: { type: Boolean, required: false },
   isReturning: { type: Boolean, required: false },
 
   learnerInfo: {

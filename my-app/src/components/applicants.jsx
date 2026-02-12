@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client"; 
-
+import html2pdf from "html2pdf.js";
 
 
 
@@ -383,6 +383,130 @@ const Applicants = () => {
 
     const statusCounts = getStatusCounts();
 
+    // 🖨️ PRINT FUNCTION - Opens print dialog
+    const handlePrint = () => {
+        const printWindow = window.open('', '', 'height=600,width=800');
+        printWindow.document.write('<html><head><title>Applicants List</title>');
+        printWindow.document.write('<style>');
+        printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
+        printWindow.document.write('h2 { text-align: center; color: #dc3545; margin-bottom: 10px; }');
+        printWindow.document.write('h3 { text-align: center; color: #6c757d; margin-bottom: 20px; }');
+        printWindow.document.write('.info { margin-bottom: 20px; }');
+        printWindow.document.write('table { width: 100%; border-collapse: collapse; font-size: 12px; }');
+        printWindow.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+        printWindow.document.write('th { background-color: #dc3545; color: white; }');
+        printWindow.document.write('tr:nth-child(even) { background-color: #f8f9fa; }');
+        printWindow.document.write('.badge { padding: 3px 6px; border-radius: 3px; font-size: 11px; color: white; }');
+        printWindow.document.write('</style>');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write('<h2>Enrollment Applicants</h2>');
+        printWindow.document.write('<h3>Applicants List Report</h3>');
+        printWindow.document.write('<div class="info">');
+        printWindow.document.write('<strong>Date Generated:</strong> ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + '<br>');
+        printWindow.document.write('<strong>Total Applicants:</strong> ' + filteredApplicants.length);
+        printWindow.document.write('</div>');
+        printWindow.document.write('<table>');
+        printWindow.document.write('<thead><tr>');
+        printWindow.document.write('<th>#</th><th>LRN</th><th>Full Name</th><th>Grade Level</th><th>School Year</th><th>Sex</th><th>Age</th><th>Status</th><th>Date Applied</th>');
+        printWindow.document.write('</tr></thead><tbody>');
+        
+        filteredApplicants.forEach((applicant, index) => {
+            const statusColor = applicant.status === 'approved' ? '#198754' : 
+                            applicant.status === 'pending' ? '#ffc107' : '#dc3545';
+            
+            printWindow.document.write('<tr>');
+            printWindow.document.write('<td>' + (index + 1) + '</td>');
+            printWindow.document.write('<td>' + (applicant.learnerInfo?.lrn || 'N/A') + '</td>');
+            printWindow.document.write('<td style="text-transform: capitalize;">' + 
+                applicant.learnerInfo?.lastName + ', ' + 
+                applicant.learnerInfo?.firstName + ' ' + 
+                (applicant.learnerInfo?.middleName === 'N/A' ? '' : applicant.learnerInfo?.middleName) + ' ' +
+                ((applicant.learnerInfo?.extensionName === "N/A" || applicant.learnerInfo?.extensionName === "n/a") ? "" : applicant.learnerInfo?.extensionName) + 
+            '</td>');
+            printWindow.document.write('<td>' + applicant.gradeLevelToEnroll + '</td>');
+            printWindow.document.write('<td>' + applicant.schoolYear + '</td>');
+            printWindow.document.write('<td>' + applicant.learnerInfo?.sex + '</td>');
+            printWindow.document.write('<td>' + applicant.learnerInfo?.age + '</td>');
+            printWindow.document.write('<td><span class="badge" style="background-color: ' + statusColor + ';">' + (applicant.status || 'pending') + '</span></td>');
+            printWindow.document.write('<td>' + formatDate(applicant.createdAt) + '</td>');
+            printWindow.document.write('</tr>');
+        });
+        
+        printWindow.document.write('</tbody></table>');
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.print();
+    };
+
+    // 📄 DOWNLOAD PDF FUNCTION
+    const handleDownloadPDF = () => {
+        const element = document.createElement('div');
+        element.innerHTML = `
+            <div style="padding: 20px; font-family: Arial, sans-serif;">
+                <h2 style="text-align: center; color: #dc3545; margin-bottom: 10px;">Enrollment Applicants</h2>
+                <h3 style="text-align: center; color: #6c757d; margin-bottom: 20px;">Applicants List Report</h3>
+                <p style="margin-bottom: 20px;">
+                    <strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br>
+                    <strong>Total Applicants:</strong> ${filteredApplicants.length}
+                </p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="background-color: #dc3545; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">#</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">LRN</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Full Name</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Grade Level</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">School Year</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Sex</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Age</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Status</th>
+                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Date Applied</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredApplicants.map((applicant, index) => {
+                            const statusColor = applicant.status === 'approved' ? '#198754' : 
+                                            applicant.status === 'pending' ? '#ffc107' : '#dc3545';
+                            return `
+                            <tr style="${index % 2 === 0 ? 'background-color: #f8f9fa;' : ''}">
+                                <td style="border: 1px solid #ddd; padding: 6px;">${index + 1}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${applicant.learnerInfo?.lrn || 'N/A'}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px; text-transform: capitalize;">
+                                    ${applicant.learnerInfo?.lastName}, ${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.middleName === 'N/A' ? '' : applicant.learnerInfo?.middleName} 
+                                    ${(applicant.learnerInfo?.extensionName === "N/A" || applicant.learnerInfo?.extensionName === "n/a") ? "" : applicant.learnerInfo?.extensionName}
+                                </td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${applicant.gradeLevelToEnroll}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${applicant.schoolYear}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${applicant.learnerInfo?.sex}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${applicant.learnerInfo?.age}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">
+                                    <span style="padding: 3px 6px; border-radius: 3px; font-size: 10px; 
+                                        background-color: ${statusColor}; color: white; text-transform: capitalize;">
+                                        ${applicant.status || 'pending'}
+                                    </span>
+                                </td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${formatDate(applicant.createdAt)}</td>
+                            </tr>
+                        `;}).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const opt = {
+            margin: 10,
+            filename: `applicants_list_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).save();
+    };
+
+
+
+
     return (
         <>
             <div className="container-fluid py-4 g-0 g-md-5 vh-100">
@@ -585,15 +709,45 @@ const Applicants = () => {
                                         
                                         {/* Pagination */}
                                         {totalPages > 0 && (
-                                            <div className="d-flex justify-content-between align-items-center p-3 border-top">
-                                                <div className="text-muted small">
-                                                    Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredApplicants.length)} of {filteredApplicants.length} entries
+                                            <div className="p-3 border-top">
+                                                <div className="row align-items-center g-2">
+                                                    {/* Left: Showing entries */}
+                                                    <div className="col-12 col-md-6">
+                                                        <div className="text-muted small text-center text-md-start">
+                                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredApplicants.length)} of {filteredApplicants.length} entries
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Right: Print/PDF + Pagination */}
+                                                    <div className="col-12 col-md-6 d-flex justify-content-end gap-3 mt-3 mt-md-0 flex-column flex-md-row">
+                                                        {/* Print & PDF Buttons */}
+                                                        <div className="d-flex justify-content-center gap-2">
+                                                            <button 
+                                                                type="button" 
+                                                                className="btn btn-outline-primary btn-sm"
+                                                                onClick={handlePrint}
+                                                                title="Print Applicants List"
+                                                            >
+                                                                <i className="fa fa-print me-1"></i>Print
+                                                            </button>
+                                                            <button 
+                                                                type="button" 
+                                                                className="btn btn-outline-danger btn-sm"
+                                                                onClick={handleDownloadPDF}
+                                                                title="Download as PDF"
+                                                            >
+                                                                <i className="fa fa-file-pdf me-1"></i>PDF
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Pagination */}
+                                                        <nav className="d-flex justify-content-md-end justify-content-center">
+                                                            <ul className="pagination mb-0">
+                                                                {renderPagination()}
+                                                            </ul>
+                                                        </nav>
+                                                    </div>
                                                 </div>
-                                                <nav>
-                                                    <ul className="pagination mb-0">
-                                                        {renderPagination()}
-                                                    </ul>
-                                                </nav>
                                             </div>
                                         )}
                                     </>

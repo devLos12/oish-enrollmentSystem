@@ -590,7 +590,6 @@ export const EnrollmentRegistration = async (req, res) => {
       // ✅ VALIDATION: Check required fields
       const requiredFields = [
           { field: 'gradeLevelToEnroll', message: 'Grade Level to Enroll is required' },
-          { field: 'withLRN', message: 'Please answer "With LRN?" question' },
           { field: 'isReturning', message: 'Please answer "Returning (Balik-Aral)?" question' },
       ];
 
@@ -670,10 +669,7 @@ export const EnrollmentRegistration = async (req, res) => {
 
       }
 
-      // ✅ VALIDATION: LRN is required if "With LRN?" is "Yes"
-      if (req.body.withLRN === 'Yes' && (!learnerInfo.lrn || learnerInfo.lrn.trim() === '')) {
-          return res.status(400).json({ message: 'LRN is required when "With LRN?" is Yes' });
-      }
+      
 
       // ✅ VALIDATION: Email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -720,8 +716,7 @@ export const EnrollmentRegistration = async (req, res) => {
       const psaNo = learnerInfo.psaNo?.trim() || 'N/A';
       const extensionName = learnerInfo.extensionName?.trim() || 'N/A';
 
-      //  Handle LRN - if "With LRN?" is "No", set to "N/A"
-      const lrn = req.body.withLRN === 'No' ? 'N/A' : (learnerInfo.lrn?.trim() || 'N/A');
+      const lrn = learnerInfo.lrn?.trim() || 'N/A';
 
 
       
@@ -729,7 +724,6 @@ export const EnrollmentRegistration = async (req, res) => {
       const enrollmentData = {
         schoolYear: autoSchoolYear,
         gradeLevelToEnroll: req.body.gradeLevelToEnroll,
-        withLRN: req.body.withLRN === 'Yes',
         isReturning: req.body.isReturning === 'Yes',
         
         learnerInfo: {
