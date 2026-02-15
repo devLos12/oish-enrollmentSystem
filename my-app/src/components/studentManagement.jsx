@@ -143,7 +143,6 @@ const StudentManagement = () => {
 
 
 
-
     const getEmailHistory = async () => {
         try {
             setLoadingHistory(true);
