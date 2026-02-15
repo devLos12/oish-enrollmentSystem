@@ -44,7 +44,7 @@ const Home = () => {
     const handleQuoteChange = (index) => {
         setCurrentQuote(index);
     };
-
+    
     return(
         <div 
             className="container-fluid d-flex align-items-center justify-content-center position-relative bg-light"
@@ -53,14 +53,16 @@ const Home = () => {
                 backgroundRepeat: "no-repeat",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
-                height:"520px"
+                height: "100vh",
+                marginTop: "-50px",
             }}
         >
-            {/* Overlay for better text readability */}
+            {/* Gradient Overlay - darker at top, lighter at bottom */}
             <div 
                 className="position-absolute top-0 start-0 w-100 h-100"
-                style={{backgroundColor: 'rgba(0, 0, 0, 0.6)'}}
-
+                style={{
+                    background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.3) 100%)'
+                }}
             ></div>
 
             {/* Content */}
@@ -104,73 +106,6 @@ const Home = () => {
                                 </button>
                             </div>
                         </div>
-
-{/*                         
-                        <div className="mt-5 card border-0 shadow-sm  position-relative" 
-                        style={{ 
-                            maxWidth: "800px", 
-                            width: "100%",
-                            overflow: "hidden"
-                        }}>
-                            <div className="card-body p-4">
-                                <div 
-                                    style={{
-                                        position: 'absolute',
-                                        top: '-20px',
-                                        left: '20px',
-                                        fontSize: '120px',
-                                        color: 'rgba(139, 0, 0, 0.1)',
-                                        fontFamily: 'Georgia, serif',
-                                        lineHeight: '1',
-                                        zIndex: 0
-                                    }}
-                                >
-                                    "
-                                </div>
-
-                                <p 
-                                    className="m-0 fst-italic " 
-                                    style={{
-                                        fontSize: '1.2rem',
-                                        lineHeight: '1.8',
-                                        color: '#333',
-                                        position: 'relative',
-                                        zIndex: 1,
-                                        minHeight: '80px'
-                                    }}
-                                >
-                                    {quotes[currentQuote].text}
-                                </p>
-
-                                <p 
-                                    className="fw-bold " 
-                                    style={{
-                                        fontSize: '1.1rem',
-                                        color: '#8B0000'
-                                    }}
-                                >
-                                    — {quotes[currentQuote].author}
-                                </p>
-
-                                <div className="d-flex justify-content-center gap-2 ">
-                                    {quotes.map((_, index) => (
-                                        <div
-                                            key={index}
-                                            onClick={() => handleQuoteChange(index)}
-                                            style={{
-                                                width: currentQuote === index ? '30px' : '10px',
-                                                height: '10px',
-                                                borderRadius: currentQuote === index ? '5px' : '50%',
-                                                backgroundColor: currentQuote === index ? '#8B0000' : '#ddd',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                        ></div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                         */}
                     </div>
                 </div>
             </div>
