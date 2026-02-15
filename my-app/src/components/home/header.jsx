@@ -130,7 +130,7 @@ const Header = () => {
                                 > 
                                     <div 
                                         className="bg-white rounded-circle d-flex border border-white border-2"
-                                        style={{ width: "40px", height: "40px", overflow: "hidden" }}
+                                        style={{ width: "50px", height: "50px", overflow: "hidden" }}
                                     >
                                         <img src={logo} alt={logo} style={{objectFit:" cover"}}/>
                                     
@@ -215,7 +215,7 @@ const Header = () => {
                 >
                     {/* Scrollable Content Area */}
                     <div 
-                        className="flex-grow-1 px-3 py-4"
+                        className="py-4 "
                         style={{
                             overflowY: "auto",
                             scrollbarWidth: "thin",
@@ -223,10 +223,10 @@ const Header = () => {
                         }}
                     >
                         {/* Logo Section */}
-                        <div className="d-flex gap-2 align-items-center mb-4 pb-3 px-3 border-bottom border-white border-opacity-25">
+                        <div className="d-flex gap-2 align-items-center mb-4 pb-3 px-4 border-bottom border-white border-opacity-25">
                             <div 
                                 className="bg-white rounded-circle d-flex border border-white border-2 "
-                                style={{ width: "40px", height: "40px", overflow: "hidden" }}
+                                style={{ width: "50px", height: "50px", overflow: "hidden" }}
                             >
                                 <img src={logo} alt={logo} style={{objectFit:" cover"}}/>
                             </div>
@@ -240,7 +240,7 @@ const Header = () => {
 
                         {/* Navigation Links */}
                         <nav>
-                            <ul className="list-unstyled d-flex flex-column gap-2 m-0">
+                            <ul className="list-unstyled d-flex flex-column gap-2 m-0 px-2">
                                 {navLinks.map((data, i) => (
                                     <li 
                                         key={i} 
@@ -264,11 +264,12 @@ const Header = () => {
                                 ))}
                             </ul>
                         </nav>
+
                     </div>
 
                     {/* Login Button at Bottom */}
                     {!role && (
-                        <div className="p-3 border-top border-white border-opacity-25">
+                        <div className="p-3 px-4 border-top border-white border-opacity-25">
                             <button 
                                 className="btn btn-light text-uppercase fw-bold d-flex align-items-center justify-content-center gap-2 w-100"
                                 onClick={() => {
@@ -285,7 +286,7 @@ const Header = () => {
                     {/* User Profile at Bottom (if logged in) */}
                     {role && (
                         <div 
-                            className="p-3 border-top border-white border-opacity-25"
+                            className="p-3 px-4 border-top border-white border-opacity-25"
                             style={{ cursor: "pointer" }}
                             onClick={() => {
                                 setOpenMenu(false);
