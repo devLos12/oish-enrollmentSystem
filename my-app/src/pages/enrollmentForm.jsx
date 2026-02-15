@@ -223,7 +223,7 @@ export const Step1 = () => {
         { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: '', optional: true },
         { label: 'Email Address', name: 'email', type: 'email' },
         { label: 'PSA Birth Certificate No. (if available upon registration)', name: 'psaNo', type: 'text', note: '', optional: true },
-        { label: 'Learner Reference No.', name: 'lrn', type: 'text', optional: true },  // ✅ Added flag
+        { label: 'Learner Reference No.', name: 'lrn', type: 'text' },  // ✅ Added flag
     ];
 
 

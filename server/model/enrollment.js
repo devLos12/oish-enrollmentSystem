@@ -9,7 +9,7 @@ const enrollmentSchema = new mongoose.Schema({
   learnerInfo: {
     email: { type: String, unique: true},
     psaNo: { type: String},
-    lrn: { type: String, unique: false },
+    lrn: { type: String, unique: true},
     lastName: { type: String, required: false },
     firstName: { type: String, required: false },
     middleName: { type: String },

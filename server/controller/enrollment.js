@@ -582,6 +582,7 @@ export const EnrollmentRegistration = async (req, res) => {
 
       // ✅ VALIDATION: LRN must be exactly 12 digits if provided
       if (learnerInfo.lrn && learnerInfo.lrn !== 'N/A') {
+
           if (!/^\d{12}$/.test(learnerInfo.lrn)) {
               return res.status(400).json({ message: 'LRN must be exactly 12 digits' });
           }
@@ -603,6 +604,7 @@ export const EnrollmentRegistration = async (req, res) => {
 
       const learnerRequiredFields = [
         { field: 'email', message: 'Email is required' },
+        { field: 'lrn', message: 'LRN is required' },
         { field: 'lastName', message: 'Last Name is required' },
         { field: 'firstName', message: 'First Name is required' },
         { field: 'birthDate', message: 'Birth Date is required' },
