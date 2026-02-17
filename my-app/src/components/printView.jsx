@@ -161,19 +161,21 @@ const EnrollmentFormPDF = () => {
       { label: 'EXT.', value: enrollmentData.learnerInfo?.extensionName, col: 12, colSm: 3 }
     ],
     currentAddress: [
-      { label: 'HOUSE NO./STREET', value: `${enrollmentData.address?.current?.houseNo || ''} ${enrollmentData.address?.current?.street || ''}`, col: 12, colSm: 4 },
-      { label: 'BARANGAY', value: enrollmentData.address?.current?.barangay, col: 12, colSm: 8 },
-      { label: 'MUNICIPALITY/CITY', value: enrollmentData.address?.current?.municipality, col: 12, colSm: 6 },
       { label: 'PROVINCE', value: enrollmentData.address?.current?.province, col: 12, colSm: 4 },
-      { label: 'ZIP CODE', value: enrollmentData.address?.current?.zipCode, col: 12, colSm: 2 }
+      { label: 'MUNICIPALITY/CITY', value: enrollmentData.address?.current?.municipality, col: 12, colSm: 4 },
+      { label: 'BARANGAY', value: enrollmentData.address?.current?.barangay, col: 12, colSm: 4 },
+      { label: 'HOUSE NO./STREET', value: `${enrollmentData.address?.current?.houseNo || ''} ${enrollmentData.address?.current?.street || ''}`, col: 12, colSm: 4 },
+      { label: 'ZIP CODE', value: enrollmentData.address?.current?.zipCode, col: 12, colSm: 4 }
     ],
     permanentAddress: [
-      { label: 'HOUSE NO./STREET', value: `${enrollmentData.address?.permanent?.houseNo || ''} ${enrollmentData.address?.permanent?.street || ''}`, col: 12, colSm: 4 },
-      { label: 'BARANGAY', value: enrollmentData.address?.permanent?.barangay, col: 12, colSm: 8 },
-      { label: 'MUNICIPALITY/CITY', value: enrollmentData.address?.permanent?.municipality, col: 12, colSm: 6 },
-      { label: 'PROVINCE', value: enrollmentData.address?.permanent?.province, col: 12, colSm: 4 },
-      { label: 'ZIP CODE', value: enrollmentData.address?.permanent?.zipCode, col: 12, colSm: 2 }
+      { label: 'PROVINCE', value: enrollmentData.address?.current?.province, col: 12, colSm: 4 },
+      { label: 'MUNICIPALITY/CITY', value: enrollmentData.address?.current?.municipality, col: 12, colSm: 4 },
+      { label: 'BARANGAY', value: enrollmentData.address?.current?.barangay, col: 12, colSm: 4 },
+      { label: 'HOUSE NO./STREET', value: `${enrollmentData.address?.current?.houseNo || ''} ${enrollmentData.address?.current?.street || ''}`, col: 12, colSm: 4 },
+      { label: 'ZIP CODE', value: enrollmentData.address?.current?.zipCode, col: 12, colSm: 4 }
     ],
+    
+    
     parents: [
       {
         title: "FATHER'S NAME",

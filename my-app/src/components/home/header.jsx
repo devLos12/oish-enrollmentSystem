@@ -1,17 +1,30 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../../assets/image/logo.png";
 import { globalContext } from "../../context/global.jsx";
 
 const Header = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [openMenu, setOpenMenu] = useState(false);
     const [openPortal, setOpenPortal] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const portalRef = useRef(null);
     const { role } = useContext(globalContext);
 
+    // ✅ Pages na laging may solid bg kahit hindi pa nag-scroll
+    const alwaysSolidBg = [
+        '/enrollment',
+        '/staff_registration',
+    ];
 
+    // ✅ Check kung dapat laging may solid bg
+    const isSolidBgPage = alwaysSolidBg.some(path => 
+        location.pathname.startsWith(path)
+    );
+
+    // ✅ Ang header ay may bg kung: nag-scroll OR nasa solid bg page
+    const hasBg = scrolled || isSolidBgPage;
 
     const portalLinks = [
         { label: "Admin Staff", link: "/login/admin-staff", source: "admin staff", icon: "fa-user-shield" },
@@ -25,16 +38,10 @@ const Header = () => {
         { label: "programs",     id: "programs" },
     ];
 
-    
-
     // Handle scroll effect
     useEffect(() => {
         const handleScroll = () => {
-            if (window.scrollY > 50) {
-                setScrolled(true);
-            } else {
-                setScrolled(false);
-            }
+            setScrolled(window.scrollY > 50);
         };
 
         window.addEventListener("scroll", handleScroll);
@@ -44,20 +51,15 @@ const Header = () => {
     // Handle navigation with scroll
     const handleNavClick = (e, sectionId) => {
         e.preventDefault();
-        
-        // Close mobile menu
         setOpenMenu(false);
         
-        // Navigate to home/landing page if not there yet
         if (window.location.pathname !== '/') {
             navigate('/');
-            // Wait for navigation then scroll
             setTimeout(() => {
                 const element = document.getElementById(sectionId);
                 element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
         } else {
-            // Already on page, just scroll
             const element = document.getElementById(sectionId);
             element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -98,7 +100,6 @@ const Header = () => {
         navigate(item.link, { state: item.source });
     };
 
-    // Close menu when clicking overlay
     const handleOverlayClick = (e) => {
         if (e.target === e.currentTarget) {
             setOpenMenu(false);
@@ -108,14 +109,14 @@ const Header = () => {
     return (
         <>
             <div 
-                className={`position-fixed top-0 start-0 end-0 ${scrolled ? 'bg-red' : ''}`}
+                className={`position-fixed top-0 start-0 end-0 ${hasBg ? 'bg-red' : ''}`}
                 style={{ 
                     zIndex: 99,
                     transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
-                    boxShadow: scrolled ? '0 2px 10px rgba(0,0,0,0.1)' : 'none'
+                    boxShadow: hasBg ? '0 2px 10px rgba(0,0,0,0.1)' : 'none'
                 }}
             >
-                <div className={`container-fluid ${scrolled ? 'border-bottom border-white border-opacity-25' : ''}`}>
+                <div className={`container-fluid ${hasBg ? 'border-bottom border-white border-opacity-25' : ''}`}>
                     <div className="container">
                         <header className="p-0 py-3 p-md-3 d-flex align-items-center justify-content-between">
                             
@@ -137,7 +138,6 @@ const Header = () => {
                                         style={{ width: "50px", height: "50px", overflow: "hidden" }}
                                     >
                                         <img src={logo} alt={logo} style={{objectFit:" cover"}}/>
-                                    
                                     </div>
                                     <p className="m-0 text-white fw-semibold d-flex flex-column text-capitalize"
                                         style={{lineHeight: "1.2"}}
@@ -147,11 +147,12 @@ const Header = () => {
                                     </p>
                                 </div>
                             </div>
+
                             <div className="d-flex align-items-center gap-3">
                                 <nav className="d-none d-md-block me-5">
                                     <ul className="list-unstyled d-flex gap-3 m-0">
                                         {navLinks.map((data, i) => (
-                                            <li key={i} className="text-capitalize " 
+                                            <li key={i} className="text-capitalize" 
                                             style={{ cursor: "pointer" }}>
                                                 <a 
                                                     href={`#${data.id}`}
@@ -170,18 +171,13 @@ const Header = () => {
                                 
                                 {role ? (
                                     <i className="fa-solid fa-user text-white cursor"
-                                    onClick={()=> {
-                                        if(role){
-                                            navigate(`/${role}`);
-                                        }
-                                    }}
-                                    style={{ cursor: "pointer" }}
+                                        onClick={() => { if(role) navigate(`/${role}`); }}
+                                        style={{ cursor: "pointer" }}
                                     ></i>
                                 ) : (   
-                                    <button className="btn btn-outline-light text-uppercase border-0 fw-bold d-flex align-items-center gap-1"
-                                    onClick={()=> {
-                                        navigate('/login');
-                                    }}
+                                    <button 
+                                        className="btn btn-outline-light text-uppercase border-0 fw-bold d-flex align-items-center gap-1"
+                                        onClick={() => navigate('/login')}
                                     >
                                         <i className="fa-solid fa-user-circle"></i>
                                         login
@@ -193,7 +189,7 @@ const Header = () => {
                 </div>
             </div>
 
-            {/* Mobile Menu Sidebar - Always rendered, visibility controlled by CSS */}
+            {/* Mobile Menu Sidebar */}
             <div 
                 className="position-fixed top-0 start-0 w-100 vh-100 d-lg-none"
                 style={{
@@ -217,9 +213,8 @@ const Header = () => {
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Scrollable Content Area */}
                     <div 
-                        className="py-4 "
+                        className="py-4"
                         style={{
                             overflowY: "auto",
                             scrollbarWidth: "thin",
@@ -229,12 +224,12 @@ const Header = () => {
                         {/* Logo Section */}
                         <div className="d-flex gap-2 align-items-center mb-4 pb-3 px-4 border-bottom border-white border-opacity-25">
                             <div 
-                                className="bg-white rounded-circle d-flex border border-white border-2 "
+                                className="bg-white rounded-circle d-flex border border-white border-2"
                                 style={{ width: "50px", height: "50px", overflow: "hidden" }}
                             >
                                 <img src={logo} alt={logo} style={{objectFit:" cover"}}/>
                             </div>
-                            <p className="m-0 text-white fw-semibold d-flex flex-column text-capitalize w-75 "
+                            <p className="m-0 text-white fw-semibold d-flex flex-column text-capitalize w-75"
                                 style={{lineHeight: "1.2"}}
                             >
                                 fransisco osorio integrated SHS                                
@@ -246,10 +241,7 @@ const Header = () => {
                         <nav>
                             <ul className="list-unstyled d-flex flex-column gap-2 m-0 px-2">
                                 {navLinks.map((data, i) => (
-                                    <li 
-                                        key={i} 
-                                        className="text-capitalize"
-                                    >
+                                    <li key={i} className="text-capitalize">
                                         <a 
                                             href={`#${data.id}`}
                                             className="text-decoration-none text-white d-block py-2 px-3 rounded"
@@ -268,7 +260,6 @@ const Header = () => {
                                 ))}
                             </ul>
                         </nav>
-
                     </div>
 
                     {/* Login Button at Bottom */}
@@ -310,14 +301,8 @@ const Header = () => {
 
             <style>{`
                 @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to   { opacity: 1; transform: translateY(0); }
                 }
             `}</style>
         </>

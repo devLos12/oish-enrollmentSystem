@@ -1114,7 +1114,7 @@ export const Step1 = () => {
 
 
     return (
-        <div className="container bg-light d-flex ">
+        <div className="container bg-light d-flex position-relative">
 
             <TermsAndConditionsModal 
                 isOpen={showTermsModal}

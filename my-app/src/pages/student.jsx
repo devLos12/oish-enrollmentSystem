@@ -70,7 +70,7 @@ const Student = () => {
             
             >
                 <div className="row ">
-                    <div className="bg-danger g-0 d-none d-lg-block"
+                    <div className="bg-red g-0 d-none d-lg-block"
                     style={{width: "250px"}}
                     >
 
