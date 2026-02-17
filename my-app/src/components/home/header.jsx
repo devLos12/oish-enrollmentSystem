@@ -11,6 +11,8 @@ const Header = () => {
     const portalRef = useRef(null);
     const { role } = useContext(globalContext);
 
+
+
     const portalLinks = [
         { label: "Admin Staff", link: "/login/admin-staff", source: "admin staff", icon: "fa-user-shield" },
         { label: "Student", link: "/login/student", source: "student", icon: "fa-user-graduate" }
@@ -22,6 +24,8 @@ const Header = () => {
         { label: "announcement", id: "announcement" },
         { label: "programs",     id: "programs" },
     ];
+
+    
 
     // Handle scroll effect
     useEffect(() => {

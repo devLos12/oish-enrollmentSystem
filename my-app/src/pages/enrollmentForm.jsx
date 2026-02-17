@@ -1631,15 +1631,9 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
                 const response = await fetch('https://psgc.gitlab.io/api/regions/');
                 const data = await response.json();
                 
-                // ✅ FILTER: Only show CALABARZON (Region IV-A)
-                const calabarzonRegion = data.find(r => 
-                    r.code === '040000000' || 
-                    r.name?.includes('CALABARZON') || 
-                    r.regionName?.includes('CALABARZON')
-                );
-                
-                // Set only CALABARZON, or empty array if not found
-                setRegions(calabarzonRegion ? [calabarzonRegion] : []);
+                // Sort by region code para maayos ang order
+                const sorted = data.sort((a, b) => a.code.localeCompare(b.code));
+                setRegions(sorted);
                 
             } catch (error) {
                 console.error('Error fetching regions:', error);
@@ -1649,6 +1643,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
         };
         fetchRegions();
     }, []);
+
+
+
+
 
 
 
@@ -1672,22 +1670,33 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
 
                 // 1. Sync Region
                 if (values.region) {
-                    const region = regions.find(r => r.name === values.region || r.regionName === values.region);
+                    const region = regions.find(r => {
+                        const displayName = r.regionName 
+                            ? `${r.regionName} (${r.name})`
+                            : r.name;
+                        return displayName === values.region;
+                    });
+                    
                     if (region) {
                         newCodes.regionCode = region.code;
 
                         // 2. Fetch and sync Province
                         if (values.province && newCodes.regionCode) {
+                            
                             if (newCodes.regionCode === '130000000') {
-                                // NCR - set province directly
+                                // NCR - walang province, direkta sa cities/municipalities
                                 newCodes.provinceCode = 'NCR';
                                 
-                                // Fetch municipalities for NCR
                                 const cityRes = await fetch(`https://psgc.gitlab.io/api/regions/${newCodes.regionCode}/cities-municipalities/`);
                                 const cities = await cityRes.json();
-                                setMunicipalities(cities);
-                                setProvinces([{ code: 'NCR', name: 'Metro Manila' }]);
-                            } else {
+                                
+                                // ✅ Sort alphabetically
+                                const sorted = cities.sort((a, b) => a.name.localeCompare(b.name));
+                                setMunicipalities(sorted);
+                                setProvinces([{ code: 'NCR', name: 'Metro Manila (NCR)' }]);
+                            }
+                            
+                            else {
                                 // Regular provinces
                                 const provRes = await fetch(`https://psgc.gitlab.io/api/regions/${newCodes.regionCode}/provinces/`);
                                 const provs = await provRes.json();
@@ -1770,26 +1779,33 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
             return;
         }
 
+
+        // ✅ NCR - skip fetching provinces, fetch cities na agad
+        if (selectedCodes.regionCode === '130000000') {
+            setProvinces([{ code: 'NCR', name: 'Metro Manila (NCR)' }]);
+            setSelectedCodes(prev => ({ ...prev, provinceCode: 'NCR' }));
+            return;
+        }
+        
+
         const fetchProvinces = async () => {
             setLoading(prev => ({ ...prev, provinces: true }));
             try {
                 const response = await fetch(`https://psgc.gitlab.io/api/regions/${selectedCodes.regionCode}/provinces/`);
                 const data = await response.json();
                 
-                // ✅ FILTER: Only Cavite, Laguna, Batangas
-                const allowedProvinces = data.filter(province => 
-                    province.name === 'Cavite' || 
-                    province.name === 'Laguna' || 
-                    province.name === 'Batangas'
-                );
+                // Sort alphabetically
+                const sorted = data.sort((a, b) => a.name.localeCompare(b.name));
+                setProvinces(sorted);
                 
-                setProvinces(allowedProvinces);
             } catch (error) {
                 console.error('Error fetching provinces:', error);
             } finally {
                 setLoading(prev => ({ ...prev, provinces: false }));
             }
         };
+
+
         fetchProvinces();
     }, [selectedCodes.regionCode, isInitialized]);
 
@@ -1854,16 +1870,28 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
 
 
 
+
+    // Sa handleRegionChange, i-save yung name at code
     const handleRegionChange = (e) => {
         const selectedRegion = regions.find(r => r.code === e.target.value);
         setSelectedCodes(prev => ({ ...prev, regionCode: e.target.value, provinceCode: '', municipalityCode: '', barangayCode: '' }));
-        onChange({ target: { name: 'region', value: selectedRegion?.name || selectedRegion?.regionName || '' } }, addressType);
+        
+        // ✅ I-save yung name (readable) sa formData, yung code sa selectedCodes lang
+        const regionDisplayName = selectedRegion?.regionName 
+            ? `${selectedRegion.regionName} (${selectedRegion.name})`
+            : selectedRegion?.name || '';
+
+        onChange({ target: { name: 'region', value: regionDisplayName } }, addressType);
+        
         // Reset dependent fields
         onChange({ target: { name: 'province', value: '' } }, addressType);
         onChange({ target: { name: 'municipality', value: '' } }, addressType);
         onChange({ target: { name: 'barangay', value: '' } }, addressType);
         onChange({ target: { name: 'zipCode', value: '' } }, addressType);
     };
+
+
+
 
     const handleProvinceChange = (e) => {
         const selectedProvince = provinces.find(p => p.code === e.target.value);
@@ -1956,7 +1984,10 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
                     <option value="">{loading.regions ? 'Loading regions...' : 'Select Region'}</option>
                     {regions.map(region => (
                         <option key={region.code} value={region.code}>
-                            {region.name || region.regionName}
+                            {region.regionName 
+                                ? `${region.regionName} (${region.name})` 
+                                : region.name
+                            }
                         </option>
                     ))}
                 </select>
@@ -2398,24 +2429,6 @@ export const Step2 = () => {
                     [addressType]: { 
                         ...prev.address[addressType], 
                         [name]: formatted 
-                    }
-                }
-            }));
-        }
-        // ✅ NEW: House Number - Alphanumeric (letters, numbers, spaces, hyphens)
-        else if (name === 'houseNo') {
-            // Allow alphanumeric, spaces, and hyphens only
-            const cleaned = value.replace(/[^a-zA-Z0-9\s\-]/g, '');
-            // Limit to 50 characters
-            const limited = cleaned.substring(0, 50);
-            
-            setFormData(prev => ({
-                ...prev,
-                address: {
-                    ...prev.address,
-                    [addressType]: { 
-                        ...prev.address[addressType], 
-                        [name]: limited 
                     }
                 }
             }));
