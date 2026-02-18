@@ -33,7 +33,7 @@ const ProgressStepper = ({ currentStep }) => {
                                                 width: 'calc(100% - 42px)',
                                                 top: '20px',
                                                 left: 'calc(50% + 21px)',
-                                                backgroundColor: currentStep > step.number ? '#dc3545' : '#d6d6d6',
+                                                backgroundColor: currentStep > step.number ? '#198754' : '#d6d6d6',
                                                 transition: 'background-color 0.4s ease',
                                                 zIndex: 0
                                             }}
@@ -43,7 +43,8 @@ const ProgressStepper = ({ currentStep }) => {
                                     {/* Circle with Number */}
                                     <div 
                                         className={`rounded-circle d-flex align-items-center justify-content-center fw-bold position-relative
-                                            ${currentStep >= step.number ? 'bg-danger text-white' : 'bg-white border border-2 text-secondary'}`}
+                                            ${currentStep >= step.number ? 'bg-success text-white' : 'bg-white border border-2 text-secondary'}`}
+    
                                         style={{
                                             width: '42px',
                                             height: '42px',
@@ -59,8 +60,9 @@ const ProgressStepper = ({ currentStep }) => {
                                     {/* Label */}
                                     <div 
                                         className={`mt-3 text-center small fw-semibold
-                                            ${currentStep >= step.number ? 'text-danger' : 'text-secondary'}`}
-                                        style={{ 
+                                            ${currentStep >= step.number ? 'text-success' : 'text-secondary'}`}
+                                        
+                                            style={{ 
                                             maxWidth: '120px',
                                             lineHeight: '1.3',
                                             whiteSpace: 'pre-line'
@@ -2319,6 +2321,7 @@ export const Step2 = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [hasChanges, setHasChanges] = useState(false); 
 
+    const [guardianSameAs, setGuardianSameAs] = useState('');
 
 
     // Access control check
@@ -2810,6 +2813,36 @@ export const Step2 = () => {
         return value.replace(/[^a-zA-Z\s\-']/g, '');
     };
 
+
+
+
+
+    const handleGuardianSameAs = useCallback((source) => {
+        const newSource = guardianSameAs === source ? '' : source;
+        setGuardianSameAs(newSource);
+
+        if (newSource) {
+            const sourceData = formData.parentGuardianInfo?.[newSource];
+            setFormData(prev => ({
+                ...prev,
+                parentGuardianInfo: {
+                    ...prev.parentGuardianInfo,
+                    guardian: {
+                        lastName: sourceData?.lastName || '',
+                        firstName: sourceData?.firstName || '',
+                        middleName: sourceData?.middleName || '',
+                        contactNumber: sourceData?.contactNumber || ''
+                    }
+                }
+            }));
+            setHasChanges(true);
+        }
+    }, [guardianSameAs, formData.parentGuardianInfo, setFormData]);
+
+
+
+
+
     return (
         <div className="container bg-light d-flex">
             <div className={`row  justify-content-center w-100 g-0`}
@@ -2833,9 +2866,13 @@ export const Step2 = () => {
                                         <h2 className="h5 fw-bold mb-4">PARENT/GUARDIAN INFORMATION</h2>
 
                                         
-                                        <FormSection
-                                            title="Father's Information (Optional)"
-                                            fields={FORM_FIELDS.parentInfo}
+                                       <FormSection
+                                            title="Father's Information"
+                                            fields={FORM_FIELDS.parentInfo.map(field => ({
+                                                ...field,
+                                                required: field.name === 'lastName' || field.name === 'firstName',
+                                                optional: field.name === 'middleName' || field.name === 'contactNumber'
+                                            }))}
                                             values={formData.parentGuardianInfo?.father}
                                             onChange={handleParentGuardianChange}
                                             disabled={viewOnly}
@@ -2843,25 +2880,62 @@ export const Step2 = () => {
                                         />
 
                                         <FormSection
-                                            title="Mother's Information (Optional)"
-                                            fields={FORM_FIELDS.parentInfo}
+                                            title="Mother's Information"
+                                            fields={FORM_FIELDS.parentInfo.map(field => ({
+                                                ...field,
+                                                required: field.name === 'lastName' || field.name === 'firstName',
+                                                optional: field.name === 'middleName' || field.name === 'contactNumber'
+                                            }))}
                                             values={formData.parentGuardianInfo?.mother}
                                             onChange={handleParentGuardianChange}
                                             disabled={viewOnly}
                                             parentType="mother"
                                         />
 
+                                        {/* Guardian Same As Checkbox */}
+                                        <div className="mb-2 d-flex gap-3">
+                                            <small className="text-muted me-1">Guardian same as:</small>
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    id="guardianSameAsFather"
+                                                    checked={guardianSameAs === 'father'}
+                                                    onChange={() => handleGuardianSameAs('father')}
+                                                    disabled={viewOnly}
+                                                />
+                                                <label className="form-check-label small" htmlFor="guardianSameAsFather">
+                                                    Father
+                                                </label>
+                                            </div>
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    id="guardianSameAsMother"
+                                                    checked={guardianSameAs === 'mother'}
+                                                    onChange={() => handleGuardianSameAs('mother')}
+                                                    disabled={viewOnly}
+                                                />
+                                                <label className="form-check-label small" htmlFor="guardianSameAsMother">
+                                                    Mother
+                                                </label>
+                                            </div>
+                                        </div>
+
                                         <FormSection
-                                            title="Guardian's Information (Required)"
+                                            title="Guardian's Information"
                                             fields={FORM_FIELDS.parentInfo.map(field => ({
                                                 ...field,
-                                                required: field.name === 'lastName' || field.name === 'firstName'  // ✅ ADD THIS
+                                                required: field.name === 'lastName' || field.name === 'firstName',
+                                                optional: field.name === 'middleName' || field.name === 'contactNumber'
                                             }))}
                                             values={formData.parentGuardianInfo?.guardian}
                                             onChange={handleParentGuardianChange}
                                             disabled={viewOnly}
                                             parentType="guardian"
                                         />
+
 
                                     </div>
                                 </div>

@@ -1273,8 +1273,10 @@ const StudentManagement = () => {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="table-responsive"
-                                        >
+                                        <div className="table-responsive "
+                                        style={{
+                                            height: filteredStudents.length < 10 ? "420px" : ""
+                                        }}>
                                             <table className="table table-hover mb-0">
                                                 <thead className="bg-light">
                                                     <tr>
