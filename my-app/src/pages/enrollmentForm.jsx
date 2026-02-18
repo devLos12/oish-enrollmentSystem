@@ -98,6 +98,14 @@ export const Step1 = () => {
 
     const [showTermsModal, setShowTermsModal] = useState(false);
     const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
+    const [emailVerify, setEmailVerify] = useState([]);
+    const [emailError, setEmailError] = useState('');
+
+
+
+    
+
+
 
     useEffect(() => {
         if (!location?.state?.allowed) {
@@ -121,6 +129,42 @@ export const Step1 = () => {
     if(!location?.state?.allowed) return
 
     
+    useEffect(( )=> {
+        console.log(emailVerify);
+    },[emailVerify]);
+
+
+    useEffect(() => {
+        getAllEmailsForValidations();
+
+    },[]);
+
+
+    const getAllEmailsForValidations = async () => {
+        
+        try {
+        
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getAllEmails`, {
+                method: "GET",
+                credentials: "include"
+            })
+
+            const data = await res.json();
+            if(data.success){
+                setEmailVerify(data.emails);
+            }
+
+        } catch (error) {
+            
+            console.log("Error: ", error.message);
+            
+        }
+        
+    }
+
+
+
+
 
 
 
@@ -456,6 +500,33 @@ export const Step1 = () => {
             const fieldName = name.split('.')[1];
 
 
+            if (fieldName === 'email') {
+                const emailValue = value.toLowerCase().trim();
+
+                const isDuplicate = emailVerify.some(
+                    e => e.learnerInfo?.email.toLowerCase() === emailValue
+                );
+
+                if (isDuplicate) {
+                    setEmailError('Email already exists');
+                } else {
+                    setEmailError('');
+                }
+
+                setFormData(prev => ({
+                    ...prev,
+                    learnerInfo: {
+                        ...prev.learnerInfo,
+                        email: value
+                    }
+                }));
+
+                return;
+            }
+
+
+
+
             // ✅ PSA Certificate validation - add after LRN validation
             if (fieldName === 'psaNo') {
                 // Remove non-numeric characters
@@ -623,9 +694,6 @@ export const Step1 = () => {
             setIsLoading(false);
         }
     };
-
-
-
 
 
 
@@ -862,9 +930,18 @@ export const Step1 = () => {
                     placeholder={field.placeholder}
                     value={isNested ? (formData?.learnerInfo?.[field.name] || '') : (formData[field.name] || '')}
                     onChange={handleChange}
-                    className="form-control"
+                    className={`form-control ${
+                        field.name === 'email' && emailError ? 'is-invalid' : ''
+                    }`}
                     disabled={viewOnly}
                 />
+
+                {field.name === 'email' && emailError && (
+                    <div className="invalid-feedback d-block">
+                        {emailError}
+                    </div>
+                )}
+
             </div>
         );
     };
@@ -1335,15 +1412,6 @@ export const Step1 = () => {
         </div>
     );
 };
-
-
-
-
-
-
-
-
-
 
 
 

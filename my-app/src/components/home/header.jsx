@@ -12,6 +12,8 @@ const Header = () => {
     const portalRef = useRef(null);
     const { role } = useContext(globalContext);
 
+    
+
     // ✅ Pages na laging may solid bg kahit hindi pa nag-scroll
     const alwaysSolidBg = [
         '/enrollment',
@@ -48,6 +50,9 @@ const Header = () => {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
+    
+
+
     // Handle navigation with scroll
     const handleNavClick = (e, sectionId) => {
         e.preventDefault();
@@ -64,6 +69,10 @@ const Header = () => {
             element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
+
+
+
+    
 
     // Close dropdown when clicking outside
     useEffect(() => {

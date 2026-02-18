@@ -6,10 +6,8 @@ import Student from "../model/student.js";
 import Staff from "../model/staff.js";
 import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
-import { error } from "console";
 import { Resend } from 'resend';
 import cloudinary from "../config/cloudinary.js";
-import { isObjectIdOrHexString } from "mongoose";
 
 
 
@@ -45,6 +43,31 @@ const deleteFromCloudinary = async (publicId) => {
 
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+
+
+export const getAllEmails = async (req, res) => {
+  try {
+
+    const emails = await Enrollment.find().select('learnerInfo.email');
+
+    if(!emails || emails.length === 0){
+      return res.status(401).json({ message: "no found emails."});
+    }
+
+    return res.status(200).json({ 
+      success: true,
+      emails: emails
+    });
+
+  }catch(error){
+
+    return res.status(500).json({ message: error.message });
+
+  }
+}
+
+
 
 
 

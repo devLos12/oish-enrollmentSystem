@@ -2,7 +2,7 @@ import express from "express";
 import LoginPortal from "../controller/login.js";
 import { UrlAuthentication } from "../auth/authMiddleware.js";
 import { StaffRegistration } from "../controller/registration.js";
-import {EnrollmentRegistration, enrollmentUpload } from "../controller/enrollment.js";
+import {EnrollmentRegistration, enrollmentUpload, getAllEmails } from "../controller/enrollment.js";
 import { getAnnouncements } from "../controller/announcement.js";
 import {  changePassword, requestCode, verifyCode } from "../controller/forgotPassword.js";
 
@@ -19,5 +19,6 @@ HomeRouter.post('/requestCode', requestCode);
 HomeRouter.post('/verifyCode', verifyCode);
 HomeRouter.post('/changePassword', changePassword);
 HomeRouter.post("/login", LoginPortal);
+HomeRouter.get('/getAllEmails', getAllEmails);
 
 export default HomeRouter;
