@@ -96,6 +96,7 @@ const Login = () => {
 
             const data = await res.json();
             
+            
             if(!res.ok) {
                 if (data.showModal || data.verificationStatus) {
                     showNotification(data.message, "error");

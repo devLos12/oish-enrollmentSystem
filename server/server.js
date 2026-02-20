@@ -32,6 +32,9 @@ const startServer = async () => {
         app.use(express.json());
         app.use(cookieParser());
         
+        
+
+
         app.use('/api/Uploads', express.static(path.join(process.cwd(), 'uploads')));
         app.use("/api", HomeRouter);
         app.use("/api", SharedRouter);

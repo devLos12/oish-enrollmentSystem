@@ -3,6 +3,12 @@ import { useContext } from "react";
 import { useLayoutEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { globalContext } from "../../context/global";
+import html2pdf from "html2pdf.js";
+
+
+
+
+
 
 const Students = () => {
     const location = useLocation();
@@ -184,6 +190,99 @@ const Students = () => {
         return pages;
     };
 
+
+
+    // 🖨️ PRINT FUNCTION
+    const handlePrint = () => {
+        const printWindow = window.open('', '', 'height=600,width=800');
+        printWindow.document.write('<html><head><title>Students List</title>');
+        printWindow.document.write('<style>');
+        printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
+        printWindow.document.write('h2 { text-align: center; color: #dc3545; margin-bottom: 10px; }');
+        printWindow.document.write('h3 { text-align: center; color: #6c757d; margin-bottom: 20px; }');
+        printWindow.document.write('table { width: 100%; border-collapse: collapse; font-size: 12px; }');
+        printWindow.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+        printWindow.document.write('th { background-color: #dc3545; color: white; }');
+        printWindow.document.write('tr:nth-child(even) { background-color: #f8f9fa; }');
+        printWindow.document.write('</style>');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write('<h2>' + (subjectInfo?.subjectName || 'Subject') + '</h2>');
+        printWindow.document.write('<h3>Enrolled Students List</h3>');
+        printWindow.document.write('<p><strong>Date Generated:</strong> ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + '<br>');
+        printWindow.document.write('<strong>Total Students:</strong> ' + filteredStudents.length + '</p>');
+        printWindow.document.write('<table><thead><tr>');
+        printWindow.document.write('<th>#</th><th>Student Number</th><th>Full Name</th><th>Email</th><th>Sex</th><th>Grade & Section</th>');
+        printWindow.document.write('</tr></thead><tbody>');
+
+        filteredStudents.forEach((student, index) => {
+            printWindow.document.write('<tr>');
+            printWindow.document.write('<td>' + (index + 1) + '</td>');
+            printWindow.document.write('<td>' + student.studentNumber + '</td>');
+            printWindow.document.write('<td style="text-transform:capitalize;">' + student.firstName + ' ' + student.lastName + '</td>');
+            printWindow.document.write('<td>' + student.email + '</td>');
+            printWindow.document.write('<td>' + student.sex + '</td>');
+            printWindow.document.write('<td>' + student.gradeLevel + ' - ' + student.section + '</td>');
+            printWindow.document.write('</tr>');
+        });
+
+        printWindow.document.write('</tbody></table></body></html>');
+        printWindow.document.close();
+        printWindow.print();
+    };
+
+
+
+    // 📄 DOWNLOAD PDF FUNCTION
+    const handleDownloadPDF = () => {
+        const element = document.createElement('div');
+        element.innerHTML = `
+            <div style="padding: 20px; font-family: Arial, sans-serif;">
+                <h2 class='text-capitalize' style="text-align: center; color: #dc3545; margin-bottom: 10px;">
+                    ${subjectInfo?.subjectName || 'Subject'}
+                </h2>
+                <h3 style="text-align: center; color: #6c757d; margin-bottom: 20px;">Enrolled Students List</h3>
+                <p>
+                    <strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br>
+                    <strong>Total Students:</strong> ${filteredStudents.length}
+                </p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="background-color: #dc3545; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 6px;">#</th>
+                            <th style="border: 1px solid #ddd; padding: 6px;">Student Number</th>
+                            <th style="border: 1px solid #ddd; padding: 6px;">Full Name</th>
+                            <th style="border: 1px solid #ddd; padding: 6px;">Email</th>
+                            <th style="border: 1px solid #ddd; padding: 6px;">Sex</th>
+                            <th style="border: 1px solid #ddd; padding: 6px;">Grade & Section</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredStudents.map((student, index) => `
+                            <tr style="${index % 2 === 0 ? 'background-color: #f8f9fa;' : ''}">
+                                <td style="border: 1px solid #ddd; padding: 6px;">${index + 1}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${student.studentNumber}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px; text-transform: capitalize;">${student.firstName} ${student.lastName}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${student.email}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${student.sex}</td>
+                                <td style="border: 1px solid #ddd; padding: 6px;">${student.gradeLevel} - ${student.section}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const opt = {
+            margin: 10,
+            filename: `students_list_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).save();
+    };
+
     if(loading){
         return (
             <div className="container mt-4">
@@ -198,7 +297,7 @@ const Students = () => {
     }
 
     return (
-        <div className="container py-4">
+        <div className="container py-4 ">
             {subjectInfo && (
                 <div className="row mb-4">
                     <div className="col-12">
@@ -315,16 +414,38 @@ const Students = () => {
                                         </table>
                                     </div>
                                     
+                                
+
                                     {totalPages >= 1 && (
-                                        <div className="d-flex justify-content-between align-items-center pt-3 border-top">
+                                        <div className="d-flex justify-content-between align-items-center pt-3 border-top flex-wrap gap-2">
                                             <div className="text-muted small">
                                                 Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredStudents.length)} of {filteredStudents.length} entries
                                             </div>
-                                            <nav>
-                                                <ul className="pagination mb-0">
-                                                    {renderPagination()}
-                                                </ul>
-                                            </nav>
+                                            <div className="d-flex gap-2 align-items-center flex-wrap">
+                                                {/* Print & PDF Buttons */}
+                                                <button 
+                                                    type="button" 
+                                                    className="btn btn-outline-primary btn-sm"
+                                                    onClick={handlePrint}
+                                                    title="Print Students List"
+                                                >
+                                                    <i className="fa fa-print me-1"></i>Print
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    className="btn btn-outline-danger btn-sm"
+                                                    onClick={handleDownloadPDF}
+                                                    title="Download as PDF"
+                                                >
+                                                    <i className="fa fa-file-pdf me-1"></i>PDF
+                                                </button>
+                                                {/* Pagination */}
+                                                <nav>
+                                                    <ul className="pagination mb-0">
+                                                        {renderPagination()}
+                                                    </ul>
+                                                </nav>
+                                            </div>
                                         </div>
                                     )}
                                 </>
@@ -336,5 +457,7 @@ const Students = () => {
         </div>
     );
 }
+
+
 
 export default Students;

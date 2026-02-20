@@ -827,6 +827,7 @@ export const EnrollmentRegistration = async (req, res) => {
         return res.status(400).json({ message: "Enrollment ID is required" });
       }
 
+      
       const address = JSON.parse(req.body.address || '{}');
       const parentGuardianInfo = JSON.parse(req.body.parentGuardianInfo || '{}');
       const schoolHistory = JSON.parse(req.body.schoolHistory || '{}');
@@ -885,11 +886,41 @@ export const EnrollmentRegistration = async (req, res) => {
       }
       
 
+
+
+
+      // ✅ VALIDATION: Father is REQUIRED
+      const requiredFatherFields = [
+          { field: 'lastName', message: 'Father Last Name is required' },
+          { field: 'firstName', message: 'Father First Name is required' }
+      ];
+
+      for (const { field, message } of requiredFatherFields) {
+          if (!parentGuardianInfo.father?.[field] || parentGuardianInfo.father[field].trim() === '') {
+              return res.status(400).json({ message });
+          }
+      }
+
+      // ✅ VALIDATION: Mother is REQUIRED
+      const requiredMotherFields = [
+          { field: 'lastName', message: 'Mother Last Name is required' },
+          { field: 'firstName', message: 'Mother First Name is required' }
+      ];
+
+      for (const { field, message } of requiredMotherFields) {
+          if (!parentGuardianInfo.mother?.[field] || parentGuardianInfo.mother[field].trim() === '') {
+              return res.status(400).json({ message });
+          }
+      }
+
+
+
       // ✅ VALIDATION: Guardian is REQUIRED (Father & Mother are OPTIONAL)
       const requiredGuardianFields = [
         { field: 'lastName', message: 'Guardian Last Name is required' },
         { field: 'firstName', message: 'Guardian First Name is required' }
       ];
+
 
       for (const { field, message } of requiredGuardianFields) {
         if (!parentGuardianInfo.guardian?.[field] || parentGuardianInfo.guardian[field].trim() === '') {
@@ -897,8 +928,13 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
+
+
+
       // ✅ VALIDATION: Parent/Guardian Contact Numbers (if provided)
       const parentsToValidate = ['father', 'mother', 'guardian'];
+
+
 
       for (const parentType of parentsToValidate) {
         const contactNumber = parentGuardianInfo[parentType]?.contactNumber;
@@ -925,6 +961,10 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
+
+      
+
+
       // ✅ VALIDATION: School History (ONLY if returningLearner is checked)
       if (schoolHistory.returningLearner) {
         if (!req.body.studentType || (req.body.studentType !== 'transferee' && req.body.studentType !== 'returnee')) {
@@ -944,6 +984,8 @@ export const EnrollmentRegistration = async (req, res) => {
           }
         }
       }
+
+
 
       // ✅ VALIDATION: Senior High - ALL REQUIRED
       const requiredSeniorHighFields = [
@@ -973,6 +1015,8 @@ export const EnrollmentRegistration = async (req, res) => {
       const parentTypes = ['father', 'mother'];
       const parentFields = ['lastName', 'firstName', 'middleName', 'contactNumber'];
 
+
+
       parentTypes.forEach(parentType => {
         if (!parentGuardianInfo[parentType]) {
           parentGuardianInfo[parentType] = {};
@@ -985,6 +1029,7 @@ export const EnrollmentRegistration = async (req, res) => {
         });
       });
 
+
       // ✅ Set N/A for Guardian's OPTIONAL fields (middleName, contactNumber)
       const guardianOptionalFields = ['middleName', 'contactNumber'];
       guardianOptionalFields.forEach(field => {
@@ -993,6 +1038,8 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       });
 
+      
+      
       // ✅ Proceed with update
       const enrollment = await Enrollment.findByIdAndUpdate(
         enrollmentId,
@@ -1641,9 +1688,14 @@ export const ApplicantApproval = async (req, res) => {
 
     // 1. Find the enrollment applicant
     const applicant = await Enrollment.findOne({ _id: enrollmentId });
+    
+
+
     if (!applicant) {
       return res.status(404).json({ message: "Applicant not found." });
     }
+
+
 
     // 2. Generate student number (SEQUENTIAL, hindi na ma-duplicate)
     const gradeNumber = parseInt(applicant.gradeLevelToEnroll.replace(/\D/g, ""), 10);

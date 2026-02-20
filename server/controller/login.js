@@ -5,6 +5,9 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Logs from "../model/logs.js";
 
+
+
+
 const CreateLogs = async(id, name, role) => {
     await Logs.create({
         participantId: id,
@@ -35,7 +38,7 @@ const CreateLogs = async(id, name, role) => {
         });
     }
 
-
+    
 const LoginPortal = async(req, res) => {
     try {
         const { identifier, password } = req.body;
@@ -48,6 +51,7 @@ const LoginPortal = async(req, res) => {
             });
         }
 
+        
         let account = null;
         let role = '';
 

@@ -59,11 +59,7 @@ export const MyGlobalContext = ( { children }) => {
 
         
 
-     
-
-
-
-
+        
 
 
         const fetchPendingApplicantsCount = async () => {
@@ -108,7 +104,7 @@ export const MyGlobalContext = ( { children }) => {
         };
 
     return (
-
+                
         <globalContext.Provider value={{
             role , setRole,
             isAdminAuth, setAdminAuth,

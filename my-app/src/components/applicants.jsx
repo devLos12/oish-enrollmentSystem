@@ -10,7 +10,6 @@ import html2pdf from "html2pdf.js";
 
 
 
-
 const Applicants = () => {
     const { setTextHeader, role, 
         fetchPendingApplicantsCount
@@ -197,7 +196,6 @@ const Applicants = () => {
     };
 
 
-    
     const confirmReject = async (enrollmentId) => {
         // ✅ Validate if may reason
         if (!rejectionReason.trim()) {
@@ -509,6 +507,7 @@ const Applicants = () => {
 
     return (
         <>
+
             <div className="container-fluid py-4 g-0 g-md-5 vh-100">
                 {/* Header Section */}
                 <div className="row mb-4">
@@ -540,10 +539,9 @@ const Applicants = () => {
                         </div>
                     </div>
                 </div>
-
-                                
-
-
+                
+                
+                
 
                 {/* Search Bar and Filter */}
                 <div className="row mb-3">

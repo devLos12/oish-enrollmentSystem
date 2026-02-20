@@ -125,7 +125,7 @@ const Staff =  () => {
         
         >
             <div className="row ">
-                <div className={`bg-danger g-0  d-none d-xl-block`} 
+                <div className={`bg-red g-0  d-none d-xl-block`} 
                 style={{width: "250px"}}
 
                 >

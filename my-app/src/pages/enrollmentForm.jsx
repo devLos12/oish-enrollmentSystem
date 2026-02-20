@@ -2321,7 +2321,10 @@ export const Step2 = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [hasChanges, setHasChanges] = useState(false); 
 
-    const [guardianSameAs, setGuardianSameAs] = useState('');
+
+    const [guardianSameAs, setGuardianSameAs] = useState(() => {
+        return sessionStorage.getItem("guardianSameAs") || '';
+    });
 
 
     // Access control check
@@ -2736,7 +2739,9 @@ export const Step2 = () => {
             // ✅ Mark step2 as saved
             sessionStorage.setItem("myForm", JSON.stringify(formData));
             sessionStorage.setItem("step2Saved", data.step2);
+            sessionStorage.removeItem("guardianSameAs");
             
+
             window.scrollTo({ top: 0, behavior: "auto" });
             navigate("/enrollment/step3", { state: { allowed: true } });
         } catch (error) {
@@ -2819,7 +2824,10 @@ export const Step2 = () => {
 
     const handleGuardianSameAs = useCallback((source) => {
         const newSource = guardianSameAs === source ? '' : source;
+
         setGuardianSameAs(newSource);
+        sessionStorage.setItem("guardianSameAs", newSource);
+
 
         if (newSource) {
             const sourceData = formData.parentGuardianInfo?.[newSource];
@@ -3298,6 +3306,8 @@ export const Step2 = () => {
 
 
 
+
+
 export const Step3 = () => {
     const { formData, setFormData, role } = useContext(globalContext);   
     const navigate = useNavigate();
@@ -3318,9 +3328,6 @@ export const Step3 = () => {
         message: ''
     });
 
-
-
-
     useEffect(() => {
         if (!location?.state?.allowed) {
             navigate("/404_forbidden", { replace: true });
@@ -3329,46 +3336,35 @@ export const Step3 = () => {
 
     if(!location?.state?.allowed) return;
 
-    // Initialize step3 data if it doesn't exist
     useEffect(() => {
         if (!formData.certification) {
             setFormData(prev => ({
                 ...prev,
-            
                 certification: {
-          
                     psaBirthCertFile: null,
                     psaBirthCertFileName: '',
                     psaBirthCertPreview: null,
-
                     reportCardFile: null,
                     reportCardFileName: '',
                     reportCardPreview: null,
-                    
                     goodMoralFile: null,
                     goodMoralFileName: '',
                     goodMoralPreview: null,
-                    
                     idPictureFile: null,
                     idPictureFileName: '',
                     idPicturePreview: null,
-
                     dateSigned: ''
                 }
             }));
         }
     }, []);
 
-    
     useEffect(() => {
         const saved = localStorage.getItem("myForm");
         if (saved) {
             setFormData(JSON.parse(saved));
-        }else{
-
         }
     },[]);
-
 
     useEffect(() => {
         if (role !== "admin" && role !== "staff") return;
@@ -3377,27 +3373,16 @@ export const Step3 = () => {
         setApproveShowModal((prev) => ({...prev, data: prefill, isShow: prev.isShow }))
         if (!prefill) return;
 
-
-        // Helper function to convert backend file path to full URL
         const getFilePreviewUrl = (filePath) => {
             if (!filePath) return null;
-
-            // Base64? return as is.
             if (filePath.startsWith("data:")) return filePath;
-
-            // Convert backslash → forward slash
             const normalized = filePath.replace(/\\/g, "/");
-
-            // filePath: "uploads/enrollments/filename.png"
             return `${import.meta.env.VITE_API_URL}/api/${normalized}`;
         };
 
-
         setFormData(prev => ({
             ...prev,
-
-            // 🔹 Certification + File Fields (FOR VIEWING ONLY)
-             certification: {
+            certification: {
                 goodMoralFile: prefill.requiredDocuments.goodMoral?.filePath || null,
                 goodMoralFileName: prefill.requiredDocuments.goodMoral?.filePath?.split("/").pop() || '',
                 goodMoralPreview: getFilePreviewUrl(prefill.requiredDocuments.goodMoral?.filePath),
@@ -3405,7 +3390,6 @@ export const Step3 = () => {
                 idPictureFile: prefill.requiredDocuments.idPicture?.filePath || null,
                 idPictureFileName: prefill.requiredDocuments.idPicture?.filePath?.split("/").pop() || '',
                 idPicturePreview: getFilePreviewUrl(prefill.requiredDocuments.idPicture?.filePath),
-
 
                 psaBirthCertFile: prefill.requiredDocuments.psaBirthCert?.filePath || null,
                 psaBirthCertFileName: prefill.requiredDocuments.psaBirthCert?.filePath?.split("/").pop() || '',
@@ -3415,60 +3399,34 @@ export const Step3 = () => {
                 reportCardFileName: prefill.requiredDocuments.reportCard?.filePath?.split("/").pop() || '',
                 reportCardPreview: getFilePreviewUrl(prefill.requiredDocuments.reportCard?.filePath),
 
-
                 dateSigned: prefill.signature?.dateSigned
-                ? new Date(prefill.signature?.dateSigned).toISOString().split('T')[0] 
-                : ''
+                    ? new Date(prefill.signature?.dateSigned).toISOString().split('T')[0] 
+                    : ''
             },
-
             status: prefill.status
         }));
-
 
         setViewOnly(true);
     }, [location?.state?.applicant, approveModal?.data, role, viewOnly]);
 
-
-    
     const checkPreferredAndCert = () => {
         const r = formData;
-
-        if (!r.certification) {
-            return false;
-        }
-
+        if (!r.certification) return false;
         const c = r.certification;
-
-        // ✅ For new submissions: check if File objects exist
-        // ✅ For viewing mode: check if preview exists
         const hasPsaBirthCert = (c.psaBirthCertFile instanceof File) || c.psaBirthCertPreview;
         const hasReportCard = (c.reportCardFile instanceof File) || c.reportCardPreview;
         const hasIdPicture = (c.idPictureFile instanceof File) || c.idPicturePreview;
-
-        if (!hasPsaBirthCert || !hasReportCard || !hasIdPicture) {
-            return false;
-        }
-
+        if (!hasPsaBirthCert || !hasReportCard || !hasIdPicture) return false;
         return true;
     };
-
-
-
-
-
-
 
     useLayoutEffect(() => {
         setAllField(checkPreferredAndCert());
     }, [formData]);
 
-
-
     const [showModal, setShowModal] = React.useState(false);
     const [previewImage, setPreviewImage] = React.useState(null);
 
-
-    
     const handleCertificationChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -3480,16 +3438,12 @@ export const Step3 = () => {
         }));
     };
 
-
     const handleFileUpload = async (e, fieldName) => {
         const file = e.target.files[0];
-        
         if (!file) return;
 
-        // ✅ Validate file type FIRST
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
         const allowedExtensions = ['.jpg', '.jpeg', '.png'];
-        
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
         
         if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension)) {
@@ -3499,37 +3453,28 @@ export const Step3 = () => {
         }
         
         try {
-            // ✅ Compression options
             const options = {
                 maxSizeMB: 1,
                 maxWidthOrHeight: 1920,
                 useWebWorker: true,
                 fileType: file.type
             };
-
-            // ✅ Compress the image
             const compressedBlob = await imageCompression(file, options);
-            
-            
-            // ✅ Convert Blob to File with original filename
             const compressedFile = new File([compressedBlob], file.name, {
                 type: compressedBlob.type,
                 lastModified: Date.now()
             });
-            
-            // ✅ Create preview URL (not base64)
             const previewUrl = URL.createObjectURL(compressedFile);
             
             setFormData(prev => ({
                 ...prev,
                 certification: {
                     ...prev.certification,
-                    [`${fieldName}File`]: compressedFile, // ✅ Now it's a proper File object
+                    [`${fieldName}File`]: compressedFile,
                     [`${fieldName}FileName`]: file.name,
-                    [`${fieldName}Preview`]: previewUrl // ✅ Use object URL instead of base64
+                    [`${fieldName}Preview`]: previewUrl
                 }
             }));
-            
         } catch (error) {
             console.error('Error compressing image:', error);
             alert('Failed to compress image. Please try again.');
@@ -3537,20 +3482,10 @@ export const Step3 = () => {
         }
     };
 
-
-
-
-
-
-
     const handleRemoveFile = (fieldName) => {
         const inputRef = fileRef.current[fieldName];
+        if (inputRef) inputRef.value = "";
 
-        if (inputRef) {
-            inputRef.value = "";
-        }
-
-        // ✅ Revoke object URL to prevent memory leaks
         const previewUrl = formData.certification?.[`${fieldName}Preview`];
         if (previewUrl && previewUrl.startsWith('blob:')) {
             URL.revokeObjectURL(previewUrl);
@@ -3568,7 +3503,6 @@ export const Step3 = () => {
     };
 
     useEffect(() => {
-        // Cleanup function to revoke all object URLs when component unmounts
         return () => {
             const cert = formData.certification;
             if (cert) {
@@ -3582,9 +3516,6 @@ export const Step3 = () => {
         };
     }, []);
 
-
-
-
     const handleViewImage = (preview) => {
         if (preview) {
             setPreviewImage(preview);
@@ -3595,67 +3526,40 @@ export const Step3 = () => {
     const handleCloseModal = () => {
         setShowModal(false);
         window.scrollTo({ top: 0, behavior: "auto"});
-
     };
-
-
 
     const truncateFilename = (filename, maxLength = 20) => {
         if (!filename) return '';
-        
         if (filename.length <= maxLength) return filename;
-        
         const extension = filename.split('.').pop();
         const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
         const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4);
-        
         return `${truncatedName}...${extension}`;
     };
-
-
 
     const handleNext = async() => {
         if(role === "admin" || role === "staff"){
             setApproveShowModal((prev) => ({...prev, isShow: true, data: prev.data }));
-            return
+            return;
         }
 
         setIsSubmitting(true);
 
         try {
             const submitData = new FormData();
-
             submitData.append('step', 'step3');
             
             const enrollmentId = sessionStorage.getItem('enrollmentId');
-            if (!enrollmentId) {
-                throw new Error('Enrollment ID not found. Please start from Step 1.');
-            }
+            if (!enrollmentId) throw new Error('Enrollment ID not found. Please start from Step 1.');
             submitData.append('enrollmentId', enrollmentId);
 
-            // ✅ Simplified file appending
             const fileFields = ['psaBirthCert', 'reportCard', 'idPicture', 'goodMoral'];
-            
             fileFields.forEach(fieldName => {
                 const file = formData.certification?.[`${fieldName}File`];
                 if (file instanceof File) {
                     submitData.append(`${fieldName}File`, file);
                 }
             });
-
-            // ✅ Debug: Check what's being sent
-            console.log("=== FormData Contents ===");
-            for (let [key, value] of submitData.entries()) {
-                if (value instanceof File) {
-                    console.log(`${key}:`, {
-                        name: value.name,
-                        size: value.size,
-                        type: value.type
-                    });
-                } else {
-                    console.log(`${key}:`, value);
-                }
-            }
 
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
                 method: "POST",
@@ -3664,19 +3568,15 @@ export const Step3 = () => {
             });
 
             const data = await res.json();
-            
-            if (!res.ok) {
-                throw new Error(data.message || 'Failed to submit enrollment');
-            }
+            if (!res.ok) throw new Error(data.message || 'Failed to submit enrollment');
 
             if(data.success) {
                 setFormData({});
                 sessionStorage.clear();
                 setSuccessModal(true);
                 setIsSubmitting(false); 
-                return
+                return;
             }
-            
         } catch (error) {
             console.error("Error: ", error.message);
             setErrorModal({
@@ -3687,29 +3587,72 @@ export const Step3 = () => {
         }
     };
 
-
-
-
     const handleBack = () => {
-        
         if(!role) {
             window.scrollTo({ top: 0, behavior: "auto"});
-        } else{
-            document.getElementById("scrollContainer").scrollTo({
-                top: 0,
-                behavior: "auto"
-            });
+        } else {
+            document.getElementById("scrollContainer").scrollTo({ top: 0, behavior: "auto" });
         }
-
         navigate(-1, { state: { allowed: true }});
+    };
 
+    // ✅ Reusable file preview card (Google Classroom style)
+    const FilePreviewCard = ({ fieldName, preview, fileName }) => {
+        if (!preview) return null;
+        return (
+            <div
+                className="d-flex align-items-center gap-2 mt-2 p-2 border rounded"
+                style={{ maxWidth: '320px', backgroundColor: '#fff', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
+                onClick={() => handleViewImage(preview)}
+            >
+                {/* Mini thumbnail */}
+                <img
+                    src={preview}
+                    alt={fileName}
+                    style={{
+                        width: '52px',
+                        height: '52px',
+                        objectFit: 'cover',
+                        borderRadius: '6px',
+                        flexShrink: 0,
+                        border: '1px solid #dee2e6'
+                    }}
+                />
+                {/* Filename + hint */}
+                <div className="d-flex flex-column overflow-hidden flex-grow-1">
+                    <span
+                        className="fw-semibold text-truncate text-dark"
+                        style={{ fontSize: '0.8rem' }}
+                        title={fileName}
+                    >
+                        {fileName}
+                    </span>
+                    <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                        🔍 Click to view
+                    </span>
+                </div>
+                {/* Remove button - only for applicants (no role) */}
+                {!role && (
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger border-0 p-1"
+                        style={{ flexShrink: 0 }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveFile(fieldName);
+                        }}
+                        title="Remove file"
+                    >
+                        <i className="fa fa-times"></i>
+                    </button>
+                )}
+            </div>
+        );
     };
 
     return (
-        <div className="container bg-light d-flex ">
-            <div className={`row justify-content-center w-100 g-0`}
-            style={{marginTop: "120px"}}
-            >
+        <div className="container bg-light d-flex">
+            <div className="row justify-content-center w-100 g-0" style={{marginTop: "120px"}}>
                 <div className="col-12 col-md-12 col-lg-12">
 
                     {!viewOnly && (
@@ -3717,8 +3660,6 @@ export const Step3 = () => {
                     )}
                     
                     <div className="p-0 p-md-4">
-                        {/* Certification */}
-
                         <div className="row justify-content-center">
                             <div className="col-12 col-md-8">
                                 <div className="card border-0 my-4">
@@ -3737,22 +3678,16 @@ export const Step3 = () => {
                                         </div>
 
                                         <div className="row">
-                                            {/* Right Column - Upload Required Documents */}
                                             <div className="col-md-12">
                                                 <h3 className="h6 fw-semibold mb-3">Upload Required Documents</h3>
                                                 
                                                 {/* PSA Birth Certificate */}
-                                                <div className="mb-3">
+                                                <div className="mb-4">
                                                     <label className="form-label small fw-semibold text-muted">
                                                         PSA BIRTH CERTIFICATE
                                                         <span className="text-danger ms-1">*</span>
-                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                            (JPG, PNG only)
-                                                        </span>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>(JPG, PNG only)</span>
                                                     </label>
-                                                    
-                                                    
-                                                    
                                                     <div className="input-group">
                                                         <input
                                                             ref={(el) => (fileRef.current['psaBirthCert'] = el)}
@@ -3763,40 +3698,19 @@ export const Step3 = () => {
                                                             disabled={viewOnly}
                                                         />
                                                     </div>
-                                                    {formData.certification?.psaBirthCertFileName && (
-                                                        <div className="mt-2 d-flex align-items-center gap-2">
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                                onClick={() => handleViewImage(formData.certification.psaBirthCertPreview)}
-                                                                title={formData.certification.psaBirthCertFileName} 
-                                                            >
-                                                                📄 {truncateFilename(formData.certification.psaBirthCertFileName, 25)} 
-                                                            </button>
-                                                            {!role && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
-                                                                    style={{ width: '24px', height: '24px' }}
-                                                                    onClick={() => handleRemoveFile('psaBirthCert')}
-                                                                    title="Remove file"
-                                                                >
-                                                                    ✕
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <FilePreviewCard
+                                                        fieldName="psaBirthCert"
+                                                        preview={formData.certification?.psaBirthCertPreview}
+                                                        fileName={formData.certification?.psaBirthCertFileName}
+                                                    />
                                                 </div>
 
                                                 {/* Report Card (Form 138) */}
-                                                <div className="mb-3">
-                                                    
+                                                <div className="mb-4">
                                                     <label className="form-label small fw-semibold text-muted">
                                                         REPORT CARD (FORM 138)
                                                         <span className="text-danger ms-1">*</span>
-                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                            (JPG, PNG only)
-                                                        </span>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>(JPG, PNG only)</span>
                                                     </label>
                                                     <div className="input-group">
                                                         <input
@@ -3808,39 +3722,19 @@ export const Step3 = () => {
                                                             disabled={viewOnly}
                                                         />
                                                     </div>
-                                                    {formData.certification?.reportCardFileName && (
-                                                        <div className="mt-2 d-flex align-items-center gap-2">
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                                onClick={() => handleViewImage(formData.certification.reportCardPreview)}
-                                                                title={formData.certification.reportCardFileName}  
-                                                            >
-                                                                📄 {truncateFilename(formData.certification.reportCardFileName, 25)} 
-                                                            </button>
-                                                            {!role && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
-                                                                    style={{ width: '24px', height: '24px' }}
-                                                                    onClick={() => handleRemoveFile('reportCard')}
-                                                                    title="Remove file"
-                                                                >
-                                                                    ✕
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <FilePreviewCard
+                                                        fieldName="reportCard"
+                                                        preview={formData.certification?.reportCardPreview}
+                                                        fileName={formData.certification?.reportCardFileName}
+                                                    />
                                                 </div>
 
                                                 {/* Good Moral */}
-                                                <div className="mb-3">
+                                                <div className="mb-4">
                                                     <label className="form-label small fw-semibold text-muted">
                                                         GOOD MORAL
-                                                        <small className="text-muted ms-2">{"(optional)"}</small>
-                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                            (JPG, PNG only)
-                                                        </span>
+                                                        <small className="text-muted ms-2">(optional)</small>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>(JPG, PNG only)</span>
                                                     </label>
                                                     <div className="input-group">
                                                         <input
@@ -3852,42 +3746,20 @@ export const Step3 = () => {
                                                             disabled={viewOnly}
                                                         />
                                                     </div>
-                                                    {formData.certification?.goodMoralFileName && (
-                                                        <div className="mt-2 d-flex align-items-center gap-2">
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                                onClick={() => handleViewImage(formData.certification.goodMoralPreview)}
-                                                                title={formData.certification.goodMoralFileName}  
-                                                            >
-                                                                📄 {truncateFilename(formData.certification.goodMoralFileName, 25)}  
-                                                            </button>
-                                                            {!role && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
-                                                                    style={{ width: '24px', height: '24px' }}
-                                                                    onClick={() => handleRemoveFile('goodMoral')}
-                                                                    title="Remove file"
-                                                                >
-                                                                    ✕
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <FilePreviewCard
+                                                        fieldName="goodMoral"
+                                                        preview={formData.certification?.goodMoralPreview}
+                                                        fileName={formData.certification?.goodMoralFileName}
+                                                    />
                                                 </div>
 
                                                 {/* 2x2 ID Picture */}
-                                                <div className="mb-3">
+                                                <div className="mb-4">
                                                     <label className="form-label small fw-semibold text-muted">
                                                         2X2 ID PICTURE
                                                         <span className="text-danger ms-1">*</span>
-                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>
-                                                            (JPG, PNG only)
-                                                        </span>
+                                                        <span className="text-danger ms-2" style={{ fontSize: '0.85rem' }}>(JPG, PNG only)</span>
                                                     </label>
-
-                                                    
                                                     <div className="input-group">
                                                         <input
                                                             ref={(el) => (fileRef.current['idPicture'] = el)}
@@ -3898,29 +3770,11 @@ export const Step3 = () => {
                                                             disabled={viewOnly}
                                                         />
                                                     </div>
-                                                    {formData.certification?.idPictureFileName && (
-                                                        <div className="mt-2 d-flex align-items-center gap-2">
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-link btn-sm p-0 text-decoration-none"
-                                                                onClick={() => handleViewImage(formData.certification.idPicturePreview)}
-                                                                title={formData.certification.idPictureFileName}  
-                                                            >
-                                                                📄 {truncateFilename(formData.certification.idPictureFileName, 25)}  
-                                                            </button>
-                                                            {!role && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-sm btn-danger rounded-circle p-0"
-                                                                    style={{ width: '24px', height: '24px' }}
-                                                                    onClick={() => handleRemoveFile('idPicture')}
-                                                                    title="Remove file"
-                                                                >
-                                                                    ✕
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <FilePreviewCard
+                                                        fieldName="idPicture"
+                                                        preview={formData.certification?.idPicturePreview}
+                                                        fileName={formData.certification?.idPictureFileName}
+                                                    />
                                                 </div>
 
                                             </div>
@@ -3929,7 +3783,6 @@ export const Step3 = () => {
                                 </div>
                             </div>
                         </div>
-
 
                         {/* Navigation Buttons */}
                         <div className="d-flex align-items-center justify-content-center gap-3 my-3">
@@ -3961,25 +3814,16 @@ export const Step3 = () => {
                     </div>
                 </div>
             </div>
-              {/* Modal */}
-            {approveModal?.isShow && approveModal?.data &&  (
-                <div className="modal fade show d-block" 
-                style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
-                    <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable 
-                        `}>
+
+            {/* Approve Modal */}
+            {approveModal?.isShow && approveModal?.data && (
+                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                         <div className="modal-content">
                             <div className="modal-header">
-                                <h5 className="modal-title text-capitalize">
-                                    {'Approve Applicant'}
-                                </h5>
-                                <button 
-                                    type="button" 
-                                    className="btn-close"
-                                    onClick={() => setApproveShowModal(false)}
-                                ></button>
+                                <h5 className="modal-title text-capitalize">Approve Applicant</h5>
+                                <button type="button" className="btn-close" onClick={() => setApproveShowModal(false)}></button>
                             </div>
-
-                            {/* Approve Modal */}
                             <div className="modal-body text-center">
                                 <i className="fa fa-check-circle fa-3x text-success mb-3"></i>
                                 <h5 className="mb-3">Approve Application?</h5>
@@ -3996,39 +3840,26 @@ export const Step3 = () => {
                                 </p>
                             </div>
                             <div className="modal-footer">
-                                <button 
-                                    type="button" 
-                                    className="btn btn-secondary"
-                                    onClick={()=>setApproveShowModal(false)}
-                                >
+                                <button type="button" className="btn btn-secondary" onClick={() => setApproveShowModal(false)}>
                                     Cancel
                                 </button>
                                 <button 
                                     type="button" 
                                     className="btn btn-success"
-                                    onClick={async()=>{
-                                        setApproveShowModal((prev) => ({...prev, isShow: false, data: prev.data }))
-                                        
+                                    onClick={async () => {
+                                        setApproveShowModal((prev) => ({...prev, isShow: false, data: prev.data}));
                                         try {
                                             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/approveApplicant`, {
                                                 method: "PATCH",
                                                 headers: {"Content-Type": "application/json"},
                                                 body: JSON.stringify({ enrollmentId: approveModal?.data._id }),
                                                 credentials: "include",
-                                            })
+                                            });
                                             const data = await res.json();
                                             if(!res.ok) throw new Error(data.message);
-                                            
-                                            
                                             alert(data.message);
-
-                                            document.getElementById("scrollContainer").scrollTo({
-                                                top: 0,
-                                                behavior: "smooth"
-                                            });
-
-                                            navigate(`/${role}/applicants`, {replace: true })
-                                            
+                                            document.getElementById("scrollContainer").scrollTo({ top: 0, behavior: "smooth" });
+                                            navigate(`/${role}/applicants`, { replace: true });
                                         } catch (error) {
                                             alert("Error: ", error.message);
                                         }
@@ -4055,44 +3886,29 @@ export const Step3 = () => {
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title">Image preview</h5>
-                                <button 
-                                    type="button" 
-                                    className="btn-close" 
-                                    onClick={handleCloseModal}
-                                ></button>
+                                <button type="button" className="btn-close" onClick={handleCloseModal}></button>
                             </div>
                             <div className="modal-body text-center">
                                 {previewImage && (
                                     <img 
                                         src={previewImage} 
-                                        alt="Signature Preview" 
+                                        alt="Preview" 
                                         className="img-fluid"
                                         style={{ maxHeight: '500px' }}
                                     />
                                 )}
                             </div>
                             <div className="modal-footer">
-                                <button 
-                                    type="button" 
-                                    className="btn btn-secondary" 
-                                    onClick={handleCloseModal}
-                                >
-                                    Close
-                                </button>
+                                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Close</button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-
             {/* Success Modal */}
             {successModal && (
-                <div 
-                    className="modal fade show d-block" 
-                    tabIndex="-1" 
-                    style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-                >
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
                     <div className="modal-dialog modal-dialog-centered">
                         <div className="modal-content border-0 shadow-lg">
                             <div className="modal-body text-center py-5">
@@ -4120,14 +3936,9 @@ export const Step3 = () => {
                 </div>
             )}
 
-
             {/* Error Modal */}
             {errorModal.isShow && (
-                <div 
-                    className="modal fade show d-block" 
-                    tabIndex="-1" 
-                    style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-                >
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
                     <div className="modal-dialog modal-dialog-centered">
                         <div className="modal-content border-0 shadow-lg">
                             <div className="modal-body text-center py-5">
@@ -4135,18 +3946,11 @@ export const Step3 = () => {
                                     <i className="fa-solid fa-circle-xmark text-danger" style={{ fontSize: '5rem' }}></i>
                                 </div>
                                 <h4 className="fw-bold mb-3">Submission Failed</h4>
-                                <p className="text-muted mb-4">
-                                    {errorModal.message}
-                                </p>
+                                <p className="text-muted mb-4">{errorModal.message}</p>
                                 <button 
                                     type="button" 
                                     className="btn btn-danger px-5"
-                                    onClick={() => {
-                                        setErrorModal({
-                                            isShow: false,
-                                            message: ''
-                                        });
-                                    }}
+                                    onClick={() => setErrorModal({ isShow: false, message: '' })}
                                 >
                                     Close
                                 </button>
@@ -4158,6 +3962,7 @@ export const Step3 = () => {
         </div>
     );
 };
+
 
 
 
@@ -4212,7 +4017,7 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
                 <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                     <div className="modal-content" style={{ borderRadius: 0 }}>
                         {/* Header */}
-                        <div className="modal-header bg-danger text-white" style={{ borderRadius: 0 }}>
+                        <div className="modal-header bg-red text-white" style={{ borderRadius: 0 }}>
                             <h5 className="modal-title fw-bold">
                                 <i className="fa-solid fa-file-contract me-2"></i>
                                 Terms and Conditions for Enrollment
@@ -4426,7 +4231,7 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
                             <div className="w-100 d-flex gap-2 justify-content-end">
                                 <button 
                                     type="button" 
-                                    className="btn btn-secondary " 
+                                    className="btn btn-secondary btn-sm " 
                                     onClick={onClose}
                                 >
                                     <i className="fa-solid fa-times me-2"></i>
@@ -4434,7 +4239,7 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
                                 </button>
                                 <button 
                                     type="button" 
-                                    className="btn btn-danger" 
+                                    className="btn btn-danger btn-sm" 
                                     onClick={handleAccept}
                                     disabled={!hasAccepted || !hasScrolledToBottom}
                                 >
@@ -4449,3 +4254,5 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
         </>
     );
 };
+
+
