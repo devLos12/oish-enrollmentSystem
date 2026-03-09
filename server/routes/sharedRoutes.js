@@ -6,7 +6,7 @@ import { createSubject, bulkAddSubjects,
 deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection,
 getSubjectDetails, addSubjectSection, updateSubjectSection, deleteSubjectSection  
 } from "../controller/subject.js";
-import { ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant } from "../controller/enrollment.js";
+import { ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant, revertToPending } from "../controller/enrollment.js";
 import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent, 
 markAsGraduated } from "../controller/student.js";
 import { createSection, deleteSection, getSections, updateEnrollmentStatus, updateSection } from "../controller/sectionManagement.js";
@@ -75,6 +75,7 @@ SharedRouter.get('/getAllStudents', verifyAuth, getAllStudents);
 SharedRouter.post('/scheduleRequirements', verifyAuth, scheduleRequirements);
 SharedRouter.get('/getEmailHistory', verifyAuth, getAllEmails);
 SharedRouter.delete('/deleteEmailHistory', verifyAuth, deleteEmailHistory);
+SharedRouter.patch('/revertToPending/:id', verifyAuth, revertToPending);
 SharedRouter.get("/Logout", verifyAuth, Logout);
 
 

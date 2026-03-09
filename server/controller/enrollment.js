@@ -1,13 +1,13 @@
 import Enrollment from "../model/enrollment.js";
 import multer from "multer";
-import fs from "fs";
 import path from "path";
 import Student from "../model/student.js";
 import Staff from "../model/staff.js";
 import bcrypt from "bcrypt";
-import nodemailer from "nodemailer";
 import { Resend } from 'resend';
 import cloudinary from "../config/cloudinary.js";
+import Admin from "../model/admin.js";
+
 
 
 
@@ -48,24 +48,30 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const getAllEmails = async (req, res) => {
   try {
+    
+    const [enrollmentEmails, adminEmails, staffEmails] = await Promise.all([
+      Enrollment.find().select('learnerInfo.email -_id'),
+      Admin.find().select('email -_id'),
+      Staff.find().select('email -_id'),
+    ]);
 
-    const emails = await Enrollment.find().select('learnerInfo.email');
+    const emails = [
+      ...enrollmentEmails,
+      ...adminEmails.map(a => ({ learnerInfo: { email: a.email } })),
+      ...staffEmails.map(s => ({ learnerInfo: { email: s.email } })),
+    ];
 
-    if(!emails || emails.length === 0){
-      return res.status(401).json({ message: "no found emails."});
-    }
-
+    
     return res.status(200).json({ 
       success: true,
-      emails: emails
+      emails
     });
 
-  }catch(error){
-
+  } catch(error) {
     return res.status(500).json({ message: error.message });
-
   }
 }
+
 
 
 
@@ -1784,3 +1790,18 @@ export const ApplicantApproval = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+export const revertToPending = async(req, res) => {
+  try {
+    const { id } = req.params;
+
+    await Enrollment.findOneAndUpdate({_id: id}, { $set: { status: "pending"}});
+
+
+    return res.status(200).json({ message: "update status successfully."});
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}

@@ -72,6 +72,16 @@ const Applicants = () => {
         };
     }, []);
 
+
+    // ✅ NEW - Revert to Pending handler
+    const handleRevertToPending = (applicant) => {
+        setSelectedApplicant(applicant);
+        setModalType('revertToPending');
+        setShowModal(true);
+    };
+
+
+
     
     const handleRefresh = async () => {
         setRefreshing(true);
@@ -262,6 +272,38 @@ const Applicants = () => {
         }
     };
 
+
+
+
+    // ✅ NEW - Confirm Revert to Pending
+    const confirmRevertToPending = async (enrollmentId) => {
+
+        
+        try {
+            setModalLoading(true);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/revertToPending/${enrollmentId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+
+
+
+
+            setShowModal(false);
+            showAlert(data.message, 'success');
+            getAllApplicants();
+            fetchPendingApplicantsCount();
+        } catch (error) {
+            setShowModal(false);
+            showAlert(error.message, 'error');
+        } finally {
+            setModalLoading(false);
+        }
+    };
 
 
 
@@ -541,8 +583,6 @@ const Applicants = () => {
                 </div>
                 
                 
-                
-
                 {/* Search Bar and Filter */}
                 <div className="row mb-3">
                     <div className="col-12 col-md-4">
@@ -653,7 +693,7 @@ const Applicants = () => {
                                                                             onClick={() => handleViewApplicant(applicant)}
                                                                             title="View Details"
                                                                         >
-                                                                            <i className="fa fa-eye"></i>
+                                                                            view
                                                                         </button>
                                                                         <button 
                                                                             className="btn btn-sm btn-outline-success"
@@ -680,7 +720,7 @@ const Applicants = () => {
                                                                             onClick={() => handleViewApplicant(applicant)}
                                                                             title="View Details"
                                                                         >
-                                                                            <i className="fa fa-eye"></i>
+                                                                            view
                                                                         </button>
                                                                         <button 
                                                                             className="btn btn-sm btn-outline-secondary"
@@ -689,6 +729,19 @@ const Applicants = () => {
                                                                         >
                                                                             <i className="fa fa-download"></i>
                                                                         </button>
+
+
+                                                                        {/* ✅ NEW - Revert to Pending button */}
+                                                                        <button 
+                                                                            className="btn btn-sm btn-outline-warning"
+                                                                            onClick={() => handleRevertToPending(applicant)}
+                                                                            title="Revert to Pending"
+                                                                        >
+                                                                            <i className="fa fa-rotate-left"></i>
+                                                                        </button>
+
+
+
                                                                         <button 
                                                                             className="btn btn-sm btn-outline-danger"
                                                                             onClick={() => handleRemoveApplicant(applicant)}
@@ -768,6 +821,7 @@ const Applicants = () => {
                                     {modalType === 'approve' && 'Approve Applicant'}
                                     {modalType === 'reject' && 'Reject Applicant'}
                                     {modalType === 'remove' && 'Remove Applicant'}
+                                    {modalType === 'revertToPending' && 'Revert to Pending'}
                                 </h5>
                                 <button 
                                     type="button" 
@@ -946,6 +1000,61 @@ const Applicants = () => {
                                                 <>
                                                     <i className="fa fa-trash me-2"></i>
                                                     Yes, Remove
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+
+                            {/* ✅ NEW - Revert to Pending Modal */}
+                            {modalType === 'revertToPending' && (
+                                <>
+                                    <div className="modal-body text-center">
+                                        <i className="fa fa-rotate-left fa-3x text-warning mb-3"></i>
+                                        <h5 className="mb-3">Revert to Pending?</h5>
+                                        <p className="text-muted">
+                                            Do you want to revert the application of:
+                                            <br/>
+                                            <strong className="text-capitalize">
+                                                {selectedApplicant.learnerInfo?.firstName} {selectedApplicant.learnerInfo?.lastName}
+                                            </strong>
+                                            <br/>
+                                            <span className="badge bg-secondary mt-2">
+                                                {selectedApplicant.gradeLevelToEnroll} - S.Y. {selectedApplicant.schoolYear}
+                                            </span>
+                                            <br/>
+                                            <small className="text-warning mt-2 d-block">
+                                                <i className="fa fa-info-circle me-1"></i>
+                                                Status will be set back to <strong>Pending</strong>.
+                                            </small>
+                                        </p>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-secondary"
+                                            onClick={() => setShowModal(false)}
+                                            disabled={modalLoading}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-warning"
+                                            onClick={() => confirmRevertToPending(selectedApplicant._id)}
+                                            disabled={modalLoading}
+                                        >
+                                            {modalLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                                    Reverting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-rotate-left me-2"></i>
+                                                    Yes, Revert to Pending
                                                 </>
                                             )}
                                         </button>

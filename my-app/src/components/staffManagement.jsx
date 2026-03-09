@@ -497,7 +497,7 @@ const StaffManagement = () => {
                                                                         onClick={() => handleViewStaff(staff)}
                                                                         title="View Details"
                                                                     >
-                                                                        <i className="fa fa-eye"></i>
+                                                                        view
                                                                     </button>
                                                                     <button 
                                                                         className="btn btn-sm btn-outline-warning"

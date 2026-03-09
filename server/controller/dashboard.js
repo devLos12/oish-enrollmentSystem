@@ -1,17 +1,17 @@
 import Enrollment from "../model/enrollment.js";
 
-// Dashboard stats: total, studentType, gender (with date range support)
+// Dashboard stats: total, studentType, gender, PWD, Indigenous, 4Ps (with date range support)
 export const getEnrollmentStats = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // ✅ Build date filter
+    // Build date filter
     let dateFilter = {};
     if (startDate && endDate) {
       dateFilter = {
         createdAt: {
           $gte: new Date(startDate),
-          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)) // Include entire end date
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
         }
       };
     }
@@ -32,7 +32,7 @@ export const getEnrollmentStats = async (req, res) => {
       studentType: "transferee" 
     });
 
-    // By gender (from learnerInfo.sex)
+    // By gender
     const maleStudents = await Enrollment.countDocuments({ 
       ...dateFilter, 
       "learnerInfo.sex": "Male" 
@@ -40,6 +40,24 @@ export const getEnrollmentStats = async (req, res) => {
     const femaleStudents = await Enrollment.countDocuments({ 
       ...dateFilter, 
       "learnerInfo.sex": "Female" 
+    });
+
+    // ✅ PWD Students
+    const pwdStudents = await Enrollment.countDocuments({
+      ...dateFilter,
+      "learnerInfo.learnerWithDisability.isDisabled": true
+    });
+
+    // ✅ Indigenous Students
+    const indigenousStudents = await Enrollment.countDocuments({
+      ...dateFilter,
+      "learnerInfo.indigenousCommunity.isMember": true
+    });
+
+    // ✅ 4Ps Beneficiaries
+    const fourPsStudents = await Enrollment.countDocuments({
+      ...dateFilter,
+      "learnerInfo.fourPs.isBeneficiary": true
     });
 
     res.status(200).json({
@@ -50,7 +68,10 @@ export const getEnrollmentStats = async (req, res) => {
         returnees,
         transferees,
         maleStudents,
-        femaleStudents
+        femaleStudents,
+        pwdStudents,
+        indigenousStudents,
+        fourPsStudents
       }
     });
   } catch (error) {
@@ -68,7 +89,6 @@ export const getEnrollmentStatsByGrade = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // ✅ Build date filter for aggregation
     let matchStage = {};
     if (startDate && endDate) {
       matchStage = {
@@ -81,7 +101,6 @@ export const getEnrollmentStatsByGrade = async (req, res) => {
 
     const pipeline = [];
     
-    // Add match stage only if date filter exists
     if (Object.keys(matchStage).length > 0) {
       pipeline.push({ $match: matchStage });
     }
@@ -118,7 +137,6 @@ export const getEnrollmentStatsByTrack = async (req, res) => {
     const { startDate, endDate } = req.query;
     const allTracks = ["Academic", "TVL"];
 
-    // ✅ Build date filter
     let matchStage = {
       "seniorHigh.track": { $exists: true, $ne: null }
     };
@@ -157,7 +175,6 @@ export const getEnrollmentStatsByStrand = async (req, res) => {
     const { startDate, endDate } = req.query;
     const allStrands = ["STEM", "ABM", "HUMSS", "GAS", "ICT", "Home Economics", "Industrial Arts"];
 
-    // ✅ Build date filter
     let matchStage = {
       "seniorHigh.strand": { $exists: true, $ne: null }
     };

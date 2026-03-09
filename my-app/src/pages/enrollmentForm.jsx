@@ -81,7 +81,6 @@ const ProgressStepper = ({ currentStep }) => {
 };
 
 
-
 export const Step1 = () => {
     const { formData, setFormData, role } = useContext(globalContext);   
     const navigate = useNavigate();
@@ -102,7 +101,7 @@ export const Step1 = () => {
     const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
     const [emailVerify, setEmailVerify] = useState([]);
     const [emailError, setEmailError] = useState('');
-
+    const [emailValid, setEmailValid] = useState(false);
 
 
     
@@ -511,8 +510,10 @@ export const Step1 = () => {
 
                 if (isDuplicate) {
                     setEmailError('Email already exists');
+                    setEmailValid(false);
                 } else {
                     setEmailError('');
+                    setEmailValid(emailValue.length > 0);
                 }
 
                 setFormData(prev => ({
@@ -932,15 +933,26 @@ export const Step1 = () => {
                     placeholder={field.placeholder}
                     value={isNested ? (formData?.learnerInfo?.[field.name] || '') : (formData[field.name] || '')}
                     onChange={handleChange}
+
                     className={`form-control ${
-                        field.name === 'email' && emailError ? 'is-invalid' : ''
+                        field.name === 'email' && emailError ? 'is-invalid' : 
+                        field.name === 'email' && emailValid ? 'is-valid' : ''
                     }`}
+
                     disabled={viewOnly}
                 />
 
                 {field.name === 'email' && emailError && (
-                    <div className="invalid-feedback d-block">
+                    <div className="text-danger d-block mt-1" style={{fontSize: '0.875rem'}}>
+                        <i className="fa-solid fa-circle-xmark me-1"></i>
                         {emailError}
+                    </div>
+                )}
+
+                {field.name === 'email' && emailValid && (
+                    <div className="text-success d-block mt-1" style={{fontSize: '0.875rem'}}>
+                        <i className="fa-solid fa-circle-check me-1"></i>
+                        Email is available
                     </div>
                 )}
 
@@ -1414,6 +1426,7 @@ export const Step1 = () => {
         </div>
     );
 };
+
 
 
 
@@ -2305,7 +2318,6 @@ const FormSection = ({ title, fields, values, onChange, disabled, parentType }) 
 
 
 
-
 export const Step2 = () => {
     const { formData, setFormData, role } = useContext(globalContext);
     const navigate = useNavigate();
@@ -2821,15 +2833,14 @@ export const Step2 = () => {
 
 
 
-
     const handleGuardianSameAs = useCallback((source) => {
         const newSource = guardianSameAs === source ? '' : source;
 
         setGuardianSameAs(newSource);
         sessionStorage.setItem("guardianSameAs", newSource);
 
-
-        if (newSource) {
+        if (newSource && newSource !== 'others') {
+            // ✅ Copy father or mother data
             const sourceData = formData.parentGuardianInfo?.[newSource];
             setFormData(prev => ({
                 ...prev,
@@ -2843,14 +2854,27 @@ export const Step2 = () => {
                     }
                 }
             }));
-            setHasChanges(true);
+        } else {
+            // ✅ Clear guardian fields kapag "others" or uncheck
+            setFormData(prev => ({
+                ...prev,
+                parentGuardianInfo: {
+                    ...prev.parentGuardianInfo,
+                    guardian: {
+                        lastName: '',
+                        firstName: '',
+                        middleName: '',
+                        contactNumber: ''
+                    }
+                }
+            }));
         }
+
+        setHasChanges(true);
     }, [guardianSameAs, formData.parentGuardianInfo, setFormData]);
 
 
-
-
-
+    
     return (
         <div className="container bg-light d-flex">
             <div className={`row  justify-content-center w-100 g-0`}
@@ -2927,6 +2951,22 @@ export const Step2 = () => {
                                                 />
                                                 <label className="form-check-label small" htmlFor="guardianSameAsMother">
                                                     Mother
+                                                </label>
+                                            </div>
+
+
+                                            {/* ✅ ADD: Others option */}
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    id="guardianSameAsOthers"
+                                                    checked={guardianSameAs === 'others'}
+                                                    onChange={() => handleGuardianSameAs('others')}
+                                                    disabled={viewOnly}
+                                                />
+                                                <label className="form-check-label small" htmlFor="guardianSameAsOthers">
+                                                    Others
                                                 </label>
                                             </div>
                                         </div>

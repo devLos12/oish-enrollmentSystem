@@ -547,13 +547,30 @@ const AnnouncementManagement = () => {
                                     }
                                   }}
                                 >
-                                  <i className={`fa ${getFileIcon(file.type)} fa-2x text-danger me-3`}></i>
-                                  <div className="flex-grow-1 text-truncate">
-                                    <p className="mb-0 fw-semibold text-truncate">{file.name}</p>
-                                    <small className="text-muted">
-                                      {file.size ? formatFileSize(file.size) : "N/A"}
-                                    </small>
+                                  {/* <i className={`fa ${getFileIcon(file.type)} fa-2x text-danger me-3`}></i> */}
+                                  
+                                  
+                                  <div className="d-flex gap-2">
+                                    <div className="rounded-3 overflow-hidden shadow-sm border" 
+                                    style={{width: "50px ", height: "50px"}}
+                                    >
+                                      <img 
+                                      src={file.url} 
+                                      alt={file.url} 
+                                      className="img-fluid w-100 h-100"
+                                      style={{objectFit: "cover"}}
+                                      />
+                                    </div>
+                                    
+                                    
+                                    <div className="flex-grow-1 text-truncate">
+                                      <p className="mb-0 fw-semibold text-truncate">{file.name}</p>
+                                      <small className="text-muted">
+                                        {file.size ? formatFileSize(file.size) : "N/A"}
+                                      </small>
+                                    </div>
                                   </div>
+
                                   {!file.type?.includes("image") && (
                                     <a 
                                       href={file.url} 
@@ -676,8 +693,6 @@ const AnnouncementManagement = () => {
                         </div>
                       )}
                     </div>
-                  
-                        
 
                   {/* Uploaded Files Preview */}
                   {modalType === "edit" && (
@@ -686,24 +701,39 @@ const AnnouncementManagement = () => {
                       {existingFiles.length > 0 && (
                         <div className="border rounded p-3 bg-light mb-3">
                           <h6 className="fw-bold mb-3">
-                            <i className="fa fa-database me-2"></i>
+                            <i className="fa fa-database me-2 "></i>
                             Existing Files ({existingFiles.length})
                           </h6>
                           <div className="row g-2">
                             {existingFiles.map((file, idx) => (
                               <div key={idx} className="col-12">
-                                <div className="d-flex align-items-center p-2 bg-white rounded border cursor"
+                                <div className="d-flex align-items-center justify-content-between p-2 bg-white rounded border cursor"
                                 onClick={(e) => {
-                                  handleImageClick(file.name, file.name);
+                                  handleImageClick(file.url, file.name);
                                 }}
                                 >
-                                  <i className={`fa ${getFileIcon(file.type)} fa-2x text-danger me-3`}></i>
-                                  <div className="flex-grow-1 text-truncate">
-                                    <p className="mb-0 fw-semibold text-truncate">{file.name}</p>
-                                    <small className="text-muted">
-                                      {formatFileSize(file.size)}
-                                    </small>
+                                  {/* <i className={`fa ${getFileIcon(file.type)} fa-2x text-danger me-3`}></i> */}
+                                  
+                                  <div className="d-flex gap-2">
+                                    <div className="rounded-3 overflow-hidden shadow-sm border" 
+                                    style={{width: "50px ", height: "50px"}}
+                                    >
+                                      <img 
+                                      src={file.url} 
+                                      alt={file.url} 
+                                      className="img-fluid w-100 h-100"
+                                      style={{objectFit: "cover"}}
+                                      />
+                                    </div>
+                                    
+                                    <div className="flex-grow-1 text-truncate">
+                                      <p className="mb-0 fw-semibold text-truncate">{file.name}</p>
+                                      <small className="text-muted">
+                                        {formatFileSize(file.size)}
+                                      </small>
+                                    </div>
                                   </div>
+
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-outline-danger ms-2"
@@ -735,7 +765,6 @@ const AnnouncementManagement = () => {
                                 <div className="d-flex align-items-center p-2 bg-white rounded border cursor"
                                 onClick={() => {
                                   handleImageClick(file.url, file.name);
-                                  
                                 }}
                                 
                                 >

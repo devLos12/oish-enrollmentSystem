@@ -965,7 +965,7 @@ const SubjectManagement = () => {
                                                                     onClick={() => handleViewSubject(subject)}
                                                                     title="View Details"
                                                                 >
-                                                                    <i className="fa fa-eye"></i>
+                                                                    sections
                                                                 </button>
                                                                 <button 
                                                                     className="btn btn-sm btn-outline-warning"
