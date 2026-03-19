@@ -1412,12 +1412,12 @@ export const Step1 = () => {
                 </div>
                 </div>
             ):(
-                <div className="d-flex justify-content-center align-items-center" style={{minHeight: '60vh', marginTop: "120px"}}>
+                <div className="d-flex justify-content-center align-items-center w-100" 
+                style={{minHeight: '60vh', marginTop: "120px"}}>
                     <div className="text-center">
                         <div className="spinner-border text-primary" role="status">
                             <span className="visually-hidden">Loading...</span>
                         </div>
-                        <p className="mt-3 text-muted">Please accept the terms and conditions to continue...</p>
                     </div>
                 </div>
             )}

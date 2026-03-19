@@ -272,13 +272,13 @@ const Login = () => {
                                     </p>
                                 </div>
 
-                                <div className="mt-3 d-flex justify-content-center align-items-center gap-2 small cursor"
+                                <div className="mt-3 d-flex justify-content-center align-items-center gap-2 small cursor hover-blue"
                                     onClick={() => navigate("/staff_registration")}
                                 >
                                     Sign up for new Teacher account.
                                 </div>
 
-                                <div className="mt-2 d-flex justify-content-center align-items-center gap-2 small cursor"
+                                <div className="mt-2 d-flex justify-content-center align-items-center gap-2 small cursor hover-blue"
                                     onClick={() => navigate("/enrollment/step1", { state: { allowed: true }})}
                                 >
                                     Enroll now for student account.
