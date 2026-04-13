@@ -1,4 +1,4 @@
-import { Children, createContext, useEffect, useState } from "react";
+import { act, Children, createContext, useEffect, useState } from "react";
 
 
 export const globalContext = createContext();
@@ -24,7 +24,6 @@ export const MyGlobalContext = ( { children }) => {
             isReturning: '',
             learnerInfo: {
                 email: "",
-                psaNo: '',
                 lrn: '',
                 lastName: '',
                 firstName: '',
@@ -38,7 +37,7 @@ export const MyGlobalContext = ( { children }) => {
 
                 learnerWithDisability: {
                     isDisabled: '',
-                    disabilityType: [] // ARRAY na instead of string
+                    disabilityType: []
                 },
 
                 indigenousCommunity: {
@@ -58,12 +57,7 @@ export const MyGlobalContext = ( { children }) => {
         const [pendingStudentsCount, setPendingStudentsCount] = useState(0);
 
         
-
-        
-
-
         const fetchPendingApplicantsCount = async () => {
-
             try {
                 const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getApplicants`, {
                     method: "GET",
@@ -71,10 +65,20 @@ export const MyGlobalContext = ( { children }) => {
                 });
 
                 const data = await res.json();
-                if(!res.ok) return;
+                if (!res.ok) {
+                    setPendingApplicantsCount(0);
+                    return;
+                }
 
-                // Count pending only
-                const pendingCount = data.filter(app => app.status === 'pending').length;
+                // ✅ Handle both formats: array (old) or { success, data } (new)
+                let applicantsList = [];
+                if (Array.isArray(data)) {
+                    applicantsList = data;
+                } else if (data?.data && Array.isArray(data.data)) {
+                    applicantsList = data.data;
+                }
+                
+                const pendingCount = applicantsList.filter(app => app.status === 'pending').length;
                 setPendingApplicantsCount(pendingCount);
                 
             } catch (error) {
@@ -82,7 +86,6 @@ export const MyGlobalContext = ( { children }) => {
                 setPendingApplicantsCount(0);
             }
         };
-
 
         const fetchPendingStudentsCount = async () => {
             try {
@@ -92,16 +95,53 @@ export const MyGlobalContext = ( { children }) => {
                 });
 
                 const data = await res.json();
-                if(!res.ok) return;
+                if (!res.ok) {
+                    setPendingStudentsCount(0);
+                    return;
+                }
 
-                // Count pending only
-                const pendingCount = data.filter(student => student.status === 'pending').length;
+                // ✅ Handle both formats: array (old) or { success, data } (new)
+                let studentsList = [];
+                if (Array.isArray(data)) {
+                    studentsList = data;
+                } else if (data?.data && Array.isArray(data.data)) {
+                    studentsList = data.data;
+                }
+
+                const pendingCount = studentsList.filter(student => student.status === 'pending').length;
                 setPendingStudentsCount(pendingCount);
             } catch (error) {
                 console.error("Error fetching pending students count:", error.message);
                 setPendingStudentsCount(0);
             }
         };
+        
+
+
+        const [activeSchoolYear, setActiveSchoolYear] = useState(null);
+
+        useEffect(() => {
+            getSY();
+        },[role]);
+
+        const getSY = () => {
+            if(role ){
+                fetch(`${import.meta.env.VITE_API_URL}/api/activeSchoolYear?role=${role}`, {
+                    method: "GET",
+                    credentials: "include"
+                })
+                .then(res => res.json())
+                .then((data) => {
+                    if(data.success){
+                        setActiveSchoolYear(data.data);
+                    }
+                })
+                .catch((err) => console.log("error: ",err.message));
+            }
+        }
+
+      
+
 
     return (
                 
@@ -122,11 +162,12 @@ export const MyGlobalContext = ( { children }) => {
             pendingApplicantsCount, setPendingApplicantsCount,
             pendingStudentsCount, setPendingStudentsCount,
             fetchPendingApplicantsCount,
-            fetchPendingStudentsCount
+            fetchPendingStudentsCount,
+            activeSchoolYear, setActiveSchoolYear,
+            getSY
         }}>
             {children}
         </globalContext.Provider>
 
     )
 }
- 

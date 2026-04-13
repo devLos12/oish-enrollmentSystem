@@ -2,6 +2,13 @@ import mongoose from "mongoose";
 
 
 const emailHistorySchema = new mongoose.Schema({
+
+    schoolYear: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'SchoolYear', 
+        required: true 
+    },
+
     title: { 
         type: String, 
         required: true 

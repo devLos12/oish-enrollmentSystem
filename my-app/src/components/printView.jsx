@@ -125,7 +125,10 @@ const EnrollmentFormPDF = () => {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
   };
 
   const hiddenStyle = location?.state?.autoDownload
@@ -206,7 +209,8 @@ const EnrollmentFormPDF = () => {
       }
     ],
     seniorHigh: [
-      { label: 'SEMESTER', value: enrollmentData.seniorHigh?.semester === "1st" ? "First" : "Second", col: 12, colSm: 4 },
+      // PALITAN NG — number na ang check
+      {label: 'SEMESTER', value: enrollmentData.seniorHigh?.semester === 1 ? "First" : enrollmentData.seniorHigh?.semester === 2 ? "Second" : "", col: 12, colSm: 4 },
       { label: 'TRACK', value: enrollmentData.seniorHigh?.track, col: 12, colSm: 4 },
       { label: 'STRAND', value: enrollmentData.seniorHigh?.strand, col: 12, colSm: 4 }
     ],
@@ -224,6 +228,13 @@ const EnrollmentFormPDF = () => {
       <div className="container-fluid min-vh-100 bg-light">
         <div className="row justify-content-center">
           <div className="col-12 col-lg-11 bg-white p-2 p-md-4">
+                 {/* Back button */}
+            <button className="btn btn-sm btn-outline-secondary mb-2 " onClick={() => navigate(-1)}>
+                <i className="fa fa-arrow-left me-2" />Back
+            </button>
+
+
+
             <div ref={formRef}>
               
               {/* Header */}
@@ -313,7 +324,7 @@ const EnrollmentFormPDF = () => {
                       </div>
                       <div className="col-auto">
                         <span className="fw-bold">PSA Birth Cert No.: </span>
-                        <span className="border-bottom border-dark px-2 d-inline-block my-2">{enrollmentData.learnerInfo?.psaNo || ''}</span>
+                        <span className="border-bottom border-dark px-2 d-inline-block my-2">{enrollmentData.psaNo || ''}</span>
                       </div>
                     </div>
 

@@ -2,13 +2,13 @@ import mongoose from "mongoose";
 
 const enrollmentSchema = new mongoose.Schema({
   schoolYear: { type: String, required: false },
+  schoolYearId: { type: mongoose.Schema.Types.ObjectId, ref: "SchoolYear", required: false },
   gradeLevelToEnroll: { type: String, required: false },
   
   isReturning: { type: Boolean, required: false },
 
   learnerInfo: {
     email: { type: String, unique: true},
-    psaNo: { type: String},
     lrn: { type: String, unique: true},
     lastName: { type: String, required: false },
     firstName: { type: String, required: false },
@@ -73,7 +73,9 @@ const enrollmentSchema = new mongoose.Schema({
       lastName: { type: String },
       firstName: { type: String },
       middleName: { type: String },
-      contactNumber: { type: String }
+      contactNumber: { type: String },
+      relationship: { type: String },
+      relationshipOther: { type: String }
     }
   },
 
@@ -86,14 +88,13 @@ const enrollmentSchema = new mongoose.Schema({
     schoolId: { type: String }
   },
 
-
   //For Learners in Senior High Schoo
   seniorHigh: {
-    semester: { type: String, enum: ["1st", "2nd"] },
+    semester: { type: Number, enum: [1, 2] },
     track: { type: String },
     strand: { type: String }
   },
-
+  
   
 
    // Required Documents - File paths
@@ -120,6 +121,9 @@ const enrollmentSchema = new mongoose.Schema({
       uploadedAt: { type: Date, default: Date.now }
     },
   },
+
+  psaNo: { type: String},
+
   signature: {
     dateSigned: { type: Date }
   },

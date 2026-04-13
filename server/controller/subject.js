@@ -2,6 +2,8 @@ import Subject from "../model/subject.js";
 import Student from "../model/student.js";
 import Staff from '../model/staff.js';
 import Section from "../model/section.js";
+import SchoolYear from "../model/schoolYear.js";
+
 
 
 
@@ -112,18 +114,22 @@ export const updateSubjectSection = async(req, res) => {
 export const addSubjectSection = async(req, res) => {
     try {
         const { id } = req.params;
-        const { sectionName, scheduleDay, scheduleStartTime, scheduleEndTime, room, gradeLevel } = req.body;
-
-        
+        const { sectionName, scheduleStartTime, scheduleEndTime, room, gradeLevel } = req.body;
 
         // Validation
-        if (!sectionName || 
-            !scheduleStartTime || 
-            !scheduleEndTime || 
-            !room) {
+        if (!sectionName || !scheduleStartTime || !scheduleEndTime || !room) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required"
+            });
+        }
+
+        // ✅ FIX 1 — get activeSchoolYear once, use everywhere
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({
+                success: false,
+                message: "No active school year."
             });
         }
 
@@ -140,7 +146,6 @@ export const addSubjectSection = async(req, res) => {
         const sectionExists = subject.sections.some(
             section => section.sectionName === sectionName
         );
-
         if (sectionExists) {
             return res.status(400).json({
                 success: false,
@@ -148,61 +153,63 @@ export const addSubjectSection = async(req, res) => {
             });
         }
 
-        const studentSec = await Section.find({ 
+        // ✅ FIX 2 — findOne (not find) + scoped sa activeSchoolYear
+        const studentSec = await Section.findOne({
             name: sectionName,
-            gradeLevel: gradeLevel
+            gradeLevel: gradeLevel,
+            schoolYear: activeSchoolYear._id
         });
-
-        const secId = studentSec.map(secId => secId._id);
+        const secId = studentSec?._id ?? null;
 
         // Add new section to subject
         subject.sections.push({
-            sectionId: secId, 
+            sectionId: secId,
             sectionName,
-            // scheduleDay,
             scheduleStartTime,
             scheduleEndTime,
             room,
         });
-
         await subject.save();
 
-        // ✅ NOW SYNC TO STUDENTS
-        // Find all enrolled students in this section with this subject
+        // ✅ FIX 3 — studentsToUpdate scoped sa active school year + semester
         const studentsToUpdate = await Student.find({
             section: sectionName,
-            status: "enrolled",
-            "subjects.subjectId": subject._id
+            "subjects.subjectId": subject._id,
+            registrationHistory: {
+                $elemMatch: {
+                    schoolYear: activeSchoolYear.schoolYear,
+                    semester: activeSchoolYear.semester
+                }
+            }
         });
 
         if (studentsToUpdate.length > 0) {
             const updatePromises = studentsToUpdate.map(async (student) => {
-                
-                // ✅ Update subjects[] array
+
+                // Update subjects[] array
                 const subjectIndex = student.subjects.findIndex(
                     s => s.subjectId.toString() === subject._id.toString()
                 );
-
                 if (subjectIndex !== -1) {
-                    // student.subjects[subjectIndex].scheduleDay = scheduleDay;
                     student.subjects[subjectIndex].scheduleStartTime = scheduleStartTime;
                     student.subjects[subjectIndex].scheduleEndTime = scheduleEndTime;
                     student.subjects[subjectIndex].room = room;
                 }
 
-                // ✅ Update registrationHistory[last].subjects[] array
-                const lastHistoryIndex = student.registrationHistory.length - 1;
-                
-                if (lastHistoryIndex >= 0) {
-                    const historySubjectIndex = student.registrationHistory[lastHistoryIndex].subjects.findIndex(
+                // ✅ FIX 4 — exact match ng active sem, hindi lastIndex
+                const historyIndex = student.registrationHistory.findIndex(h =>
+                    h.schoolYear === activeSchoolYear.schoolYear &&
+                    h.semester === activeSchoolYear.semester
+                );
+
+                if (historyIndex !== -1) {
+                    const historySubjectIndex = student.registrationHistory[historyIndex].subjects.findIndex(
                         s => s.subjectId.toString() === subject._id.toString()
                     );
-
                     if (historySubjectIndex !== -1) {
-                        // student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleDay = scheduleDay;
-                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleStartTime = scheduleStartTime;
-                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].scheduleEndTime = scheduleEndTime;
-                        student.registrationHistory[lastHistoryIndex].subjects[historySubjectIndex].room = room;
+                        student.registrationHistory[historyIndex].subjects[historySubjectIndex].scheduleStartTime = scheduleStartTime;
+                        student.registrationHistory[historyIndex].subjects[historySubjectIndex].scheduleEndTime = scheduleEndTime;
+                        student.registrationHistory[historyIndex].subjects[historySubjectIndex].room = room;
                     }
                 }
 
@@ -219,12 +226,128 @@ export const addSubjectSection = async(req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({ 
+        return res.status(500).json({
             success: false,
-            message: error.message 
+            message: error.message
         });
     }
 }
+
+export const bulkAddSubjectSections = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { sections } = req.body;
+
+        if (!sections || !Array.isArray(sections) || sections.length === 0) {
+            return res.status(400).json({ success: false, message: "No sections data provided" });
+        }
+
+        const subject = await Subject.findById(id);
+        if (!subject) {
+            return res.status(404).json({ success: false, message: "Subject not found" });
+        }
+
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ success: false, message: "No active school year." });
+        }
+
+        const errors = [];
+        const toAdd = [];
+
+        for (let i = 0; i < sections.length; i++) {
+            const { sectionName, scheduleStartTime, scheduleEndTime, room } = sections[i];
+            const rowNum = i + 1;
+
+            if (!sectionName?.trim()) { errors.push(`Row ${rowNum}: Section Name is required`); continue; }
+            if (!scheduleStartTime) { errors.push(`Row ${rowNum}: Start Time is required`); continue; }
+            if (!scheduleEndTime) { errors.push(`Row ${rowNum}: End Time is required`); continue; }
+            if (!room?.trim()) { errors.push(`Row ${rowNum}: Room is required`); continue; }
+
+            const alreadyExists = subject.sections.some(s => s.sectionName === sectionName.trim());
+            if (alreadyExists) { errors.push(`Row ${rowNum}: Section "${sectionName}" already exists in this subject`); continue; }
+
+            const dupInBatch = toAdd.some(s => s.sectionName === sectionName.trim());
+            if (dupInBatch) { errors.push(`Row ${rowNum}: Duplicate section "${sectionName}" in batch`); continue; }
+
+            const studentSec = await Section.findOne({
+                name: sectionName.trim(),
+                gradeLevel: subject.gradeLevel,
+                schoolYear: activeSchoolYear._id
+            });
+
+            toAdd.push({
+                sectionId: studentSec?._id ?? null,
+                sectionName: sectionName.trim(),
+                scheduleStartTime,
+                scheduleEndTime,
+                room: room.trim()
+            });
+        }
+
+        if (errors.length > 0) {
+            return res.status(400).json({ success: false, message: "Validation failed", errors });
+        }
+
+        subject.sections.push(...toAdd);
+        await subject.save();
+
+        // Sync schedule to existing students per section
+        let totalSynced = 0;
+        for (const sec of toAdd) {
+            const studentsToUpdate = await Student.find({
+                section: sec.sectionName,
+                "subjects.subjectId": subject._id,
+                registrationHistory: {
+                    $elemMatch: {
+                        schoolYear: activeSchoolYear.schoolYear,
+                        semester: activeSchoolYear.semester
+                    }
+                }
+            });
+
+            if (studentsToUpdate.length > 0) {
+                const updateOps = studentsToUpdate.map(async (student) => {
+                    const subjectIndex = student.subjects.findIndex(
+                        s => s.subjectId.toString() === subject._id.toString()
+                    );
+                    if (subjectIndex !== -1) {
+                        student.subjects[subjectIndex].scheduleStartTime = sec.scheduleStartTime;
+                        student.subjects[subjectIndex].scheduleEndTime = sec.scheduleEndTime;
+                        student.subjects[subjectIndex].room = sec.room;
+                    }
+
+                    const historyIndex = student.registrationHistory.findIndex(h =>
+                        h.schoolYear === activeSchoolYear.schoolYear &&
+                        h.semester === activeSchoolYear.semester
+                    );
+                    if (historyIndex !== -1) {
+                        const histSubjectIndex = student.registrationHistory[historyIndex].subjects.findIndex(
+                            s => s.subjectId.toString() === subject._id.toString()
+                        );
+                        if (histSubjectIndex !== -1) {
+                            student.registrationHistory[historyIndex].subjects[histSubjectIndex].scheduleStartTime = sec.scheduleStartTime;
+                            student.registrationHistory[historyIndex].subjects[histSubjectIndex].scheduleEndTime = sec.scheduleEndTime;
+                            student.registrationHistory[historyIndex].subjects[histSubjectIndex].room = sec.room;
+                        }
+                    }
+                    return student.save();
+                });
+                await Promise.all(updateOps);
+                totalSynced += studentsToUpdate.length;
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Successfully added ${toAdd.length} section(s) and synced to ${totalSynced} student(s)`,
+            imported: toAdd.length
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 
 
 export const getSubjectDetails = async(req, res) => {
@@ -282,10 +405,10 @@ export const getSubjectDetails = async(req, res) => {
 }
 
 
-
 export const getSubjectSection = async (req, res) => {
     try {
         const { gradeLevel, track, strand, semester, subjectId } = req.query;
+
 
 
 
@@ -308,9 +431,18 @@ export const getSubjectSection = async (req, res) => {
             filter.semester = parseInt(semester);
         }
 
-        // ✅ Get all sections matching the filter
-        const sections = await Section.find(filter).sort({ name: 1 });
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year." });
+        }
 
+        // ✅ Get all sections matching the filter
+        const sections = await Section.find({
+            ...filter,
+            schoolYear: activeSchoolYear._id
+        }).sort({ name: 1 });
+
+        
         // ✅ IMPROVED: Filter out sections already assigned to THIS subject
         let availableSections = sections;
         
@@ -362,9 +494,27 @@ export const getSubjectSection = async (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
 export const getAllSubjects = async (req, res) => {
     try {
-        const subjects = await Subject.find().sort({ gradeLevel: 1, strand: 1, subjectName: 1 });
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year." });
+        }
+
+        const subjects = await Subject.find({ 
+            schoolYear: activeSchoolYear._id  // 👈 dagdag lang
+        }).sort({ gradeLevel: 1, strand: 1, subjectName: 1 });
+        
         res.status(200).json(subjects);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -395,7 +545,15 @@ export const getAllTeachers = async (req, res) => {
 
 
 
-// Add this to your subject controller file
+
+
+
+
+
+
+
+
+
 export const bulkAddSubjects = async (req, res) => {
     try {
         const { subjects } = req.body;
@@ -410,25 +568,20 @@ export const bulkAddSubjects = async (req, res) => {
         // Validate each subject has required fields
         const validationErrors = [];
         subjects.forEach((subject, index) => {
-            const required = ['subjectCode', 'subjectName', 'gradeLevel', 'semester', 'track', 'strand', 'subjectType', 'teacherId', 'teacherName'];
+            const required = ['subjectCode', 'subjectName', 'gradeLevel', 'track', 'strand', 'subjectType', 'teacherId', 'teacherName'];
             const missing = required.filter(field => !subject[field]);
-            
             if (missing.length > 0) {
                 validationErrors.push(`Subject ${index + 1}: Missing ${missing.join(', ')}`);
             }
         });
 
         if (validationErrors.length > 0) {
-            return res.status(400).json({ 
-                message: "Validation failed",
-                errors: validationErrors 
-            });
+            return res.status(400).json({ message: "Validation failed", errors: validationErrors });
         }
 
         // Check for duplicate subject codes in the batch
         const subjectCodes = subjects.map(s => s.subjectCode.toUpperCase());
         const duplicates = subjectCodes.filter((code, index) => subjectCodes.indexOf(code) !== index);
-        
         if (duplicates.length > 0) {
             return res.status(400).json({ 
                 message: `Duplicate subject codes found in batch: ${[...new Set(duplicates)].join(', ')}` 
@@ -436,23 +589,25 @@ export const bulkAddSubjects = async (req, res) => {
         }
 
         // Check for existing subject codes in database
-        const existingSubjects = await Subject.find({ 
-            subjectCode: { $in: subjectCodes } 
-        });
-
+        const existingSubjects = await Subject.find({ subjectCode: { $in: subjectCodes } });
         if (existingSubjects.length > 0) {
             const existing = existingSubjects.map(s => s.subjectCode).join(', ');
-            return res.status(400).json({ 
-                message: `Subject codes already exist: ${existing}` 
-            });
+            return res.status(400).json({ message: `Subject codes already exist: ${existing}` });
+        }
+
+        // Get active school year — source of truth
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year." });
         }
 
         // Prepare subjects for insertion
         const subjectsToInsert = subjects.map(subject => ({
+            schoolYear: activeSchoolYear._id,
             subjectCode: subject.subjectCode.toUpperCase(),
             subjectName: subject.subjectName.trim(),
             gradeLevel: parseInt(subject.gradeLevel),
-            semester: parseInt(subject.semester),
+            semester: activeSchoolYear.semester,  // ✅ source of truth, hindi from frontend
             track: subject.track.trim(),
             strand: subject.strand.toUpperCase(),
             subjectType: subject.subjectType.toLowerCase().trim(),
@@ -461,17 +616,21 @@ export const bulkAddSubjects = async (req, res) => {
         }));
 
         // Bulk insert
-        const insertedSubjects = await Subject.insertMany(subjectsToInsert, { 
-            ordered: false 
-        });
+        const insertedSubjects = await Subject.insertMany(subjectsToInsert, { ordered: false });
 
-        // 🔹 Auto-assign to enrolled students (same logic as createSubject)
+        // 🔹 Auto-assign to enrolled students
         for (const savedSubject of insertedSubjects) {
+
+            // ✅ Scoped to active school year + semester via registrationHistory
             const enrolledStudents = await Student.find({
-                status: "enrolled",
                 gradeLevel: savedSubject.gradeLevel,
                 strand: savedSubject.strand,
-                semester: savedSubject.semester
+                registrationHistory: {
+                    $elemMatch: {
+                        schoolYear: activeSchoolYear.schoolYear,  // "2026-2027"
+                        semester: activeSchoolYear.semester        // 1 or 2
+                    }
+                }
             });
 
             if (enrolledStudents.length > 0) {
@@ -493,10 +652,15 @@ export const bulkAddSubjects = async (req, res) => {
                         };
                     }
 
-                    const lastIndex = student.registrationHistory.length - 1;
-                    if (lastIndex >= 0) {
+                    // ✅ Find exact history entry ng current active sem
+                    const historyIndex = student.registrationHistory.findIndex(h =>
+                        h.schoolYear === activeSchoolYear.schoolYear &&
+                        h.semester === activeSchoolYear.semester
+                    );
+
+                    if (historyIndex !== -1) {
                         if (!update.$push) update.$push = {};
-                        update.$push[`registrationHistory.${lastIndex}.subjects`] = {
+                        update.$push[`registrationHistory.${historyIndex}.subjects`] = {
                             subjectId: savedSubject._id,
                             subjectName: savedSubject.subjectName,
                             subjectTeacher: savedSubject.teacher || "",
@@ -524,20 +688,21 @@ export const bulkAddSubjects = async (req, res) => {
 
     } catch (error) {
         console.error("Bulk add subjects error:", error);
-        
-        // Handle MongoDB duplicate key errors
         if (error.code === 11000) {
-            return res.status(400).json({ 
-                message: "Some subject codes already exist in the database" 
-            });
+            return res.status(400).json({ message: "Some subject codes already exist in the database" });
         }
-
-        res.status(500).json({ 
-            message: "Failed to import subjects",
-            error: error.message 
-        });
+        res.status(500).json({ message: "Failed to import subjects", error: error.message });
     }
 };
+
+
+
+
+
+
+
+
+
 
 
 
@@ -577,14 +742,21 @@ export const createSubject = async (req, res) => {
 
 
 
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year." });
+        }
+
+
         const newSubject = new Subject({
+            schoolYear: activeSchoolYear._id,
             subjectName,
             subjectCode: subjectCode.toUpperCase(),
             gradeLevel: parseInt(gradeLevel),
             strand: strand.toUpperCase() || "",
             // section: section || "",
             track: track || "",
-            semester: semester || 1,
+            semester: activeSchoolYear.semester,
             subjectType: subjectType || 'core',
             teacherId: teacherId,
             teacher: teacherName,
@@ -598,12 +770,16 @@ export const createSubject = async (req, res) => {
 
         // 🔹 Find all enrolled students matching this subject
         const enrolledStudents = await Student.find({
-            status: "enrolled",
             gradeLevel: savedSubject.gradeLevel,
-            // section: section,
             strand: savedSubject.strand,
-            semester: savedSubject.semester
+            registrationHistory: {
+                $elemMatch: {
+                    schoolYear: activeSchoolYear.schoolYear,  // "2026-2027"
+                    semester: activeSchoolYear.semester        // 1 or 2
+                }
+            }
         });
+
 
         if (enrolledStudents.length > 0) {
 
@@ -655,7 +831,6 @@ export const createSubject = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 
 
 
@@ -858,10 +1033,6 @@ export const updateSubject = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
-
-
-
 
 
 

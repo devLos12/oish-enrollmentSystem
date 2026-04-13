@@ -2,6 +2,106 @@ import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { globalContext } from "../context/global.jsx";
 import imageBackground from "../assets/image/shsBackground.jpg"; // Same background from Home
+import { io } from "socket.io-client";
+
+
+
+
+
+// ✅ Enrollment Closed Modal Component
+const EnrollmentClosedModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div
+                onClick={onClose}
+                className="position-fixed top-0 start-0 w-100 h-100"
+                style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 9998 }}
+            />
+
+            {/* Modal Dialog */}
+            <div
+                className="position-fixed top-50 start-50 translate-middle bg-white rounded-4 shadow-lg overflow-hidden"
+                style={{ zIndex: 9999, width: "90%", maxWidth: "420px" }}
+            >
+                {/* Header - Red */}
+                <div className="bg-red text-white text-center px-4 pt-4 pb-4">
+                    {/* Icon Circle */}
+                    <div
+                        className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 border border-2 border-white border-opacity-50"
+                        style={{
+                            width: "64px",
+                            height: "64px",
+                            backgroundColor: "rgba(255,255,255,0.15)"
+                        }}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="30"
+                            height="30"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="white"
+                            strokeWidth={1.8}
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                            />
+                        </svg>
+                    </div>
+
+                    <h5 className="fw-bold mb-0" style={{ letterSpacing: "0.3px" }}>
+                        Enrollment is Closed
+                    </h5>
+                </div>
+
+                {/* Body */}
+                <div className="px-4 pt-4 pb-2 text-center">
+                    <p className="text-secondary mb-0" style={{ fontSize: "0.95rem", lineHeight: 1.6 }}>
+                        Enrollment for the current school year is currently{" "}
+                        <strong className="text-danger">closed</strong>. Please check back
+                        soon or contact the school for more information.
+                    </p>
+                    <hr className="mt-4 mb-0" />
+                </div>
+
+                {/* Footer */}
+                <div className="px-4 pt-3 pb-4 d-flex justify-content-center">
+                    <button
+                        onClick={onClose}
+                        className="btn btn-danger fw-bold px-5 py-2"
+                        style={{ letterSpacing: "0.5px" }}
+                    >
+                        Got it
+                    </button>
+                </div>
+            </div>
+
+            {/* Animations */}
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translate(-50%, -45%); }
+                    to { opacity: 1; transform: translate(-50%, -50%); }
+                }
+            `}</style>
+        </>
+    );
+};
+
+
+
+
+
+
+
 
 
 
@@ -26,6 +126,11 @@ const Login = () => {
     const [modalMessage, setModalMessage] = useState('');
     const [modalType, setModalType] = useState('success');
     const [loginData, setLoginData] = useState(null);
+    
+
+    const [activeSchoolYear, setActiveSchoolYear] = useState(null);
+    const [showClosedModal, setShowClosedModal] = useState(false);
+    
 
     // Handle modal animation
     useEffect(() => {
@@ -45,6 +150,56 @@ const Login = () => {
             return () => clearTimeout(timer);
         }
     }, [showModal]);
+
+
+
+    useEffect(() => {
+        getSchoolmentYear();
+
+        const socket = io(import.meta.env.VITE_API_URL, { withCredentials: true });
+        socket.on("enrollmentStatusChanged", (data) => {
+            getSchoolmentYear();
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+
+    }, []);
+
+
+
+    const getSchoolmentYear = async () => {
+
+        try {
+
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getAllSchoolYears`, {
+                method: "GET",
+                credentials: "include"
+            });
+
+            const data = await res.json();
+
+            if(!res.ok) {
+                throw new Error(data.message);
+            }
+            
+            if(data.success && data.data) {
+                const activeYear = data.data.find(sy => sy.isActive);
+                if (activeYear) {
+                    setActiveSchoolYear(activeYear);
+                }
+            }
+
+        } catch (error) {   
+            console.log("Error fetching school year:", error.message);
+        } finally {
+        }
+    }
+
+
+
+
 
     const showNotification = (message, type = "success", role = null) => {
         setModalMessage(message);
@@ -279,7 +434,16 @@ const Login = () => {
                                 </div>
 
                                 <div className="mt-2 d-flex justify-content-center align-items-center gap-2 small cursor hover-blue"
-                                    onClick={() => navigate("/enrollment/step1", { state: { allowed: true }})}
+                                    onClick={() => {
+                                        
+                                        if (activeSchoolYear?.enrollmentStatus === 'open') {
+                                            navigate("/enrollment/step1", { state: { allowed: true } });
+                                        } else {
+                                            setShowClosedModal(true);   
+                                        }
+
+
+                                    }}
                                 >
                                     Enroll now for student account.
                                 </div>
@@ -329,6 +493,14 @@ const Login = () => {
                         </div>
                     </div>
                 )}
+
+
+
+                {/* ✅ Enrollment Closed Modal */}
+                <EnrollmentClosedModal
+                    isOpen={showClosedModal}
+                    onClose={() => setShowClosedModal(false)}
+                />
             </div>
         </>
     )

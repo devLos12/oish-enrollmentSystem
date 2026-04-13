@@ -4,12 +4,12 @@ import { accessGeneratedCode, accessGmailCode } from "../controller/admin/access
 import { createFacultyMember, deleteStaff, getStaffList, updateStaff } from "../controller/stafffManagement.js";
 import { createSubject, bulkAddSubjects,
 deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection,
-getSubjectDetails, addSubjectSection, updateSubjectSection, deleteSubjectSection  
+getSubjectDetails, addSubjectSection, bulkAddSubjectSections, updateSubjectSection, deleteSubjectSection  
 } from "../controller/subject.js";
 import { ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant, revertToPending } from "../controller/enrollment.js";
 import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent, 
 markAsGraduated } from "../controller/student.js";
-import { createSection, deleteSection, getSections, updateEnrollmentStatus, updateSection } from "../controller/sectionManagement.js";
+import { addStudentToSection, createSection, deleteSection, getSectionById, getSections, removeStudentFromSection, searchStudentForSection, updateEnrollmentStatus, updateSection } from "../controller/sectionManagement.js";
 import { getEnrollmentStats, getEnrollmentStatsByGrade } from "../controller/dashboard.js";
 import { getEnrollmentStatsByStrand, getEnrollmentStatsByTrack } from "../controller/dashboard.js";
 import { uploadFiles, addAnnouncement, getAnnouncements, updateAnnouncement, deleteAnnouncement } from "../controller/announcement.js";
@@ -18,12 +18,20 @@ import { getProfile, UpdateProfile, updateProfile } from "../controller/profile.
 import { changePassword } from "../controller/profile.js";
 import { getLogs, } from "../controller/logs.js";
 import { deleteEmailHistory, getAllEmails, getAllStudents, scheduleRequirements } from "../controller/schedule.js";
+import { activateSchoolYear, createSchoolYear, getSchoolYears, toggleEnrollmentStatus, getAllSchoolYears, setCurrentSchoolYear, getActiveSchoolYear, deleteSchoolYear, } from "../controller/schoolYear-semester.js";
+
+
+
+
+
 
 
 const SharedRouter = express.Router();
 
 SharedRouter.get('/generate_code', accessGeneratedCode);
 SharedRouter.get('/getApplicants', GetAllEnrollments);
+
+
 SharedRouter.post('/gmail_code', accessGmailCode);
 SharedRouter.get('/staff_list', getStaffList);
 SharedRouter.post("/create_facultyAccount", verifyAuth, createFacultyMember);
@@ -37,6 +45,7 @@ SharedRouter.get('/getTeachers',verifyAuth, getAllTeachers);
 SharedRouter.get('/getSubjetSections', verifyAuth, getSubjectSection);
 SharedRouter.get('/getSubjectDetails/:id', verifyAuth, getSubjectDetails);
 SharedRouter.post('/addSubjectSection/:id', verifyAuth, addSubjectSection);
+SharedRouter.post("/bulkAddSubjectSections/:id",verifyAuth, bulkAddSubjectSections);
 SharedRouter.patch("/updateSubjectSection/:id/:sectionId", updateSubjectSection);
 SharedRouter.delete("/deleteSubjectSection/:id/:sectionId", deleteSubjectSection);
 
@@ -76,7 +85,37 @@ SharedRouter.post('/scheduleRequirements', verifyAuth, scheduleRequirements);
 SharedRouter.get('/getEmailHistory', verifyAuth, getAllEmails);
 SharedRouter.delete('/deleteEmailHistory', verifyAuth, deleteEmailHistory);
 SharedRouter.patch('/revertToPending/:id', verifyAuth, revertToPending);
-SharedRouter.get("/Logout", verifyAuth, Logout);
 
+
+
+SharedRouter.patch('/set-current-school-year/:id', setCurrentSchoolYear);
+SharedRouter.post('/create-school-year', createSchoolYear);
+SharedRouter.delete('/delete-school-year/:id', deleteSchoolYear);  // Reusing activateSchoolYear for deletion since it already checks if the school year is active or not.
+SharedRouter.get('/get-school-years', getSchoolYears);
+
+
+
+
+
+// Reusing activateSchoolYear for deletion since it already checks if the school year is active or not.
+SharedRouter.get('/getAllSchoolYears', getAllSchoolYears);  // ✅ Moved from homeRouter
+SharedRouter.patch('/update-school-year/:id', activateSchoolYear);
+SharedRouter.patch('/toggleEnrollmentStatus', toggleEnrollmentStatus);  // ✅ New endpoint to toggle enrollment
+
+
+
+
+
+SharedRouter.get('/sections/search-student', searchStudentForSection);
+SharedRouter.get('/sections/:id', getSectionById);
+SharedRouter.post('/sections/:id/add-student',  addStudentToSection);
+SharedRouter.delete('/sections/:id/remove-student/:studentId', removeStudentFromSection);
+
+
+
+SharedRouter.get('/activeSchoolYear', verifyAuth, getActiveSchoolYear);
+
+
+SharedRouter.get("/Logout", verifyAuth, Logout);
 
 export default SharedRouter;

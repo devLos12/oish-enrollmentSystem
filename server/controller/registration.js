@@ -6,7 +6,6 @@ import Admin from "../model/admin.js";
 
 
 
-
 const validateAccessCode = async (code) => {
     const access = await AccessCode.findOne({ code });
 
@@ -18,22 +17,26 @@ const validateAccessCode = async (code) => {
 };
 
 
-
-
 export const StaffRegistration = async (req, res) => {
     try {
-        const { verificationCode, firstName, middleName, lastName, email, password } = req.body;
+        const { verificationCode, firstName, middleName, lastName, suffix, email, password } = req.body;
 
         // Validate access code
         await validateAccessCode(verificationCode);
-        
+
+
+        // // Validate suffix
+        // const validSuffixes = ['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+        // if (suffix && !validSuffixes.includes(suffix.trim())) {
+        //     return res.status(400).json({ message: "Invalid suffix. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA" });
+        // }
+
         const student = await Student.findOne({ email });
         const staff = await Staff.findOne({ email });
-        const admin = await Admin.findOne({ email })
-        
+        const admin = await Admin.findOne({ email });
 
         if(admin || staff || student) {
-            return res.status(409).json({ message: "Account already exists"});
+            return res.status(409).json({ message: "Account already exists" });
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -41,8 +44,9 @@ export const StaffRegistration = async (req, res) => {
 
         await Staff.create({
             firstName, 
-            middleName,  // don't forget to add this!
-            lastName, 
+            middleName,
+            lastName,
+            suffix: suffix || '',
             email, 
             password: hashedPassword 
         });
@@ -53,9 +57,9 @@ export const StaffRegistration = async (req, res) => {
             { new: true }
         );
 
-        return res.status(200).json({ message: "Registered successfully."});
+        return res.status(200).json({ message: "Registered successfully." });
         
     } catch (error) {
-        return res.status(500).json({ message: error.message});
+        return res.status(500).json({ message: error.message });
     }
 }

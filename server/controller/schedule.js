@@ -1,6 +1,11 @@
 import Student from "../model/student.js";
 import EmailHistory from "../model/emailHistory.js";
 import { Resend } from 'resend';
+import SchoolYear from "../model/schoolYear.js";
+
+
+
+
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -206,19 +211,32 @@ const createEmailTemplate = (studentName, title, description, date, time) => {
 };
 
 
-
 export const getAllEmails = async (req, res) => {
     try {
-        const emails = await EmailHistory.find();
 
+        
+        const isActiveSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!isActiveSchoolYear) {
+            return res.status(404).json({ message: "No active school year found" });
+        }   
+
+        const emails = await EmailHistory.find({
+            schoolYear: isActiveSchoolYear._id
+        }).sort({ createdAt: -1 });
+
+        
         if (!emails || emails.length === 0) {
             return res.status(404).json({ message: "No emails yet." });
         }
+
+
         return res.status(200).json(emails);
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 };
+
+
 
 export const getAllStudents = async (req, res) => {
     try {
@@ -232,6 +250,8 @@ export const getAllStudents = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 };
+
+
 
 export const scheduleRequirements = async (req, res) => {
     try {
@@ -265,8 +285,16 @@ export const scheduleRequirements = async (req, res) => {
             return res.status(404).json({ message: "No students found" });
         }
 
+
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(404).json({ message: "No active school year found" });
+        }   
+
+
         // Save to email history
         const emailHistory = new EmailHistory({
+            schoolYear: activeSchoolYear._id,
             title,
             scheduledDate: date,
             scheduledTime: formattedTime,
@@ -318,6 +346,9 @@ export const scheduleRequirements = async (req, res) => {
         });
     }
 };
+
+
+
 
 export const deleteEmailHistory = async (req, res) => {
     try {

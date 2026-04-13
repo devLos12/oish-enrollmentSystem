@@ -8,7 +8,10 @@ import { useLayoutEffect } from "react";
 
 
 const Header = () => {
-    const { textHeader, role, profile, openMenu, setOpenmenu } = useContext(globalContext);
+    const { textHeader, role, profile, openMenu, setOpenmenu, 
+        activeSchoolYear, setActiveSchoolYear
+
+     } = useContext(globalContext);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isStaff, setIsStaff] = useState(false);
     const [isStudent, setIsStudent] = useState(false);
@@ -138,7 +141,7 @@ const Header = () => {
                     onClick={handleOverlayClick}
                 >
                     <div 
-                        className="bg-danger h-100 position-relative"
+                        className="bg-red h-100 position-relative"
                         style={{
                             width: "280px",
                             maxWidth: "80vw",

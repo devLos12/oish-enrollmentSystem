@@ -13,6 +13,9 @@ const ClassRoom = () => {
         setTextHeader(location?.state?.title);
     },[location?.state?.title]);
     
+
+
+
     useEffect(() =>{
         setLoading(true);
         fetch(`${import.meta.env.VITE_API_URL}/api/getClassrooms`, {
@@ -26,6 +29,7 @@ const ClassRoom = () => {
         })
         .then((data) => {
             setSubjectClass(data);
+            console.log(data)
         })
         .catch((error) => {
             console.log("Error: ", error.message);
@@ -95,7 +99,7 @@ const ClassRoom = () => {
                             navigate("/student/students", { 
                                 state: { 
                                     title: "Classroom", 
-                                    data: data 
+                                    data: data,
                                 }
                             });
                         }}
@@ -112,7 +116,7 @@ const ClassRoom = () => {
                                 <div className="d-flex gap-2 align-items-center">
                                     <p className="m-0 text-capitalize small fw-semibold">Grade & section:</p>
                                     <p className="m-0 text-capitalize small fw-bold">
-                                        {data.gradeLevel} - {data.sectionName || `${data.gradeLevel} ${profile?.section || 'N/A'}`}
+                                        {`${data.gradeLevel} ${data.section || 'N/A'}`}
                                     </p>
                                 </div>
                                 

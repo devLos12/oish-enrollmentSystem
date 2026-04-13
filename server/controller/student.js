@@ -4,7 +4,7 @@ import Subject from "../model/subject.js";
 import bcrypt from "bcrypt";
 import Staff from "../model/staff.js";
 import Admin from "../model/admin.js";
-
+import SchoolYear from "../model/schoolYear.js";
 
 
 
@@ -70,6 +70,19 @@ export const createStudent = async (req, res) => {
             Staff.findOne({ email })
         ]);
 
+
+        
+        
+        // const validExtensions = ['', 'N/A', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+
+
+        // if (extensionName && !validExtensions.includes(extensionName.trim())) {
+        //     return res.status(400).json({ 
+        //         message: "Invalid extension name. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA" 
+        //     });
+        // }
+
+
         if (existingStudent) {
             return res.status(409).json({ message: "Email already exists in Student records." });
         }
@@ -98,8 +111,15 @@ export const createStudent = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPass = await bcrypt.hash(password, salt);
 
+
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year." });
+        }
+        
         // ✅ 8. CREATE STUDENT
         const newStudent = await Student.create({
+            schoolYear: activeSchoolYear._id,
             studentNumber,
             lrn,
             firstName,
@@ -149,56 +169,39 @@ export const updateStudent = async (req, res) => {
             repeatedSubjects
         } = req.body;
 
-            
-
-        // Get current student data
+        // ✅ Get current student data from DB — source of truth
         const currentStudent = await Student.findById(studentId);
         if (!currentStudent) {
             return res.status(404).json({ message: "Student not found." });
         }
 
-
+        // ========================================
+        // 🔥 LRN VALIDATION
+        // ========================================
         if (lrn !== undefined && lrn !== null) {
-            // If LRN is being updated, validate format
             const cleanedLRN = String(lrn).trim();
-            
-            // Check if it's not empty and not "N/A"
             if (cleanedLRN !== '' && cleanedLRN.toUpperCase() !== 'N/A') {
-                // Must be exactly 12 digits
                 const digitsOnly = cleanedLRN.replace(/\D/g, '');
-
                 if (digitsOnly.length !== 12) {
-                    return res.status(400).json({ 
-                        message: "LRN must be exactly 12 digits." 
-                    });
+                    return res.status(400).json({ message: "LRN must be exactly 12 digits." });
                 }
-                // Additional check: must contain only numbers
                 if (cleanedLRN !== digitsOnly) {
-                    return res.status(400).json({ 
-                        message: "LRN must contain only numbers." 
-                    });
+                    return res.status(400).json({ message: "LRN must contain only numbers." });
                 }
             }
         }
 
-
-
-        // Use incoming LRN if provided, otherwise use current student's LRN
         const lrnToCheck = lrn !== undefined ? lrn : currentStudent.lrn;
         const hasValidLRN = lrnToCheck && 
                            String(lrnToCheck).trim() !== '' && 
                            String(lrnToCheck).trim().toUpperCase() !== 'N/A';
-        
 
         if (!hasValidLRN) {
-            // If trying to assign a section
             if (section && section.trim() !== '') {
                 return res.status(400).json({ 
                     message: "Cannot assign section. Student must have a valid LRN first." 
                 });
             }
-            
-            // If trying to change status to enrolled
             if (status === 'enrolled') {
                 return res.status(400).json({ 
                     message: "Cannot enroll student. Student must have a valid LRN first." 
@@ -206,19 +209,17 @@ export const updateStudent = async (req, res) => {
             }
         }
 
-
-        // 🔥 Check if any critical field changed
-        const studentTypeChanged = currentStudent.studentType !== studentType;
+        // ========================================
+        // 🔥 DETECT CRITICAL CHANGES
+        // ========================================
+        const wasRepeater = currentStudent.studentType === 'repeater';
         const gradeChanged = currentStudent.gradeLevel !== gradeLevel;
         const trackChanged = currentStudent.track !== track;
         const strandChanged = currentStudent.strand !== strand;
-        const semesterChanged = currentStudent.semester !== semester;
-
-        // 🔥 Any of these changes means subjects need to be re-assigned
-        const criticalFieldChanged = gradeChanged || trackChanged || strandChanged || semesterChanged;
+        const criticalFieldChanged = gradeChanged || trackChanged || strandChanged;
 
         // ========================================
-        // 🔥 GENERAL UPDATE - Basic Info (applies to all)
+        // 🔥 GENERAL UPDATE — Basic Info (applies to all paths)
         // ========================================
         await Student.findByIdAndUpdate(
             studentId,
@@ -238,153 +239,128 @@ export const updateStudent = async (req, res) => {
         );
 
         // ========================================
-        // 🔥 REMOVE FROM OLD SUBJECTS & SECTION IF CRITICAL FIELD CHANGED
+        // 🔥 PATH 1 — REPEATER ENROLLMENT
+        // Dating repeater sa DB, binago ng admin → regular + enrolled + may section
         // ========================================
-        if (criticalFieldChanged) {
-            // 🔥 Pull student from all old subjects
-            await Subject.updateMany(
-                { students: studentId },
-                { $pull: { students: studentId } }
-            );
+        if (wasRepeater && studentType === 'regular' && status === 'enrolled' && section) {
 
-            // 🔥 Remove from old section
+            const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+            if (!activeSchoolYear) {
+                return res.status(400).json({ message: "No active school year set." });
+            }
+
+            const activeSemester = activeSchoolYear.semester;
+            const activeSchoolYearStr = activeSchoolYear.schoolYear;
+
+            // ✅ Find new section — scoped sa active SY + sem
+            const findSection = await Section.findOne({
+                name: section,
+                gradeLevel: gradeLevel,
+                track: track,
+                strand: strand,
+                semester: activeSemester,
+                schoolYear: activeSchoolYear._id
+            });
+
+            if (!findSection) {
+                return res.status(404).json({ 
+                    message: "Section not found for current semester." 
+                });
+            }
+
+            // ✅ Pull from any old section (leftover cleanup)
             await Section.updateOne(
                 { students: studentId },
                 { $pull: { students: studentId } }
             );
-        }
 
-        // ========================================
-        // 🔥 REPEATER STUDENT ENROLLMENT PROCESS
-        // ========================================
-        if (studentType === 'repeater' && status === 'enrolled') {
-            // Prepare repeated subjects
-            const finalRepeatedSubjects = repeatedSubjects ? repeatedSubjects : [];
-
-            // 🔥 Auto-detect semester based on repeated subjects
-            let autoSemester = semester;
-            
-            if (finalRepeatedSubjects.length > 0) {
-                const hasSem1 = finalRepeatedSubjects.some(subj => 
-                    String(subj.semester) === '1' || subj.semester === 1
-                );
-                const hasSem2 = finalRepeatedSubjects.some(subj => 
-                    String(subj.semester) === '2' || subj.semester === 2
-                );
-                
-                if (hasSem1) {
-                    autoSemester = 1;
-                } else if (hasSem2) {
-                    autoSemester = 2;
-                }
+            // ✅ Push to new section
+            if (!findSection.students.includes(studentId)) {
+                findSection.students.push(studentId);
+                await findSection.save();
             }
 
-            // 🔥 Remove student from all subjects first (clean slate)
+            // ✅ Pull from old subjects (leftover Sem 1 subjects)
             await Subject.updateMany(
                 { students: studentId },
                 { $pull: { students: studentId } }
             );
 
-            // Update student with repeater enrollment fields
-            const updatedStudent = await Student.findOneAndUpdate(
-                { _id: studentId },
-                { 
-                    $set: { 
-                        semester: Number(autoSemester),
+            // ✅ Fetch new subjects for this sem — scoped sa active SY
+            const matchedSubjects = await Subject.find({
+                gradeLevel: gradeLevel,
+                strand: strand,
+                track: track,
+                semester: activeSemester,
+                schoolYear: activeSchoolYear._id
+            });
+
+            // ✅ Build new subjects array with section schedule
+            const newSubjects = matchedSubjects.map(subj => {
+                const sectionSchedule = subj.sections?.find(
+                    s => s.sectionName === section
+                );
+                return {
+                    subjectId: subj._id,
+                    subjectName: subj.subjectName,
+                    subjectTeacher: subj.teacher,
+                    semester: subj.semester,
+                    scheduleDay: sectionSchedule?.scheduleDay || "",
+                    scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+                    scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+                    room: sectionSchedule?.room || ""
+                };
+            });
+
+            // ✅ Add student to each matched subject
+            for (const subj of matchedSubjects) {
+                await Subject.findByIdAndUpdate(subj._id, {
+                    $addToSet: { students: studentId }
+                });
+            }
+
+            // ✅ Update student — clear repeater fields, assign fresh data
+            const updatedStudent = await Student.findByIdAndUpdate(
+                studentId,
+                {
+                    $set: {
+                        semester: activeSemester,
                         section,
-                        status, 
-                        studentType,
-                        repeatedSubjects: finalRepeatedSubjects,
+                        status: 'enrolled',
+                        studentType: 'regular',
+                        repeatedSubjects: [],
                         hasEnrollmentRequest: false,
-                        subjects: []
+                        repeatedSection: '',
+                        subjects: newSubjects
                     }
                 },
                 { new: true }
             );
 
             if (!updatedStudent) {
-                return res.status(409).json({ message: "Failed to update." });
+                return res.status(409).json({ message: "Failed to update student." });
             }
 
-            // Find and add to section
-            const findSection = await Section.findOne({
-                name: section,
-                gradeLevel: gradeLevel,
-                track: track,
-                strand: strand,
-                semester: autoSemester
-            });
+            // ✅ Push new registrationHistory entry
+            // Sem 1 history — intact pa rin, hindi o-overwrite
+            const historyIndex = updatedStudent.registrationHistory.findIndex(h =>
+                h.schoolYear === activeSchoolYearStr &&
+                h.semester === activeSemester
+            );
 
-            // Remove from old section if exists
-            const oldSection = await Section.findOne({
-                students: studentId
-            });
-
-            if (oldSection && oldSection.name !== section) {
-                oldSection.students.pull(studentId);
-                await oldSection.save();
-            }
-            
-            // Add to new section
-            if (findSection) {
-                if (!findSection.students.includes(studentId)) {
-                    findSection.students.push(studentId);
-                    await findSection.save();
-                }
-            }
-
-            // 🔥 Auto-sync subjects based on repeatedSubjects
-            if (finalRepeatedSubjects.length > 0) {
-                for (const repeatedRef of finalRepeatedSubjects) {
-                    if (Number(repeatedRef.semester) !== Number(autoSemester)) {
-                        continue;
-                    }
-
-                    const actualSubject = await Subject.findOne({
-                        subjectCode: repeatedRef.subjectCode,
-                        subjectName: repeatedRef.subjectName,
-                        semester: repeatedRef.semester
-                    });
-
-                    if (actualSubject) {
-                        // ✅ GET SCHEDULE FOR THIS SECTION
-                        const sectionSchedule = actualSubject.sections?.find(
-                            s => s.sectionName === updatedStudent.section
-                        );
-
-                        // ✅ PUSH WITH SCHEDULE/ROOM
-                        updatedStudent.subjects.push({
-                            subjectId: actualSubject._id,
-                            subjectName: actualSubject.subjectName,
-                            subjectTeacher: actualSubject.teacher,
-                            semester: actualSubject.semester,
-                            scheduleDay: sectionSchedule?.scheduleDay || "",
-                            scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
-                            scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
-                            room: sectionSchedule?.room || ""
-                        });
-
-                        await Subject.findByIdAndUpdate(actualSubject._id, {
-                            $addToSet: { students: updatedStudent._id }
-                        });
-                    }
-                }
-            }
-
-            // 🔥 Always push to registration history (latest data)
-            updatedStudent.registrationHistory.push({
+            const historyEntry = {
                 lrn: updatedStudent.lrn,
                 studentNumber: updatedStudent.studentNumber,
                 firstName: updatedStudent.firstName,
                 lastName: updatedStudent.lastName,
                 track: updatedStudent.track,
-                semester: Number(autoSemester),
-                schoolYear: updatedStudent.enrollmentYear,
+                semester: activeSemester,
+                schoolYear: activeSchoolYearStr,
                 gradeLevel: updatedStudent.gradeLevel,
-                section: updatedStudent.section,
+                section,
                 strand: updatedStudent.strand,
-                // ✅ AUTO-SYNC WITH SCHEDULE (map from updatedStudent.subjects)
-                subjects: updatedStudent.subjects.map(s => ({
+                status: 'enrolled',
+                subjects: newSubjects.map(s => ({
                     subjectId: s.subjectId,
                     subjectName: s.subjectName,
                     subjectTeacher: s.subjectTeacher,
@@ -395,81 +371,71 @@ export const updateStudent = async (req, res) => {
                     room: s.room
                 })),
                 dateCreated: new Date()
-            });
+            };
+
+            if (historyIndex !== -1) {
+                // ✅ Update existing entry (re-enrollment edge case)
+                updatedStudent.registrationHistory[historyIndex] = {
+                    ...updatedStudent.registrationHistory[historyIndex].toObject(),
+                    ...historyEntry
+                };
+            } else {
+                // ✅ New entry — Sem 1 history stays intact
+                updatedStudent.registrationHistory.push(historyEntry);
+            }
 
             await updatedStudent.save();
 
-            return res.status(200).json({ 
-                message: "Repeater student enrolled successfully.",
+            return res.status(200).json({
+                message: "Repeater enrolled successfully.",
                 student: updatedStudent
             });
         }
 
-
-        // ========================================
-        // 🔥 REPEATER STUDENT UNENROLLED PROCESS
-        // ========================================
-        if (studentType === 'repeater' && status === 'unenrolled') {
-            const finalRepeatedSubjects = repeatedSubjects ? repeatedSubjects : [];
-
-            if (finalRepeatedSubjects.length > 0) {
-                const invalidSubjects = [];
-                
-                for (const repeatedRef of finalRepeatedSubjects) {
-                    const subjectExists = await Subject.findOne({
-                        subjectCode: repeatedRef.subjectCode,
-                        subjectName: repeatedRef.subjectName
-                    });
-
-                    if (!subjectExists) {
-                        invalidSubjects.push({
-                            subjectCode: repeatedRef.subjectCode,
-                            subjectName: repeatedRef.subjectName
-                        });
-                    }
-                }
-
-                if (invalidSubjects.length > 0) {
-                    return res.status(400).json({ 
-                        message: "One or more subjects do not exist in the system.",
-                        invalidSubjects: invalidSubjects
-                    });
-                }
-            }
-
-            let autoSemester = semester;
             
-            if (finalRepeatedSubjects.length > 0) {
-                const hasSem1 = finalRepeatedSubjects.some(subj => 
-                    String(subj.semester) === '1' || subj.semester === 1
-                );
-                const hasSem2 = finalRepeatedSubjects.some(subj => 
-                    String(subj.semester) === '2' || subj.semester === 2
-                );
-                
-                if (hasSem1) {
-                    autoSemester = 1;
-                } else if (hasSem2) {
-                    autoSemester = 2;
-                }
+
+        // ========================================
+        // 🔥 PATH 2 — REPEATER TAGGING
+        // Admin nag-tag as repeater — bagong repeater or update ng existing
+        // ========================================
+        if (studentType === 'repeater') {
+
+            const finalRepeatedSubjects = repeatedSubjects ?? [];
+            const existingRepeatedSubjects = currentStudent.repeatedSubjects || [];
+
+            if (finalRepeatedSubjects.length === 0 && existingRepeatedSubjects.length === 0) {
+                return res.status(400).json({ 
+                    message: "Please add at least one repeated subject." 
+                });
             }
 
-            const oldSection = await Section.findOne({
-                students: studentId
-            });
+            const currentSchoolYear = await SchoolYear.findOne({ isCurrent: true });
+            if (!currentSchoolYear) {
+                return res.status(400).json({ message: "No current school year set." });
+            }
+
+            const repeatedSubjectsToSave = finalRepeatedSubjects.length > 0
+                ? finalRepeatedSubjects.map(s => ({
+                    subjectCode: s.subjectCode || '',
+                    subjectName: s.subjectName || '',
+                    semester: s.semester || currentSchoolYear.semester,
+                    schoolYearId: currentSchoolYear._id,
+                    status: 'failed'
+                }))
+                : existingRepeatedSubjects;
 
             const updatedStudent = await Student.findOneAndUpdate(
                 { _id: studentId },
-                { 
-                    $set: { 
-                        semester: Number(autoSemester),
-                        section: "",
-                        repeatedSection: oldSection ? oldSection.name : "",
-                        status, 
-                        studentType,
-                        repeatedSubjects: finalRepeatedSubjects,
-                        hasEnrollmentRequest: true,
-                        subjects: []
+                {
+                    $set: {
+                        firstName,
+                        middleName,
+                        lastName,
+                        email,
+                        contactNumber,
+                        lrn,
+                        studentType: 'repeater',
+                        repeatedSubjects: repeatedSubjectsToSave,
                     }
                 },
                 { new: true }
@@ -479,39 +445,50 @@ export const updateStudent = async (req, res) => {
                 return res.status(409).json({ message: "Failed to update." });
             }
 
-            if (oldSection) {
-                oldSection.students.pull(studentId);
-                await oldSection.save();
-            }
-
-            await Subject.updateMany(
-                { students: studentId },
-                { $pull: { students: studentId } }
-            );
-
-            return res.status(200).json({ 
-                message: "Repeater student updated successfully.",
+            return res.status(200).json({
+                message: "Student marked as repeater successfully.",
                 student: updatedStudent
             });
         }
 
 
+
         // ========================================
-        // 🔥 REGULAR STUDENT PROCESS
+        // 🔥 PATH 3 — REGULAR STUDENT PROCESS
+        // Regular talaga from the start, hindi dating repeater
         // ========================================
         if (studentType === 'regular') {
+
+            const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+            if (!activeSchoolYear) {
+                return res.status(400).json({ message: "No active school year set." });
+            }
+            const currentSemester = activeSchoolYear.semester;
+
+            // ✅ Pull from old section + subjects if critical field changed
+            if (criticalFieldChanged) {
+                await Subject.updateMany(
+                    { students: studentId },
+                    { $pull: { students: studentId } }
+                );
+                await Section.updateOne(
+                    { students: studentId },
+                    { $pull: { students: studentId } }
+                );
+            }
+
             const updatedStudent = await Student.findOneAndUpdate(
                 { _id: studentId },
                 { 
                     $set: { 
-                        semester,
+                        semester: currentSemester,
                         section,
                         status, 
-                        studentType,
+                        studentType: 'regular',
                         repeatedSubjects: [],
                         hasEnrollmentRequest: false, 
-                        repeatedSection: '', 
-                        ...(studentTypeChanged || criticalFieldChanged) && { subjects: [] }
+                        repeatedSection: '',
+                        subjects: []        // ✅ always clear — fresh assign
                     }
                 },
                 { new: true }
@@ -521,24 +498,32 @@ export const updateStudent = async (req, res) => {
                 return res.status(409).json({ message: "Failed to update." });
             }
 
+            // ========================================
+            // 🔥 ENROLLED
+            // ========================================
             if (status === "enrolled") {
+
+                // ✅ Find section — scoped sa active SY
                 const findSection = await Section.findOne({
                     name: section,
                     gradeLevel: gradeLevel,
                     track: track,
                     strand: strand,
-                    semester: semester
+                    semester: currentSemester,
+                    schoolYear: activeSchoolYear._id
                 });
 
-                const oldSection = await Section.findOne({
-                    students: studentId
+                // ✅ Pull from old section
+                const oldSection = await Section.findOne({ 
+                    students: studentId,
+                    schoolYear: activeSchoolYear._id
                 });
-
                 if (oldSection && oldSection.name !== section) {
                     oldSection.students.pull(studentId);
                     await oldSection.save();
                 }
 
+                // ✅ Push to new section
                 if (findSection) {
                     if (!findSection.students.includes(studentId)) {
                         findSection.students.push(studentId);
@@ -546,66 +531,59 @@ export const updateStudent = async (req, res) => {
                     }
                 }
 
-                // 🔥 Remove from old subjects if critical field changed
-                if (criticalFieldChanged) {
-                    await Subject.updateMany(
-                        { students: studentId },
-                        { $pull: { students: studentId } }
-                    );
-                }
+                // ✅ Pull from old subjects
+                await Subject.updateMany(
+                    { students: studentId },
+                    { $pull: { students: studentId } }
+                );
 
-                // Auto-assign subjects based on grade level/strand/semester
+                // ✅ Fetch + assign new subjects
                 const matchedSubjects = await Subject.find({
                     gradeLevel: gradeLevel,
                     strand: strand,
                     track: track,
-                    semester: semester
+                    semester: currentSemester,
+                    schoolYear: activeSchoolYear._id
                 });
 
-                if (matchedSubjects.length > 0) {
-                    for (const subj of matchedSubjects) {
-                        const alreadyHas = updatedStudent.subjects?.some(
-                            (s) => s.subjectId?.toString() === subj._id.toString()
-                        );
+                for (const subj of matchedSubjects) {
+                    const sectionSchedule = subj.sections?.find(
+                        s => s.sectionName === section
+                    );
+                    updatedStudent.subjects.push({
+                        subjectId: subj._id,
+                        subjectName: subj.subjectName,
+                        subjectTeacher: subj.teacher,
+                        semester: subj.semester,
+                        scheduleDay: sectionSchedule?.scheduleDay || "",
+                        scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+                        scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+                        room: sectionSchedule?.room || ""
+                    });
 
-                        if (!alreadyHas) {
-                            // ✅ GET SCHEDULE FOR THIS SECTION
-                            const sectionSchedule = subj.sections?.find(
-                                s => s.sectionName === updatedStudent.section
-                            );
-
-                            // ✅ PUSH WITH SCHEDULE/ROOM
-                            updatedStudent.subjects.push({
-                                subjectId: subj._id,
-                                subjectName: subj.subjectName,
-                                subjectTeacher: subj.teacher,
-                                semester: subj.semester,
-                                scheduleDay: sectionSchedule?.scheduleDay || "",
-                                scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
-                                scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
-                                room: sectionSchedule?.room || ""
-                            });
-                        }
-
-                        await Subject.findByIdAndUpdate(subj._id, {
-                            $addToSet: { students: updatedStudent._id }
-                        });
-                    }
+                    await Subject.findByIdAndUpdate(subj._id, {
+                        $addToSet: { students: updatedStudent._id }
+                    });
                 }
 
-                // 🔥 Always push to registration history (latest data)
-                updatedStudent.registrationHistory.push({
+                // ✅ Upsert registrationHistory
+                const historyIndex = updatedStudent.registrationHistory.findIndex(h =>
+                    h.schoolYear === activeSchoolYear.schoolYear &&
+                    h.semester === currentSemester
+                );
+
+                const historyEntry = {
                     lrn: updatedStudent.lrn,
                     studentNumber: updatedStudent.studentNumber,
                     firstName: updatedStudent.firstName,
                     lastName: updatedStudent.lastName,
                     track: updatedStudent.track,
-                    semester: updatedStudent.semester,
-                    schoolYear: updatedStudent.enrollmentYear,
+                    semester: currentSemester,
+                    schoolYear: activeSchoolYear.schoolYear,
                     gradeLevel: updatedStudent.gradeLevel,
                     section: updatedStudent.section,
                     strand: updatedStudent.strand,
-                    // ✅ AUTO-SYNC WITH SCHEDULE (map from updatedStudent.subjects)
+                    status: "enrolled",
                     subjects: updatedStudent.subjects.map(s => ({
                         subjectId: s.subjectId,
                         subjectName: s.subjectName,
@@ -617,9 +595,44 @@ export const updateStudent = async (req, res) => {
                         room: s.room
                     })),
                     dateCreated: new Date()
-                });
+                };
+
+                if (historyIndex !== -1) {
+                    updatedStudent.registrationHistory[historyIndex] = {
+                        ...updatedStudent.registrationHistory[historyIndex].toObject(),
+                        ...historyEntry
+                    };
+                } else {
+                    updatedStudent.registrationHistory.push(historyEntry);
+                }
 
                 await updatedStudent.save();
+            }
+
+            // ========================================
+            // 🔥 UNENROLLED
+            // ========================================
+            if (status === "unenrolled") {
+                const historyIndex = updatedStudent.registrationHistory.findIndex(h =>
+                    h.schoolYear === activeSchoolYear.schoolYear &&
+                    h.semester === currentSemester
+                );
+
+                if (historyIndex !== -1) {
+                    updatedStudent.registrationHistory[historyIndex].status = "unenrolled";
+                    updatedStudent.registrationHistory[historyIndex].section = "";
+                    updatedStudent.registrationHistory[historyIndex].subjects = [];
+                    await updatedStudent.save();
+                }
+
+                await Section.updateOne(
+                    { students: studentId },
+                    { $pull: { students: studentId } }
+                );
+                await Subject.updateMany(
+                    { students: studentId },
+                    { $pull: { students: studentId } }
+                );
             }
 
             return res.status(200).json({ 
@@ -628,11 +641,7 @@ export const updateStudent = async (req, res) => {
             });
         }
 
-
-
-        return res.status(400).json({ 
-            message: "Invalid student type." 
-        });
+        return res.status(400).json({ message: "Invalid student type." });
 
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -641,14 +650,127 @@ export const updateStudent = async (req, res) => {
 
 
 
-// GET all students
 export const getStudents = async (req, res) => {
     try {
-        const students = await Student.find().sort({ createdAt: -1 }); // latest first
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        const currentSchoolYear = await SchoolYear.findOne({ isCurrent: true });
+
+        if (!activeSchoolYear || !currentSchoolYear) {
+            return res.status(400).json({ message: "No active/current school year set." });
+        }
+
+        const query = {
+            $or: [
+                {
+                    registrationHistory: {
+                        $elemMatch: {
+                            schoolYear: activeSchoolYear.schoolYear,
+                            semester: activeSchoolYear.semester
+                        }
+                    }
+                },
+                {
+                    status: 'enrolled',
+                    semester: activeSchoolYear.semester,
+                    enrollmentYear: activeSchoolYear.schoolYear.split('-')[0]
+                },
+                {
+                    status: 'pending',
+                    semester: activeSchoolYear.semester
+                },
+                {
+                    studentType: 'repeater',
+                    status: 'pending',
+                    hasEnrollmentRequest: true,
+                    schoolYear: currentSchoolYear._id
+                }
+            ]
+        };
+
+        const students = await Student.find(query)
+            .populate({
+                path: 'registrationHistory.subjects.subjectId',
+                select: 'subjectCode subjectName semester sections'  // ✅ sections included
+            })
+            .sort({ createdAt: -1 });
         
-        return res.status(200).json(students);
+            
+
+        const studentsWithDerivedStatus = students.map(student => {
+
+            const currentSemHistory = student.registrationHistory.find(h =>
+                h.schoolYear === activeSchoolYear.schoolYear &&
+                h.semester === activeSchoolYear.semester
+            );
+
+            const latestHistory = student.registrationHistory
+                .slice()
+                .sort((a, b) => {
+                    const yearDiff = b.schoolYear.localeCompare(a.schoolYear);
+                    if (yearDiff !== 0) return yearDiff;
+                    return b.semester - a.semester;
+                })[0] || null;
+
+            const currentYearHistory = student.registrationHistory
+                .filter(h => h.schoolYear === activeSchoolYear.schoolYear)
+                .sort((a, b) => b.semester - a.semester)[0] || null;
+
+            // ✅ Repeater pending — hindi pa enrolled sa bagong sem
+            const isRepeaterPending = student.studentType === 'repeater' &&
+                                    student.status === 'pending' &&
+                                    student.hasEnrollmentRequest === true;
+
+            // ✅ Kung repeater pending — null ang source, walang subjects
+            const sourceHistory = isRepeaterPending
+                ? null
+                : (currentSemHistory || latestHistory);
+
+            const activeSection = isRepeaterPending
+                ? ''
+                : (currentSemHistory?.section || latestHistory?.section || '');
+
+            // ✅ derivedSubjects — empty pag repeater pending
+            const derivedSubjects = isRepeaterPending
+                ? []
+                : sourceHistory?.subjects?.map(s => {
+                    const populatedSubject = s.subjectId;
+                    const matchedSection = populatedSubject?.sections?.find(
+                        sec => sec.sectionName === activeSection
+                    );
+                    return {
+                        subjectId:         populatedSubject?._id          || s.subjectId,
+                        subjectCode:       populatedSubject?.subjectCode   || '',
+                        subjectName:       populatedSubject?.subjectName   || s.subjectName || '',
+                        subjectTeacher:    s.subjectTeacher                || '',
+                        semester:          populatedSubject?.semester      || s.semester    || null,
+                        scheduleStartTime: matchedSection?.scheduleStartTime || s.scheduleStartTime || '',
+                        scheduleEndTime:   matchedSection?.scheduleEndTime   || s.scheduleEndTime   || '',
+                        room:              matchedSection?.room              || s.room              || '',
+                    };
+                }) || [];
+
+            return {
+                ...student.toObject(),
+                currentSemEnrolled:  !!(currentSemHistory?.status === 'enrolled'),
+                currentSemHistory:   currentSemHistory  || null,
+                currentYearHistory:  currentYearHistory || null,
+                currentSemSubjects:  derivedSubjects,
+                subjects:            derivedSubjects,
+
+                displayGradeLevel:  currentSemHistory?.gradeLevel  || latestHistory?.gradeLevel  || student.gradeLevel,
+                displaySection:     currentSemHistory?.status === 'enrolled'
+                                        ? currentSemHistory.section
+                                        : 'No Section',
+                displayStrand:      currentSemHistory?.strand      || latestHistory?.strand      || student.strand,
+                displaySemester:    currentSemHistory?.semester    || latestHistory?.semester    || activeSchoolYear.semester,
+                displaySchoolYear:  currentSemHistory?.schoolYear  || latestHistory?.schoolYear  || activeSchoolYear.schoolYear,
+            };
+        });
+
+        return res.status(200).json(studentsWithDerivedStatus);
+
     } catch (error) {
-        return res.status(500).json({ error: error.message});
+        return res.status(500).json({ error: error.message });
     }
 };
 
@@ -679,39 +801,26 @@ export const deleteStudent = async(req, res) => {
 
 
 
-
-
-
-
 export const getAssignSections = async (req, res) => {
     try {
-        const { gradeLevel, track, strand, semester } = req.query;
+        const { gradeLevel, track, strand } = req.query;
 
-
-        // Build filter object
         const filter = {};
-        
-        if (gradeLevel) {
-            filter.gradeLevel = parseInt(gradeLevel);
-        }
-        
-        if (track) {
-            filter.track = track;
-        }
-        
-        if (strand) {
-            filter.strand = strand;
-        }
-        
-        if (semester) {
-            filter.semester = parseInt(semester);
+        if (gradeLevel) filter.gradeLevel = parseInt(gradeLevel);
+        if (track) filter.track = track;
+        if (strand) filter.strand = strand;
+
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true }); // ✅ isActive
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year." });
         }
 
+        const sections = await Section.find({ 
+            ...filter,
+            schoolYear: activeSchoolYear._id,
+            semester: activeSchoolYear.semester  // ✅ always naka-point sa active sem
+        }).sort({ name: 1 });
 
-        const sections = await Section.find(filter).sort({ name: 1 });
-        
-
-        // Add computed fields for available slots
         const sectionsWithSlots = sections.map(section => {
             const currentStudents = section.students?.length || 0;
             const availableSlots = section.maxCapacity - currentStudents;
@@ -731,7 +840,6 @@ export const getAssignSections = async (req, res) => {
             };
         });
 
-
         res.status(200).json(sectionsWithSlots);
         
     } catch (error) {
@@ -742,8 +850,6 @@ export const getAssignSections = async (req, res) => {
         });
     }
 };
-
-
 
 
 export const setStudentsPending = async (req, res) => {
@@ -795,141 +901,154 @@ export const setStudentsPending = async (req, res) => {
 
 
 
-
 export const EnrollStudentFromPortal = async (req, res) => {
   try {
-    const studentId = req.account.id; // Logged-in student from token
+    const studentId = req.account.id;
 
-    // 1️⃣ Fetch student
     const student = await Student.findById(studentId);
     if (!student) return res.status(404).json({ message: "Student not found." });
 
-    
-    // ========================================
-    // 🔥 REPEATER ENROLLMENT
-    // ========================================
-    if(student.studentType === 'repeater' && student.repeatedSubjects.length > 0){
-        
-        if(student.status === 'unenrolled'){
-            student.status = "pending";
-            student.hasEnrollmentRequest = false;
-        }
-        
+    const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+    if (!activeSchoolYear) return res.status(400).json({ message: "No active school year." });
+
+    const activeSemester      = activeSchoolYear.semester;
+    const activeSchoolYearStr = activeSchoolYear.schoolYear;
+
+    // ✅ Guard — already enrolled this sem
+    const alreadyEnrolled = student.registrationHistory.some(h =>
+        h.schoolYear === activeSchoolYearStr &&
+        h.semester   === activeSemester &&
+        h.status     === "enrolled"
+    );
+    if (alreadyEnrolled) {
+        return res.status(400).json({ message: "You are already enrolled for this semester." });
+    }
+
+    // ✅ Repeater block
+    if (student.studentType === 'repeater') {
+        student.status = 'pending';
+        student.hasEnrollmentRequest = true;
+        student.semester = activeSemester;
         await student.save();
-        return res.status(200).json({ message: "Enrollment request submitted" });
+        return res.status(200).json({ 
+            message: "Enrollment request submitted. Please wait for admin approval." 
+        });
     }
 
-
-    // ========================================
-    // 🔥 REGULAR STUDENT ENROLLMENT
-    // ========================================
-    const nextGrade = 12;
-    const nextSemester = 1;
-    const currentSection = student.section; // Keep same section
-
-    // 2️⃣ Update grade, semester, status
-    student.gradeLevel = nextGrade;
-    student.semester = nextSemester;
-    student.status = "enrolled";
-    student.createdAt = new Date();
-
-
-    // 3️⃣ Find section for auto-assignment
+    // ✅ Find section — direct via students[] + active SY + sem
     const findSection = await Section.findOne({
-      name: currentSection,
-      gradeLevel: nextGrade,
-      track: student.track,
-      strand: student.strand,
-      semester: nextSemester
+        students: studentId,
+        schoolYear: activeSchoolYear._id,
+        semester: activeSemester
     });
 
-    // If section exists, add student to it
-    if (findSection) {
-      if (!findSection.students.includes(studentId)) {
-        findSection.students.push(studentId);
-        await findSection.save();
-      }
+    if (!findSection) {
+        return res.status(404).json({ message: "No matching section found for this semester." });
     }
 
+    // ✅ Derive from section — mas accurate kaysa sa student global fields
+    const currentSection = findSection.name;
+    const currentGrade   = findSection.gradeLevel;  // ← G12 na pag promoted
 
-    // 4️⃣ Auto-assign subjects for new level WITH SCHEDULE
+    if (!findSection.isOpenEnrollment) {
+        return res.status(400).json({ message: "Enrollment is not open for your section." });
+    }
+
+    if (findSection.isEnrolled.includes(studentId)) {
+        return res.status(400).json({ message: "You are already enrolled in this section." });
+    }
+
+    if (findSection.students.length >= findSection.maxCapacity) {
+        return res.status(400).json({ message: "Section is already full." });
+    }
+
+    // ✅ Update student — gradeLevel derived from section
+    student.semester    = activeSemester;
+    student.gradeLevel  = currentGrade;    // ← G11 → G12 update dito na mangyayari
+    student.section     = currentSection;
+
+    if (!findSection.isEnrolled.includes(studentId)) {
+        findSection.isEnrolled.push(studentId);
+    }
+    await findSection.save();
+
+    // ✅ Subject lookup — scoped sa active SY + derived grade
     const matchedSubjects = await Subject.find({
-      gradeLevel: nextGrade,
-      strand: student.strand,
-      track: student.track,
-      semester: nextSemester
+        gradeLevel: currentGrade,
+        strand: student.strand,
+        track: student.track,
+        semester: activeSemester,
+        schoolYear: activeSchoolYear._id
     });
 
-    student.subjects = []; // reset subjects
+    // ✅ Pull from old subjects first — clean slate
+    await Subject.updateMany(
+        { students: studentId },
+        { $pull: { students: studentId } }
+    );
 
+    student.subjects = [];
     for (const subj of matchedSubjects) {
-      // ✅ GET SCHEDULE FOR THIS SECTION
-      const sectionSchedule = subj.sections?.find(
-        s => s.sectionName === currentSection
-      );
-
-      // ✅ PUSH WITH SCHEDULE/ROOM (same as updateStudent)
-      student.subjects.push({
-        subjectId: subj._id,
-        subjectName: subj.subjectName,
-        subjectTeacher: subj.teacher,
-        semester: subj.semester,
-        scheduleDay: sectionSchedule?.scheduleDay || "",
-        scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
-        scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
-        room: sectionSchedule?.room || ""
-      });
-
-      // Add student to subject's students array
-      await Subject.findByIdAndUpdate(subj._id, {
-        $addToSet: { students: student._id }
-      });
+        const sectionSchedule = subj.sections?.find(
+            s => s.sectionName === currentSection
+        );
+        student.subjects.push({
+            subjectId:         subj._id,
+            subjectName:       subj.subjectName,
+            subjectTeacher:    subj.teacher,
+            semester:          subj.semester,
+            scheduleDay:       sectionSchedule?.scheduleDay       || "",
+            scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+            scheduleEndTime:   sectionSchedule?.scheduleEndTime   || "",
+            room:              sectionSchedule?.room              || ""
+        });
+        await Subject.findByIdAndUpdate(subj._id, {
+            $addToSet: { students: student._id }
+        });
     }
 
+    // ✅ registrationHistory upsert
+    const historyIndex = student.registrationHistory.findIndex(h =>
+        h.schoolYear === activeSchoolYearStr &&
+        h.semester   === activeSemester
+    );
 
-    // 5️⃣ Update registration history WITH SCHEDULE
-    student.registrationHistory.push({
-      lrn: student.lrn,
-      studentNumber: student.studentNumber,
-      firstName: student.firstName,
-      lastName: student.lastName,
-      track: student.track,
-      semester: nextSemester,
-      schoolYear: student.enrollmentYear,
-      gradeLevel: nextGrade,
-      section: currentSection,
-      strand: student.strand,
-      // ✅ AUTO-SYNC WITH SCHEDULE (map from student.subjects)
-      subjects: student.subjects.map(s => ({
-        subjectId: s.subjectId,
-        subjectName: s.subjectName,
-        subjectTeacher: s.subjectTeacher,
-        semester: s.semester,
-        scheduleDay: s.scheduleDay,
-        scheduleStartTime: s.scheduleStartTime,
-        scheduleEndTime: s.scheduleEndTime,
-        room: s.room
-      })),
-      dateCreated: new Date()
-    });
+    const historyEntry = {
+        lrn:           student.lrn,
+        studentNumber: student.studentNumber,
+        firstName:     student.firstName,
+        lastName:      student.lastName,
+        track:         student.track,
+        semester:      activeSemester,
+        schoolYear:    activeSchoolYearStr,
+        gradeLevel:    currentGrade,       // ← G12 na
+        section:       currentSection,
+        strand:        student.strand,
+        status:        "enrolled",
+        subjects:      student.subjects.map(s => ({
+            subjectId:         s.subjectId,
+            subjectName:       s.subjectName,
+            subjectTeacher:    s.subjectTeacher,
+            semester:          s.semester,
+            scheduleDay:       s.scheduleDay,
+            scheduleStartTime: s.scheduleStartTime,
+            scheduleEndTime:   s.scheduleEndTime,
+            room:              s.room
+        })),
+        dateCreated: new Date()
+    };
 
+    if (historyIndex !== -1) {
+        student.registrationHistory[historyIndex] = {
+            ...student.registrationHistory[historyIndex].toObject(),
+            ...historyEntry
+        };
+    } else {
+        student.registrationHistory.push(historyEntry);
+    }
 
-    // 6️⃣ Save student
     await student.save();
-
-
-    // 7️⃣ ADD STUDENT TO SECTION.isEnrolled ARRAY
-    if (findSection) {
-      await Section.findOneAndUpdate(
-        { name: currentSection },
-        { $addToSet: { isEnrolled: student._id } } // para iwas duplicate
-      );
-    }
-
-    return res.status(200).json({ 
-      message: "Enrollment successful",
-      student: student
-    });
+    return res.status(200).json({ message: "Enrollment successful." });
 
   } catch (error) {
     return res.status(500).json({ message: error.message });

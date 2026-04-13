@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-
-
 const StaffRegistration = () => {
     const navigate = useNavigate();
     const [verificationCode, setVerificationCode] = useState('');
@@ -15,21 +13,18 @@ const StaffRegistration = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    
+    const [middleName, setMiddleName] = useState('');
+    const [suffix, setSuffix] = useState('');
+
     // Modal states
     const [showModal, setShowModal] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [modalMessage, setModalMessage] = useState('');
     const [modalType, setModalType] = useState('success');
 
-    const [middleName, setMiddleName] = useState('');
-
-
-    // Handle modal animation
     useEffect(() => {
         if (showModal) {
             setTimeout(() => setIsModalVisible(true), 10);
-            
             const timer = setTimeout(() => {
                 setIsModalVisible(false);
                 setTimeout(() => {
@@ -39,7 +34,6 @@ const StaffRegistration = () => {
                     }
                 }, 300);
             }, 2000);
-            
             return () => clearTimeout(timer);
         }
     }, [showModal, modalType, navigate]);
@@ -51,51 +45,23 @@ const StaffRegistration = () => {
     };
 
     const validatePassword = (pwd) => {
-        const minLength = 8;
-        const hasUpperCase = /[A-Z]/.test(pwd);
-        const hasLowerCase = /[a-z]/.test(pwd);
-        const hasNumber = /\d/.test(pwd);
-        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
-
-        if (pwd.length < minLength) {
-            return "Password must be at least 8 characters long";
-        }
-        if (!hasUpperCase) {
-            return "Password must contain at least one uppercase letter";
-        }
-        if (!hasLowerCase) {
-            return "Password must contain at least one lowercase letter";
-        }
-        if (!hasNumber) {
-            return "Password must contain at least one number";
-        }
-        if (!hasSpecialChar) {
-            return "Password must contain at least one special character";
-        }
+        if (pwd.length < 8) return "Password must be at least 8 characters long";
+        if (!/[A-Z]/.test(pwd)) return "Password must contain at least one uppercase letter";
+        if (!/[a-z]/.test(pwd)) return "Password must contain at least one lowercase letter";
+        if (!/\d/.test(pwd)) return "Password must contain at least one number";
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) return "Password must contain at least one special character";
         return "";
     };
 
     const handlePasswordChange = (e) => {
         const newPassword = e.target.value;
         setPassword(newPassword);
-        const error = validatePassword(newPassword);
-        setPasswordError(error);
+        setPasswordError(validatePassword(newPassword));
     };
 
     const handleForm = async (e) => {
         e.preventDefault();
         setLoading(true);
-
-
-        const data = {
-            verificationCode, 
-            firstName, 
-            middleName,
-            lastName, 
-            email, 
-            password 
-
-        }
 
         const passwordValidationError = validatePassword(password);
         if (passwordValidationError) {
@@ -119,26 +85,27 @@ const StaffRegistration = () => {
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/staff_registration`, {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ 
-                    verificationCode, 
-                    firstName, 
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    verificationCode,
+                    firstName,
                     middleName,
-                    lastName, 
-                    email, 
-                    password 
+                    lastName,
+                    suffix,
+                    email,
+                    password
                 }),
-                credentials: "include", 
+                credentials: "include",
             });
 
             const data = await res.json();
-            
-            if(!res.ok) {
+
+            if (!res.ok) {
                 showNotification(data.message, "error");
                 setLoading(false);
                 return;
             }
-            
+
             showNotification(data.message || 'Registration successful!', 'success');
 
         } catch (error) {
@@ -147,196 +114,225 @@ const StaffRegistration = () => {
         } finally {
             setLoading(false);
         }
-    }    
+    };
 
     return (
         <>
             <div className="container bg-light min-vh-100">
                 <div className="row justify-content-center">
                     <div className="col-12 col-md-12 col-lg-10">
-                        <div className="p-0 p-md-4 mt-5 ">
-                            {/* Main Form Card */}
+                        <div className="p-0 p-md-4 mt-5">
                             <div className="card border-0 rounded-0 shadow-sm my-5">
                                 <div className="card-body p-4">
-                                    <h2 className="h5 fw-bold text-danger text-uppercase text-center mb-4">register as faculty member</h2>
+                                    <h2 className="h5 fw-bold text-danger text-uppercase text-center mb-4">
+                                        register as faculty member
+                                    </h2>
 
                                     <form onSubmit={handleForm}>
-                                        <div className="row">
-                                            {/* Left Column */}
+
+                                        {/* Section 1: Personal Information */}
+                                        <p className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-3">
+                                            Personal Information
+                                        </p>
+
+                                        {/* Row 1: First Name | Middle Name */}
+                                        <div className="row mb-3">
                                             <div className="col-md-6">
-                                                {/* Verification Code */}
-                                                <div className="mb-3">
-                                                    <div className="d-flex align-items-center gap-1 mb-2">
-                                                        <i className="fa fa-shield text-muted"></i>
-                                                        <label className="m-0 text-capitalize fw-bold text-muted small">verification code:</label>
-                                                        <span className="small text-danger fw-semibold ms-1">* Required</span>
-                                                    </div>
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="Enter verification code" 
-                                                        value={verificationCode}
-                                                        onChange={(e) => setVerificationCode(e.target.value)}
-                                                        className="form-control shadow-sm"
-                                                        required
-                                                        disabled={loading}
-                                                    />
-                                                    <small className="text-muted">*Requested from IT Admin.</small>
-                                                </div>
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-user text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">first name:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
 
-                                                {/* First Name */}
-                                                <div className="mb-3">
-                                                    <div className="d-flex align-items-center gap-1 mb-2">
-                                                        <i className="fa fa-user text-muted"></i>
-                                                        <label className="m-0 text-capitalize fw-bold text-muted small">first name:</label>
-                                                    </div>
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="Enter first name" 
-                                                        value={firstName}
-                                                        onChange={(e) => setFirstName(e.target.value)}
-                                                        className="form-control shadow-sm"
-                                                        required
-                                                        disabled={loading}
-                                                    />
                                                 </div>
-
-                                                {/* Middle Name */}
-                                                <div className="mb-3">
-                                                    <div className="d-flex align-items-center gap-1 mb-2">
-                                                        <i className="fa fa-user text-muted"></i>
-                                                        <label className="m-0 text-capitalize fw-bold text-muted small">middle name:</label>
-                                                    </div>
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="Enter middle name" 
-                                                        value={middleName}
-                                                        onChange={(e) => setMiddleName(e.target.value)}
-                                                        className="form-control shadow-sm"
-                                                        required
-                                                        disabled={loading}
-                                                    />
-                                                </div>
-
-                                                {/* Last Name */}
-                                                <div className="mb-3">
-                                                    <div className="d-flex align-items-center gap-1 mb-2">
-                                                        <i className="fa fa-user text-muted"></i>
-                                                        <label className="m-0 text-capitalize fw-bold text-muted small">last name:</label>
-                                                    </div>
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="Enter last name" 
-                                                        value={lastName}
-                                                        onChange={(e) => setLastName(e.target.value)}
-                                                        className="form-control shadow-sm"
-                                                        required
-                                                        disabled={loading}
-                                                    />
-                                                </div>
-
-                                               
-                                            </div>
-
-                                            {/* Right Column */}
-                                            <div className="col-md-6 border-start">
-                                                 {/* Email */}
-                                                <div className="mb-3">
-                                                    <div className="d-flex align-items-center gap-1 mb-2">
-                                                        <i className="fa fa-envelope text-muted"></i>
-                                                        <label className="m-0 text-capitalize fw-bold text-muted small">email address:</label>
-                                                    </div>
-                                                    <input 
-                                                        type="email" 
-                                                        placeholder="yourname@gmail.com" 
-                                                        value={email}
-                                                        onChange={(e) => setEmail(e.target.value)}
-                                                        className="form-control shadow-sm"
-                                                        required
-                                                        disabled={loading}
-                                                    />
-                                                </div>
-                                                {/* Password */}
-                                                <div className="mb-3">
-                                                    <div className="d-flex align-items-center gap-1 mb-2">
-                                                        <i className="fa fa-lock text-muted"></i>
-                                                        <label className="m-0 text-capitalize fw-bold text-muted small">password:</label>
-                                                    </div>
-                                                    <div className="position-relative">
-                                                        <input 
-                                                            type={showPassword ? "text" : "password"}
-                                                            placeholder="Enter password" 
-                                                            value={password}
-                                                            onChange={handlePasswordChange}
-                                                            required
-                                                            className="form-control shadow-sm"
-                                                            disabled={loading}
-                                                        />
-                                                        <i 
-                                                            className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
-                                                            style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
-                                                            onClick={() => setShowPassword(!showPassword)}
-                                                        ></i>
-                                                    </div>
-                                                    {passwordError && (
-                                                        <small className="text-danger d-block mt-1">{passwordError}</small>
-                                                    )}
-                                                    <small className="text-muted d-block mt-1">
-                                                        Password must contain: 8+ characters, uppercase, lowercase, number, and special character
-                                                    </small>
-                                                </div>
-
-                                                {/* Confirm Password */}
-                                                <div className="mb-3">
-                                                    <div className="d-flex align-items-center gap-1 mb-2">
-                                                        <i className="fa fa-lock text-muted"></i>
-                                                        <label className="m-0 text-capitalize fw-bold text-muted small">confirm password:</label>
-                                                    </div>
-                                                    <div className="position-relative">
-                                                        <input 
-                                                            type={showConfirmPassword ? "text" : "password"}
-                                                            placeholder="Re-enter password" 
-                                                            value={confirmPassword}
-                                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                                            required
-                                                            className="form-control shadow-sm"
-                                                            disabled={loading}
-                                                        />
-                                                        <i 
-                                                            className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
-                                                            style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
-                                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                        ></i>
-                                                    </div>
-                                                </div>
-
-                                                {/* Submit Button */}
-                                                <button 
-                                                    className="btn btn-danger text-capitalize mt-3 w-100 shadow-sm"
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter first name"
+                                                    value={firstName}
+                                                    onChange={(e) => setFirstName(e.target.value)}
+                                                    className="form-control shadow-sm"
+                                                    required
                                                     disabled={loading}
-                                                >
-                                                    {loading ? (
-                                                        <>
-                                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                                            Registering...
-                                                        </>
-                                                    ) : (
-                                                        'Register'
-                                                    )}
-                                                </button>
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-user text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">middle name:</label>
+                                                    <span className="small text-muted ms-1">(optional)</span>
 
-                                                {/* Login Link */}
-                                                <div className="mt-3 d-flex justify-content-center align-items-center gap-2 small">
-                                                    <p className="m-0 text-capitalize">already have an account?</p>
-                                                    <p 
-                                                        className="m-0 text-capitalize text-danger fw-bold"
-                                                        style={{cursor: 'pointer'}}
-                                                        onClick={() => navigate("/login")}
-                                                    >
-                                                        login now.
-                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter middle name"
+                                                    value={middleName}
+                                                    onChange={(e) => setMiddleName(e.target.value)}
+                                                    className="form-control shadow-sm"
+                                                    required
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Row 2: Last Name | Suffix */}
+                                        <div className="row mb-4">
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-user text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">last name:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter last name"
+                                                    value={lastName}
+                                                    onChange={(e) => setLastName(e.target.value)}
+                                                    className="form-control shadow-sm"
+                                                    required
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-user text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">suffix:</label>
+                                                    <span className="small text-muted ms-1">(optional)</span>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. Jr., Sr., II, III, MD, PhD, CPA, Esq."
+                                                    value={suffix}
+                                                    onChange={(e) => setSuffix(e.target.value)}
+                                                    className="form-control shadow-sm"
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Section 2: Verification & Security */}
+                                        <p className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-3">
+                                            Verification & Security 
+                                        </p>
+
+                                        {/* Row 3: Verification Code | Email */}
+                                        <div className="row mb-3">
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-shield text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">verification code:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter verification code"
+                                                    value={verificationCode}
+                                                    onChange={(e) => setVerificationCode(e.target.value)}
+                                                    className="form-control shadow-sm"
+                                                    required
+                                                    disabled={loading}
+                                                />
+                                                <small className="text-muted">*Requested from IT Admin.</small>
+                                            </div>
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-envelope text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">email address:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
+                                                </div>
+                                                <input
+                                                    type="email"
+                                                    placeholder="yourname@gmail.com"
+                                                    value={email}
+                                                    onChange={(e) => setEmail(e.target.value)}
+                                                    className="form-control shadow-sm"
+                                                    required
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Row 4: Password | Confirm Password */}
+                                        <div className="row mb-4">
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-lock text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">password:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
+                                                </div>
+                                                <div className="position-relative">
+                                                    <input
+                                                        type={showPassword ? "text" : "password"}
+                                                        placeholder="Enter password"
+                                                        value={password}
+                                                        onChange={handlePasswordChange}
+                                                        required
+                                                        className="form-control shadow-sm"
+                                                        disabled={loading}
+                                                    />
+                                                    <i
+                                                        className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                        style={{ right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }}
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                    ></i>
+                                                </div>
+                                                {passwordError && (
+                                                    <small className="text-danger d-block mt-1">{passwordError}</small>
+                                                )}
+                                                <small className="text-muted d-block mt-1">
+                                                    Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+                                                </small>
+                                            </div>
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-lock text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">confirm password:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
+                                                </div>
+                                                <div className="position-relative">
+                                                    <input
+                                                        type={showConfirmPassword ? "text" : "password"}
+                                                        placeholder="Re-enter password"
+                                                        value={confirmPassword}
+                                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                                        required
+                                                        className="form-control shadow-sm"
+                                                        disabled={loading}
+                                                    />
+                                                    <i
+                                                        className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                        style={{ right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }}
+                                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                    ></i>
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {/* Register Button - full width */}
+                                        <button
+                                            className="btn btn-danger text-capitalize w-100 shadow-sm"
+                                            disabled={loading}
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    Registering...
+                                                </>
+                                            ) : (
+                                                'Register'
+                                            )}
+                                        </button>
+
+                                        {/* Login Link */}
+                                        <div className="mt-3 d-flex justify-content-center align-items-center gap-2 small">
+                                            <p className="m-0 text-capitalize">already have an account?</p>
+                                            <p
+                                                className="m-0 text-capitalize text-danger fw-bold"
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => navigate("/login")}
+                                            >
+                                                login now.
+                                            </p>
+                                        </div>
+
                                     </form>
                                 </div>
                             </div>
@@ -345,7 +341,7 @@ const StaffRegistration = () => {
                 </div>
             </div>
 
-            {/* Success/Error Modal with Animation */}
+            {/* Success/Error Modal */}
             {showModal && (
                 <div
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
@@ -364,14 +360,14 @@ const StaffRegistration = () => {
                     >
                         <div className="mb-3">
                             {modalType === "success" ? (
-                                <div 
+                                <div
                                     className="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center"
                                     style={{ width: "80px", height: "80px" }}
                                 >
                                     <i className="fa fa-check-circle text-success" style={{ fontSize: "50px" }}></i>
                                 </div>
                             ) : (
-                                <div 
+                                <div
                                     className="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center"
                                     style={{ width: "80px", height: "80px" }}
                                 >
@@ -388,6 +384,6 @@ const StaffRegistration = () => {
             )}
         </>
     );
-}
+};
 
 export default StaffRegistration;

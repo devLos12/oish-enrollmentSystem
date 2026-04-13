@@ -18,13 +18,18 @@ const StaffSchema = new mongoose.Schema({
      
     middleName:{
         type: String,
-        required: true
+        required: false
     },
 
     lastName: {
         type: String,
         required: true
     },
+
+    suffix: {
+        type: String,
+        required: false
+    },  
     
     email: {
         type: String,

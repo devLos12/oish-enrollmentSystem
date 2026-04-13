@@ -7,7 +7,6 @@ import { getAnnouncements } from "../controller/announcement.js";
 import {  changePassword, requestCode, verifyCode } from "../controller/forgotPassword.js";
 
 
-
 const HomeRouter = express.Router();
 
 HomeRouter.get("/urlAuthentication", UrlAuthentication);

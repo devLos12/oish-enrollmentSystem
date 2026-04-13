@@ -9,36 +9,26 @@ const ClassRoom = () => {
     const [filteredSubjects, setFilteredSubjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterGrade, setFilterGrade] = useState('');
-    const [filterSemester, setFilterSemester] = useState('');
     const [filterStrand, setFilterStrand] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYearId, setSelectedSchoolYearId] = useState('');
     const navigate = useNavigate();
-
-
-
-
-
-    
-
-
-
 
     // Utility function to format time to 12-hour with AM/PM
     const formatTime = (time) => {
         if (!time) return '';
         
-        // If already has AM/PM, return as is
         if (time.toLowerCase().includes('am') || time.toLowerCase().includes('pm')) {
             return time;
         }
         
-        // Parse 24-hour format (HH:MM)
         const [hours, minutes] = time.split(':');
         let hour = parseInt(hours);
         const ampm = hour >= 12 ? 'PM' : 'AM';
         
         hour = hour % 12;
-        hour = hour ? hour : 12; // 0 should be 12
+        hour = hour ? hour : 12;
         
         return `${hour}:${minutes} ${ampm}`;
     };
@@ -47,11 +37,44 @@ const ClassRoom = () => {
         setTextHeader(location?.state?.title);
     },[location?.state?.title]);
     
+    // Fetch all school years on mount
+    useEffect(() => {
+        fetch(`${import.meta.env.VITE_API_URL}/api/getAllSchoolYears`, {
+            method: "GET",
+            credentials: "include"
+        })
+        .then(async(res) => {
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.message);
+            return data;
+        })
+        .then((data) => {
+            if(data.success && data.data) {
+                setSchoolYears(data.data);
+                const activeYear = data.data.find(sy => sy.isCurrent);
 
+                if(activeYear) {
+                    setSelectedSchoolYearId(activeYear._id);
+                } else if(data.data.length > 0) {
+                    setSelectedSchoolYearId(data.data[0]._id);
+                }
+            }
+        })
+        .catch((error) => {
+            console.log("Error fetching school years: ", error.message);
+        });
+    }, []);
 
     useEffect(() =>{
+        if (!selectedSchoolYearId) {
+            setSubjectClass([]);
+            setFilteredSubjects([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
-        fetch(`${import.meta.env.VITE_API_URL}/api/getTeacherSubjects`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/getTeacherSubjectsBySchoolYear?schoolYearId=${selectedSchoolYearId}`, {
             method: "GET",
             credentials: "include"
         })
@@ -72,20 +95,15 @@ const ClassRoom = () => {
         .finally(() => {
             setLoading(false);
         });
-    },[]);
-
-    
+    }, [selectedSchoolYearId]);
 
     const gradeOptions = [11, 12];
-    const semesterOptions = [1, 2];
 
     const strandOptions = [...new Set(
         subjectClass
             .map(subject => subject.strand)
             .filter(strand => strand)
     )].sort();
-
-
 
     // Filter logic
     useEffect(() => {
@@ -103,59 +121,16 @@ const ClassRoom = () => {
             filtered = filtered.filter(subject => subject.gradeLevel === parseInt(filterGrade));
         }
 
-        if (filterSemester) {
-            filtered = filtered.filter(subject => subject.semester === parseInt(filterSemester));
-        }
-
         if (filterStrand) {
             filtered = filtered.filter(subject => subject.strand === filterStrand);
         }
 
         setFilteredSubjects(filtered);
-    }, [searchTerm, filterGrade, filterSemester, filterStrand, subjectClass]);
-        
-    if(loading){
-        return (
-            <div className="container mt-4">
-                <div className="row justify-content-center">
-                    <div className="col-12 col-md-6">
-                        <div className="card border-0 shadow-sm">
-                            <div className="card-body text-center p-5">
-                                <div className="spinner-border text-danger mb-3" role="status">
-                                    <span className="visually-hidden">Loading...</span>
-                                </div>
-                                <p className="text-muted mb-0">Loading classrooms...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if(subjectClass.length <= 0){
-        return (
-            <div className="container mt-4">
-                <div className="row justify-content-center">
-                    <div className="col-12 col-md-6">
-                        <div className="card border-0 shadow-sm">
-                            <div className="card-body text-center p-5">
-                                <i className="fa-solid fa-chalkboard text-muted mb-3" style={{ fontSize: '4rem' }}></i>
-                                <h5 className="fw-bold text-dark mb-2">No Classrooms Found</h5>
-                                <p className="text-muted mb-0">
-                                    You are not enrolled in any classrooms yet.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    }, [searchTerm, filterGrade, filterStrand, subjectClass]);
 
     return (
         <div className="container">
-            {/* Search and Filters */}
+            {/* Search and Filters — laging visible */}
             <div className="row mb-4">
                 <div className="col-12">
                     <div className="card border-0 shadow-sm">
@@ -181,6 +156,22 @@ const ClassRoom = () => {
                             {/* Filter Dropdowns */}
                             <div className="row g-2">
                                 <div className="col-12 col-md-3">
+                                    <label className="form-label small fw-semibold">School Year/Semester</label>
+                                    <select 
+                                        className="form-select"
+                                        value={selectedSchoolYearId}
+                                        onChange={(e) => setSelectedSchoolYearId(e.target.value)}
+                                    >
+                                        <option value="">Select School Year</option>
+                                        {schoolYears.map(sy => (
+                                            <option key={sy._id} value={sy._id}>
+                                                {sy.label} {sy.isCurrent ? '(Active)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="col-12 col-md-3">
+                                    <label className="form-label small fw-semibold">Grade Level</label>
                                     <select 
                                         className="form-select"
                                         value={filterGrade}
@@ -192,19 +183,8 @@ const ClassRoom = () => {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="col-12 col-md-3">
-                                    <select 
-                                        className="form-select"
-                                        value={filterSemester}
-                                        onChange={(e) => setFilterSemester(e.target.value)}
-                                    >
-                                        <option value="">All Semesters</option>
-                                        {semesterOptions.map(semester => (
-                                            <option key={semester} value={semester}>{semester === 1 ? "First Semester" : "Second Semester"}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="col-12 col-md-3">
+                                <div className="col-12 col-md-2">
+                                    <label className="form-label small fw-semibold">Strand</label>
                                     <select 
                                         className="form-select"
                                         value={filterStrand}
@@ -216,9 +196,9 @@ const ClassRoom = () => {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="col-12 col-md-3 d-flex align-items-center">
-                                    <p className="text-muted mb-0">
-                                        <strong>{filteredSubjects.length}</strong> {filteredSubjects.length === 1 ? 'classroom' : 'classrooms'}
+                                <div className="col-12 col-md-2 d-flex align-items-end">
+                                    <p className="text-muted mb-0 small">
+                                        <strong>{filteredSubjects.length}</strong> classroom{filteredSubjects.length !== 1 ? 's' : ''}
                                     </p>
                                 </div>
                             </div>
@@ -227,8 +207,35 @@ const ClassRoom = () => {
                 </div>
             </div>
 
-            {/* Classroom Cards */}
-            {filteredSubjects.length === 0 ? (
+            {/* Content area */}
+            {loading ? (
+                <div className="row justify-content-center">
+                    <div className="col-12 col-md-6">
+                        <div className="card border-0 shadow-sm">
+                            <div className="card-body text-center p-5">
+                                <div className="spinner-border text-danger mb-3" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </div>
+                                <p className="text-muted mb-0">Loading classrooms...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : subjectClass.length === 0 ? (
+                <div className="row justify-content-center">
+                    <div className="col-12 col-md-6">
+                        <div className="card border-0 shadow-sm">
+                            <div className="card-body text-center p-5">
+                                <i className="fa-solid fa-chalkboard text-muted mb-3" style={{ fontSize: '4rem' }}></i>
+                                <h5 className="fw-bold text-dark mb-2">No Classrooms Found</h5>
+                                <p className="text-muted mb-0">
+                                    No classrooms available for the selected school year.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : filteredSubjects.length === 0 ? (
                 <div className="row justify-content-center">
                     <div className="col-12 col-md-6">
                         <div className="card border-0 shadow-sm">
@@ -267,28 +274,20 @@ const ClassRoom = () => {
                                 </div>
 
                                 <div className="card-body d-flex flex-column gap-2">
-                                    {/* <div className="d-flex gap-2 align-items-center">
-                                        <p className="m-0 text-capitalize small fw-semibold">Strand:</p>
-                                        <span className="badge bg-danger">{data.strand}</span>
-                                    </div> */}
-
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">subject:</p>
                                         <p className="m-0 text-capitalize small fw-bold">{data.subjectName}</p>
                                     </div>
-
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">code:</p>
                                         <span className="m-0 text-capitalize small fw-bold small">{data.subjectCode}</span>
                                     </div>
-
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">teacher:</p>
                                         <p className="m-0 text-capitalize small fw-bold">
                                             {data.teacher || 'N/A'}
                                         </p>
                                     </div>
-
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">schedule:</p>
                                         <p className="m-0 small fw-bold">
@@ -298,15 +297,12 @@ const ClassRoom = () => {
                                             }
                                         </p>
                                     </div>
-
-                                    
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">semester:</p>
                                         <p className="m-0 text-capitalize small fw-bold badge bg-primary">
-                                            {data.semester === 1 ? "First" : "Second"}
+                                            {Number(data.semester) === 1 ? "First" : "Second"}
                                         </p>
                                     </div>
-
                                 </div>
                             </div>
                         </div>

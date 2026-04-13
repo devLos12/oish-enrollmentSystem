@@ -4,6 +4,7 @@ import { useLayoutEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { globalContext } from "../../context/global";
 import html2pdf from "html2pdf.js";
+import { useNavigate } from "react-router-dom";
 
 
 
@@ -26,6 +27,7 @@ const Students = () => {
 
     const { setTextHeader } = useContext(globalContext);
 
+    const navigate = useNavigate();
 
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
@@ -299,6 +301,15 @@ const Students = () => {
     return (
         <div className="container py-4 ">
             {subjectInfo && (
+                <>
+                <div className="row">
+                    <div className="col-12">
+                        {/* Back button */}
+                        <button className="btn btn-sm btn-outline-secondary mb-2" onClick={() => navigate(-1)}>
+                            <i className="fa fa-arrow-left me-2" />Back
+                        </button>
+                    </div>
+                </div>
                 <div className="row mb-4">
                     <div className="col-12">
                         <div className="card border-0 shadow-sm">
@@ -333,6 +344,8 @@ const Students = () => {
                         </div>
                     </div>
                 </div>
+                </>
+
             )}
 
             {/* Search Bar and Total Students */}

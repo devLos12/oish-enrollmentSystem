@@ -214,7 +214,6 @@ export const Step1 = () => {
                 ...prev.learnerInfo,
 
                 email: prefill.learnerInfo?.email || '',
-                psaNo: prefill.learnerInfo?.psaNo || '',
                 lrn: prefill.learnerInfo?.lrn || '',
                 lastName: prefill.learnerInfo?.lastName || '',
                 firstName: prefill.learnerInfo?.firstName || '',
@@ -267,7 +266,6 @@ export const Step1 = () => {
         { label: 'Last Name', name: 'lastName', type: 'text' },
         { label: 'Extension Name e.g. Jr., III (if applicable)', name: 'extensionName', type: 'text', note: '', optional: true },
         { label: 'Email Address', name: 'email', type: 'email' },
-        { label: 'PSA Birth Certificate No. (if available upon registration)', name: 'psaNo', type: 'text', note: '', optional: true },
         { label: 'Learner Reference No.', name: 'lrn', type: 'text' },  // ✅ Added flag
     ];
 
@@ -673,7 +671,6 @@ export const Step1 = () => {
                 body: JSON.stringify({
                     step: "step1",
                     enrollmentId: enrollmentId,
-                    gradeLevelToEnroll: formData.gradeLevelToEnroll,
                     isReturning: formData.isReturning,
                     learnerInfo: JSON.stringify(formData.learnerInfo)
                 })
@@ -844,31 +841,6 @@ export const Step1 = () => {
 
     // Reusable render functions
     const renderTextField = (field, isNested = false) => {
-        
-        // ✅ Special handling for PSA No. field (add after LRN check)
-        if (field.name === 'psaNo') {
-            return (
-                <div key={field.name} className="mb-3">
-                    <label className="form-label small">
-                        {field.label}
-                        {field.note && <span className="text-muted ms-2">({field.note})</span>}
-                        {field.optional && <span className="text-muted ms-2">(Optional)</span>}
-                    </label>
-                    <input
-                        type="text"
-                        name="learnerInfo.psaNo"
-                        value={formData?.learnerInfo?.psaNo || ''}
-                        onChange={handleChange}
-                        className={`form-control ${psaError ? 'is-invalid' : ''}`}
-                        disabled={viewOnly}
-                        maxLength="12"  // ✅ Limit to 12 digits
-                        placeholder="Enter 12-digit PSA Certificate No."  // ✅ Updated placeholder
-                    />
-                    {psaError && <div className="invalid-feedback d-block">{psaError}</div>}
-                </div>
-            );
-        }
-
 
         // ✅ Special handling for LRN field
         if (field.name === 'lrn') {
@@ -895,6 +867,8 @@ export const Step1 = () => {
         }
 
         // ✅ Special handling for Extension Name (dropdown)
+       // Palitan ang buong extensionName block (mula sa `if (field.name === 'extensionName')`) ng:
+
         if (field.name === 'extensionName') {
             return (
                 <div key={field.name} className="mb-3">
@@ -902,18 +876,16 @@ export const Step1 = () => {
                         {field.label}
                         {field.optional && <span className="text-muted ms-2">(Optional)</span>}
                     </label>
-                    <select
+                    <input
+                        type="text"
                         name="learnerInfo.extensionName"
                         value={formData?.learnerInfo?.extensionName || ''}
                         onChange={handleChange}
-                        className="form-select"
+                        className="form-control"
                         disabled={viewOnly}
-                    >
-                        <option value="">Select Extension Name</option>
-                        {extensionNameOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
-                        ))}
-                    </select>
+                        placeholder="e.g. Jr., Sr., II, III, MD, PhD, CPA, Esq."
+                        maxLength={10}
+                    />
                 </div>
             );
         }
@@ -1127,7 +1099,7 @@ export const Step1 = () => {
         }
 
      // Check top-level required fields
-        if (!formData.gradeLevelToEnroll || !formData.isReturning) {
+        if (!formData.isReturning) {
             return false;
         }
 
@@ -1298,35 +1270,6 @@ export const Step1 = () => {
 
                         {/* School Year & Grade Level Section */}
                         <div className="row justify-content-center mt-2">
-                            <div className="col-12 col-md-8 ">
-                                
-                                <div className="card border-0 h-100">
-                                    <div className="card-body">
-                                        {headerFields.map(field => renderTextField(field, false))}
-                                        
-                                        {/* Grade Level Dropdown */}
-                                        <div className="mb-3">
-                                            <label className="form-label fw-semibold">
-                                                Grade level to Enroll:
-                                                <span className="text-danger ms-1">*</span>    
-                                            </label>
-                                            <select
-                                                name="gradeLevelToEnroll"
-                                                value={formData.gradeLevelToEnroll || ''}
-                                                onChange={handleChange}
-                                                className="form-select"
-                                                disabled={viewOnly}
-                                            >
-                                                <option value="">Select Grade Level</option>
-                                                {gradeLevelOptions.map(option => (
-                                                    <option key={option} value={option}>{option}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
                             
                             <div className="col-12 col-md-8 mt-2">
                                 <div className="card border-0 h-100">
@@ -1488,7 +1431,7 @@ const DEFAULT_FORM_STRUCTURE = {
     parentGuardianInfo: {
         father: { lastName: '', firstName: '', middleName: '', contactNumber: '' },
         mother: { lastName: '', firstName: '', middleName: '', contactNumber: '' },
-        guardian: { lastName: '', firstName: '', middleName: '', contactNumber: '' }
+        guardian: { lastName: '', firstName: '', middleName: '', contactNumber: '', relationship: '' }
     },
     schoolHistory: {
         returningLearner: false,
@@ -2390,7 +2333,12 @@ export const Step2 = () => {
                 guardian: { ...prev.parentGuardianInfo?.guardian, ...(prefill?.parentGuardianInfo?.guardian || {}) }
             },
             schoolHistory: { ...prev.schoolHistory, ...(prefill?.schoolHistory || {}) },
-            seniorHigh: { ...prev.seniorHigh, ...(prefill?.seniorHigh || {}) }
+            // ✅ Normalize semester to number when prefilling
+            seniorHigh: {
+                ...prev.seniorHigh,
+                ...(prefill?.seniorHigh || {}),
+                semester: prefill?.seniorHigh?.semester ? parseInt(prefill?.seniorHigh?.semester, 10) : ''
+            }
         }));
 
         setViewOnly(true);
@@ -2450,23 +2398,26 @@ export const Step2 = () => {
 
         // Guardian is REQUIRED
         const { guardian } = parentGuardianInfo;
-        const requiredGuardianFields = ['lastName', 'firstName'];
-        if (requiredGuardianFields.some(field => !guardian?.[field])) return false;
+            const requiredGuardianFields = ['lastName', 'firstName'];
+            if (requiredGuardianFields.some(field => !guardian?.[field])) return false;
 
-        // ✅ Check school history ONLY if isReturning is "Yes"
-        if (formData.isReturning === 'Yes' && schoolHistory?.returningLearner) {
-            if (!formData.studentType || (formData.studentType !== 'transferee' && formData.studentType !== 'returnee')) {
-                return false;
+            // ✅ Check school history ONLY if isReturning is "Yes"
+            if (formData.isReturning === 'Yes' && schoolHistory?.returningLearner) {
+                if (!formData.studentType || (formData.studentType !== 'transferee' && formData.studentType !== 'returnee')) {
+                    return false;
+                }
+                const requiredSchoolFields = ['lastGradeLevelCompleted', 'lastSchoolYearCompleted', 'lastSchoolAttended', 'schoolId'];
+                if (requiredSchoolFields.some(field => !schoolHistory?.[field])) return false;
             }
-            const requiredSchoolFields = ['lastGradeLevelCompleted', 'lastSchoolYearCompleted', 'lastSchoolAttended', 'schoolId'];
-            if (requiredSchoolFields.some(field => !schoolHistory?.[field])) return false;
-        }
 
-        // Check senior high
-        if (!seniorHigh?.semester || !seniorHigh?.track?.trim() || !seniorHigh?.strand?.trim()) return false;
+            // Check senior high
 
-        return true;
-    }, [formData]);
+            if (!formData.gradeLevelToEnroll) return false;
+            if (!seniorHigh?.track?.trim() || !seniorHigh?.strand?.trim()) return false;
+
+
+            return true;
+        }, [formData]);
 
 
 
@@ -2671,11 +2622,14 @@ export const Step2 = () => {
 
     const handleSeniorHighChange = useCallback((e) => {
         const { name, value } = e.target;
+        // ✅ Convert semester to number
+        const finalValue = name === 'semester' && value ? parseInt(value, 10) : value;
+        
         setFormData(prev => ({
             ...prev,
             seniorHigh: {
                 ...prev.seniorHigh,
-                [name]: value,
+                [name]: finalValue,
                 ...(name === 'track' && { strand: '' })
             }
         }));
@@ -2730,6 +2684,12 @@ export const Step2 = () => {
         setIsLoading(true);
 
         try {
+            // ✅ Ensure semester is a number
+            const seniorHighData = {
+                ...formData.seniorHigh,
+                semester: formData.seniorHigh?.semester ? parseInt(formData.seniorHigh.semester, 10) : ''
+            };
+
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -2737,10 +2697,11 @@ export const Step2 = () => {
                 body: JSON.stringify({
                     step: "step2",
                     enrollmentId: enrollmentId,
+                    gradeLevelToEnroll: formData.gradeLevelToEnroll,
                     address: JSON.stringify(formData.address),
                     parentGuardianInfo: JSON.stringify(formData.parentGuardianInfo),
                     schoolHistory: JSON.stringify(formData.schoolHistory),
-                    seniorHigh: JSON.stringify(formData.seniorHigh),
+                    seniorHigh: JSON.stringify(seniorHighData),
                     studentType: formData.studentType
                 })
             });
@@ -2899,11 +2860,10 @@ export const Step2 = () => {
 
                                         
                                        <FormSection
-                                            title="Father's Information"
+                                            title="Father's Information (Optional)"
                                             fields={FORM_FIELDS.parentInfo.map(field => ({
                                                 ...field,
-                                                required: field.name === 'lastName' || field.name === 'firstName',
-                                                optional: field.name === 'middleName' || field.name === 'contactNumber'
+                                                required: false,
                                             }))}
                                             values={formData.parentGuardianInfo?.father}
                                             onChange={handleParentGuardianChange}
@@ -2912,64 +2872,16 @@ export const Step2 = () => {
                                         />
 
                                         <FormSection
-                                            title="Mother's Information"
+                                            title="Mother's Information (Optional)"
                                             fields={FORM_FIELDS.parentInfo.map(field => ({
                                                 ...field,
-                                                required: field.name === 'lastName' || field.name === 'firstName',
-                                                optional: field.name === 'middleName' || field.name === 'contactNumber'
+                                                required: false,
                                             }))}
                                             values={formData.parentGuardianInfo?.mother}
                                             onChange={handleParentGuardianChange}
                                             disabled={viewOnly}
                                             parentType="mother"
                                         />
-
-                                        {/* Guardian Same As Checkbox */}
-                                        <div className="mb-2 d-flex gap-3">
-                                            <small className="text-muted me-1">Guardian same as:</small>
-                                            <div className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    id="guardianSameAsFather"
-                                                    checked={guardianSameAs === 'father'}
-                                                    onChange={() => handleGuardianSameAs('father')}
-                                                    disabled={viewOnly}
-                                                />
-                                                <label className="form-check-label small" htmlFor="guardianSameAsFather">
-                                                    Father
-                                                </label>
-                                            </div>
-                                            <div className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    id="guardianSameAsMother"
-                                                    checked={guardianSameAs === 'mother'}
-                                                    onChange={() => handleGuardianSameAs('mother')}
-                                                    disabled={viewOnly}
-                                                />
-                                                <label className="form-check-label small" htmlFor="guardianSameAsMother">
-                                                    Mother
-                                                </label>
-                                            </div>
-
-
-                                            {/* ✅ ADD: Others option */}
-                                            <div className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    id="guardianSameAsOthers"
-                                                    checked={guardianSameAs === 'others'}
-                                                    onChange={() => handleGuardianSameAs('others')}
-                                                    disabled={viewOnly}
-                                                />
-                                                <label className="form-check-label small" htmlFor="guardianSameAsOthers">
-                                                    Others
-                                                </label>
-                                            </div>
-                                        </div>
 
                                         <FormSection
                                             title="Guardian's Information"
@@ -2983,6 +2895,58 @@ export const Step2 = () => {
                                             disabled={viewOnly}
                                             parentType="guardian"
                                         />
+
+                                        {/* Guardian Relationship Dropdown */}
+                                        <div className="mb-3">
+                                            <label className="form-label small">
+                                                Guardian Relationship
+                                                <span className="text-danger ms-1">*</span>
+                                            </label>
+                                            <select
+                                                name="relationship"
+                                                value={formData.parentGuardianInfo?.guardian?.relationship || ''}
+                                                onChange={(e) => handleParentGuardianChange(e, 'guardian')}
+                                                className="form-select"
+                                                disabled={viewOnly}
+                                            >
+                                                <option value="">Select Relationship</option>
+                                                <option value="mother">Mother</option>
+                                                <option value="father">Father</option>
+                                                <option value="sister">Sister</option>
+                                                <option value="brother">Brother</option>
+                                                <option value="grandmother">Grandmother</option>
+                                                <option value="grandfather">Grandfather</option>
+                                                <option value="aunt">Aunt</option>
+                                                <option value="uncle">Uncle</option>
+                                                <option value="cousin">Cousin</option>
+                                                <option value="godmother">Godmother</option>
+                                                <option value="godfather">Godfather</option>
+                                                <option value="stepmother">Stepmother</option>
+                                                <option value="stepfather">Stepfather</option>
+                                                <option value="adoptive-mother">Adoptive Mother</option>
+                                                <option value="adoptive-father">Adoptive Father</option>
+                                                <option value="others">Others</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Text Input for Others */}
+                                        {formData.parentGuardianInfo?.guardian?.relationship === 'others' && (
+                                            <div className="mb-3">
+                                                <label className="form-label small">
+                                                    Please specify:
+                                                    <span className="text-danger ms-1">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="relationshipOther"
+                                                    placeholder="e.g., Godmother, Aunt, Step-parent, etc."
+                                                    value={formData.parentGuardianInfo?.guardian?.relationshipOther || ''}
+                                                    onChange={(e) => handleParentGuardianChange(e, 'guardian')}
+                                                    className="form-control"
+                                                    disabled={viewOnly}
+                                                />
+                                            </div>
+                                        )}
 
 
                                     </div>
@@ -3215,21 +3179,25 @@ export const Step2 = () => {
                                         <h2 className="h5 fw-bold mb-4">FOR LEARNERS IN SENIOR HIGH SCHOOL</h2>
                                         
                                         <div className="row">
+                                            
                                             <div className="col-12 mb-3">
                                                 <label className="form-label small">
-                                                    Semester
-                                                    <span className="text-danger ms-1">*</span> 
+                                                    Grade Level to Enroll
+                                                    <span className="text-danger ms-1">*</span>
                                                 </label>
                                                 <select
-                                                    name="semester"
-                                                    value={formData.seniorHigh?.semester || ''}
-                                                    onChange={handleSeniorHighChange}
+                                                    name="gradeLevelToEnroll"
+                                                    value={formData.gradeLevelToEnroll || ''}
+                                                    onChange={(e) => {
+                                                        setFormData(prev => ({ ...prev, gradeLevelToEnroll: e.target.value }));
+                                                        setHasChanges(true);
+                                                    }}
                                                     className="form-select"
                                                     disabled={viewOnly}
                                                 >
-                                                    <option value="">Select Semester</option>
-                                                    <option value="1st">First</option>
-                                                    <option value="2nd">Second</option>
+                                                    <option value="">Select Grade Level</option>
+                                                    <option value="Grade 11">Grade 11</option>
+                                                    <option value="Grade 12">Grade 12</option>
                                                 </select>
                                             </div>
 
@@ -3368,6 +3336,8 @@ export const Step3 = () => {
         message: ''
     });
 
+    const [psaError, setPsaError] = useState('');
+
     useEffect(() => {
         if (!location?.state?.allowed) {
             navigate("/404_forbidden", { replace: true });
@@ -3393,7 +3363,7 @@ export const Step3 = () => {
                     idPictureFile: null,
                     idPictureFileName: '',
                     idPicturePreview: null,
-                    dateSigned: ''
+                    psaNo: ''
                 }
             }));
         }
@@ -3439,9 +3409,7 @@ export const Step3 = () => {
                 reportCardFileName: prefill.requiredDocuments.reportCard?.filePath?.split("/").pop() || '',
                 reportCardPreview: getFilePreviewUrl(prefill.requiredDocuments.reportCard?.filePath),
 
-                dateSigned: prefill.signature?.dateSigned
-                    ? new Date(prefill.signature?.dateSigned).toISOString().split('T')[0] 
-                    : ''
+                psaNo: prefill.psaNo || ''
             },
             status: prefill.status
         }));
@@ -3469,6 +3437,31 @@ export const Step3 = () => {
 
     const handleCertificationChange = (e) => {
         const { name, value } = e.target;
+        
+        // ✅ PSA No. validation - allow letters, digits and hyphens
+        if (name === 'psaNo') {
+            // Allow only alphanumeric and hyphens
+            const cleanedValue = value.replace(/[^a-zA-Z0-9\-]/g, '');
+            // Get only alphanumeric count (for validation)
+            const alphanumericCount = cleanedValue.replace(/\D/g, '').length;
+            
+            // Update PSA error message (only if not empty since it's optional)
+            if (cleanedValue.length > 0 && cleanedValue.length < 13) {
+                setPsaError('PSA Birth Certificate No. must be at least 13 characters.');
+            } else {
+                setPsaError('');
+            }
+                        
+            setFormData(prev => ({
+                ...prev,
+                certification: {
+                    ...prev.certification,
+                    [name]: cleanedValue
+                }
+            }));
+            return;
+        }
+        
         setFormData(prev => ({
             ...prev,
             certification: {
@@ -3600,6 +3593,11 @@ export const Step3 = () => {
                     submitData.append(`${fieldName}File`, file);
                 }
             });
+
+            // ✅ Append PSA No. to submitData
+            if (formData.certification?.psaNo) {
+                submitData.append('psaNo', formData.certification.psaNo.trim());
+            }
 
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/enrollment`, {
                 method: "POST",
@@ -3817,6 +3815,26 @@ export const Step3 = () => {
                                                     />
                                                 </div>
 
+                                                {/* PSA Birth Certificate No. */}
+                                                <div className="mb-4">
+                                                    <label className="form-label small fw-semibold text-muted">
+                                                        PSA BIRTH CERTIFICATE NO.
+                                                        <span className="text-muted ms-2" style={{ fontSize: '0.85rem' }}>(e.g., A123456-789012 or leave empty)</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="psaNo"
+                                                        value={formData.certification?.psaNo || ''}
+                                                        onChange={handleCertificationChange}
+                                                        className={`form-control ${psaError ? 'is-invalid' : ''}`}
+                                                        disabled={viewOnly}
+                                                        placeholder="e.g., A123456-789012"
+                                                        maxLength="13"
+                                                        pattern="[a-zA-Z0-9\-]*"
+                                                    />
+                                                    {psaError && <div className="invalid-feedback d-block">{psaError}</div>}
+                                                </div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -3957,7 +3975,7 @@ export const Step3 = () => {
                                 </div>
                                 <h4 className="fw-bold mb-3">Admission Successful!</h4>
                                 <p className="text-muted mb-4">
-                                    We will send you an email after the admission approval.
+                                    Please wait for admin approval. Please check your email for validation.
                                 </p>
                                 <button 
                                     type="button" 

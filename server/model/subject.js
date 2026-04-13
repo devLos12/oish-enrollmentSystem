@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
 
 const SubjectSchema = new mongoose.Schema({
+  schoolYear: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "SchoolYear", 
+    required: false 
+  }, 
+  
   subjectName: { type: String, required: true },
   subjectCode: { type: String, required: true},
   gradeLevel: { type: Number, required: true },       // 11 or 12

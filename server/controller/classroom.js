@@ -1,77 +1,116 @@
 import Subject from "../model/subject.js";
 import Student from "../model/student.js";
 
-const getClassrooms = async (req, res) => {
-  try {
-    const studentId = req.account.id; 
 
-    // 🔹 Get student info
-    const student = await Student.findById(studentId).select('strand semester section sectionId');
-    
+
+
+
+export const getClassrooms = async (req, res) => {
+  try {
+    const studentId = req.account.id;
+
+    const student = await Student.findById(studentId)
+      .select('registrationHistory');
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    // 🔹 Filter subjects: student ID, strand, at current semester
-    const subjects = await Subject.find({ 
-      students: studentId,
-      strand: student.strand,
-      semester: student.semester
-    }).populate({
-      path: "students",
-      match: { section: student.section },
-      select: "studentNumber firstName lastName section gradeLevel email sex"
-    });
+    // ✅ Pinaka-latest registrationHistory — source of truth
+    // Sort by schoolYear DESC + semester DESC
+    const latestHistory = student.registrationHistory
+      .slice()
+      .sort((a, b) => {
+        const yearDiff = b.schoolYear.localeCompare(a.schoolYear);
+        if (yearDiff !== 0) return yearDiff;
+        return b.semester - a.semester;
+      })[0];
 
-    // 🔹 Filter out subjects na:
-    // 1. Walang students after match
-    // 2. ❌ Walang sections (incomplete subject)
-    const filteredSubjects = subjects.filter(sub => 
-      sub.students && 
-      sub.students.length > 0 &&
-      sub.sections && 
-      sub.sections.length > 0  // ✅ May sections na ba?
-    );
+    if (!latestHistory) {
+      return res.status(200).json([]);
+    }
 
-    // 🔹 Format data para sa frontend
-    const result = filteredSubjects.map(sub => {
-      // 🔥 Get student's section from sections array
-      const studentSection = sub.sections.find(
-        sec => sec.sectionName === student.section
+    // ✅ Lahat ng data — derived from latestHistory, hindi sa global student fields
+    const {
+      section,
+      strand,
+      gradeLevel,
+      semester,
+      track,
+      subjects: historySubjects = []
+    } = latestHistory;
+
+    if (historySubjects.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    // ✅ Fetch subject details using subjectIds from history
+    const subjectIds = historySubjects.map(s => s.subjectId);
+    const subjects = await Subject.find({ _id: { $in: subjectIds } });
+
+    // ✅ Fetch classmates — based sa subject.students[]
+    // Filter by registrationHistory — same section + schoolYear + semester
+    const allStudentIds = [
+      ...new Set(subjects.flatMap(s => s.students.map(id => id.toString())))
+    ];
+
+    const classmates = await Student.find({
+      _id: { $in: allStudentIds },
+      registrationHistory: {
+        $elemMatch: {
+          section,
+          schoolYear: latestHistory.schoolYear,
+          semester:   latestHistory.semester
+        }
+      }
+    // ✅ select registrationHistory — para makuha natin yung section doon, hindi global
+    }).select('studentNumber firstName lastName email sex registrationHistory');
+
+    // ✅ Map result
+    const result = subjects.map(sub => {
+      const historySubject = historySubjects.find(
+        h => h.subjectId?.toString() === sub._id.toString()
       );
 
-      // ❌ If walang match sa sections, skip this subject
-      if (!studentSection) {
-        return null;
-      }
+      // ✅ Schedule — galing sa subject.sections[] ng matching section
+      const matchedSection = sub.sections?.find(
+        s => s.sectionName === section
+      );
 
       return {
-        subjectId: sub._id,
-        subjectName: sub.subjectName,
-        subjectCode: sub.subjectCode,
-        gradeLevel: sub.gradeLevel,
-        strand: sub.strand,
-        track: sub.track,
-        semester: sub.semester,
-        teacher: sub.teacher,
-        // 🔥 Schedule details from matching section
-        sectionId: studentSection.sectionId,
-        sectionName: studentSection.sectionName,
-        scheduleStartTime: studentSection.scheduleStartTime,
-        scheduleEndTime: studentSection.scheduleEndTime,
-        room: studentSection.room,
-        students: sub.students.map(s => ({
-          id: s._id,
-          studentNumber: s.studentNumber,
-          name: `${s.firstName} ${s.lastName}`,
-          section: s.section,
-          gradeLevel: s.gradeLevel,
-          email: s.email,
-          sex: s.sex
-        }))
-      };
-    }).filter(Boolean);  // ✅ Remove null entries
+        subjectId:         sub._id,
+        subjectName:       sub.subjectName,
+        subjectCode:       sub.subjectCode,
+        gradeLevel,
+        strand,
+        track,
+        semester,
+        section,
+        teacher:           sub.teacher,
+        // ✅ Schedule — subject.sections[] first, fallback sa historySubject
+        scheduleDay:       matchedSection?.scheduleDay       || historySubject?.scheduleDay       || '',
+        scheduleStartTime: matchedSection?.scheduleStartTime || historySubject?.scheduleStartTime || '',
+        scheduleEndTime:   matchedSection?.scheduleEndTime   || historySubject?.scheduleEndTime   || '',
+        room:              matchedSection?.room              || historySubject?.room              || '',
+        // ✅ Students — section + gradeLevel galing sa registrationHistory ng classmate
+        students: classmates.map(s => {
+          const classmateHistory = s.registrationHistory.find(h =>
+            h.section    === section &&
+            h.schoolYear === latestHistory.schoolYear &&
+            h.semester   === latestHistory.semester
+          );
 
+          return {
+            id:            s._id,
+            studentNumber: s.studentNumber,
+            name:          `${s.firstName} ${s.lastName}`,
+            gradeLevel:    classmateHistory?.gradeLevel || gradeLevel,
+            email:         s.email,
+            sex:           s.sex,
+            section:       classmateHistory?.section || section  // ✅ galing sa history!
+          };
+        })
+      };
+    });
 
     res.status(200).json(result);
 
@@ -79,5 +118,3 @@ const getClassrooms = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-export default getClassrooms;

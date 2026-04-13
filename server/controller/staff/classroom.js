@@ -44,7 +44,8 @@ export const getTeacherStudents = async(req, res) => {
 
         // Find students in this section
         const sectionStudents = await Student.find({ 
-            section: findSection.sectionName 
+            section: findSection.sectionName,
+            status: "enrolled"
         }).select('firstName lastName email semester sex status strand studentNumber gradeLevel section ');
 
 
@@ -88,32 +89,119 @@ export const getTeacherStudents = async(req, res) => {
 
 
 
-export const getTeacherSubject = async (req, res) => {
-    try {
-        const teacherId = req.account.id; // from auth middleware
-        
-        // Find all subjects where this teacher is assigned
-        const subjects = await Subject.find({ teacherId: teacherId });
 
-        // Check if teacher has any subjects
+
+
+// export const getTeacherSubject = async (req, res) => {
+//     try {
+//         const teacherId = req.account.id;
+
+//         // ✅ Kunin lahat ng subjects ng teacher — grouped by schoolYear
+//         // Hindi na nag-eexpect ng isActive — yung subjects mismo ang source of truth
+//         const subjects = await Subject.find({ teacherId: teacherId })
+//             .populate('schoolYear', 'schoolYear semester label isActive');
+
+//         if (!subjects || subjects.length === 0) {
+//             return res.status(200).json({ 
+//                 success: true,
+//                 data: [],
+//                 message: "No subjects found for this teacher" 
+//             });
+//         }
+
+//         // ✅ I-group by schoolYear — teacher makikita lahat ng sem niya
+//         // Frontend na mag-filter kung anong sem ang gusto ipakita
+//         const sectionsWithSubjectInfo = [];
+        
+//         subjects.forEach(subject => {
+//             subject.sections.forEach(section => {
+//                 sectionsWithSubjectInfo.push({
+//                     sectionId: section.sectionId,
+//                     sectionName: section.sectionName,
+//                     scheduleDay: section.scheduleDay,
+//                     scheduleStartTime: section.scheduleStartTime,
+//                     scheduleEndTime: section.scheduleEndTime,
+//                     room: section.room,
+//                     students: section.students,
+                    
+//                     subjectId: subject._id,
+//                     subjectName: subject.subjectName,
+//                     subjectCode: subject.subjectCode,
+//                     strand: subject.strand,
+//                     gradeLevel: subject.gradeLevel,
+//                     semester: subject.semester,
+//                     teacher: subject.teacher,
+
+//                     // ✅ Isama yung schoolYear info para sa frontend filtering
+//                     schoolYearId: subject.schoolYear?._id,
+//                     schoolYearLabel: subject.schoolYear?.label,
+//                     schoolYear: subject.schoolYear?.schoolYear,
+//                     isActiveSchoolYear: subject.schoolYear?.isActive,
+//                 });
+//             });
+//         });
+
+
+//          console.log("Sections with Subject Info:", sectionsWithSubjectInfo);
+
+
+//         // ✅ Return ALL subjects — frontend handles filtering by selected schoolYear
+//         // Backend no longer filters by isActive — subjects are immutable and tied to their schoolYear
+//         return res.status(200).json({ 
+//             success: true,
+//             data: sectionsWithSubjectInfo
+//         });
+
+//     } catch (error) {
+//         return res.status(500).json({ 
+//             success: false,
+//             message: error.message 
+//         });
+//     }
+// }
+
+
+
+
+
+
+
+
+
+
+export const getTeacherSubjectBySchoolYear = async (req, res) => {
+    try {
+        const teacherId = req.account.id;
+        const { schoolYearId } = req.query;
+
+        
+        if (!schoolYearId) {
+            return res.status(400).json({ 
+                success: false,
+                message: "schoolYearId is required" 
+            });
+        }
+
+        // ✅ Query only subjects for this teacher AND this schoolYear
+        const subjects = await Subject.find({ 
+            teacherId: teacherId,
+            schoolYear: schoolYearId
+        }).populate('schoolYear', 'schoolYear semester label isActive');
+
         if (!subjects || subjects.length === 0) {
             return res.status(200).json({ 
                 success: true,
                 data: [],
-                message: "No subjects found for this teacher" 
+                message: "No subjects found for this school year" 
             });
         }
-        
 
-
-        
-        // Transform data to include subject info with each section
+        // ✅ Map sections with subject info
         const sectionsWithSubjectInfo = [];
         
         subjects.forEach(subject => {
             subject.sections.forEach(section => {
                 sectionsWithSubjectInfo.push({
-                    // Section details
                     sectionId: section.sectionId,
                     sectionName: section.sectionName,
                     scheduleDay: section.scheduleDay,
@@ -122,25 +210,28 @@ export const getTeacherSubject = async (req, res) => {
                     room: section.room,
                     students: section.students,
                     
-                    // Subject details
                     subjectId: subject._id,
                     subjectName: subject.subjectName,
                     subjectCode: subject.subjectCode,
                     strand: subject.strand,
                     gradeLevel: subject.gradeLevel,
                     semester: subject.semester,
-                    teacher: subject.teacher
+                    teacher: subject.teacher,
+
+                    schoolYearId: subject.schoolYear?._id,
+                    schoolYearLabel: subject.schoolYear?.label,
+                    schoolYear: subject.schoolYear?.schoolYear,
+                    isActiveSchoolYear: subject.schoolYear?.isActive,
                 });
             });
         });
-        
+
         return res.status(200).json({ 
             success: true,
             data: sectionsWithSubjectInfo
         });
 
     } catch (error) {
-        console.error("Error in getTeacherSubject:", error);
         return res.status(500).json({ 
             success: false,
             message: error.message 

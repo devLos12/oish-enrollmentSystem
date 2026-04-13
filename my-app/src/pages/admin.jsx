@@ -24,6 +24,12 @@ import Schedule from "../components/schedule.jsx";
 import image from "../assets/image/logo.png";
 import SubjectDetails from "../components/subjectDetails.jsx";
 import { io } from "socket.io-client";
+import Semester from "../components/semester.jsx";
+import StudentSectionList from "../components/student-section-list.jsx";
+
+
+
+
 
 
 
@@ -84,6 +90,8 @@ const Admin = () => {
         {path: "logs",                  element: <Logs/> },
         {path: "enrollmentpdf",         element: <EnrollmentFormPDF/>},
         {path: "schedule",              element: <Schedule/>},
+        {path: "semester",              element: <Semester/>},
+        {path: 'student-section-list',  element: <StudentSectionList/>},
         {path: "*",                      element: <Navigate to={"/404_forbidden"}/>}
 
     ]   

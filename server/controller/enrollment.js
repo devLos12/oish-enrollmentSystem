@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import { Resend } from 'resend';
 import cloudinary from "../config/cloudinary.js";
 import Admin from "../model/admin.js";
+import SchoolYear from "../model/schoolYear.js";
 
 
 
@@ -534,21 +535,60 @@ export const rejectApplicant = async (req, res) => {
 
 
 
+
+
+
+
 export const GetAllEnrollments = async(req, res) => {
   try {
-    
-    const applicants = await Enrollment.find({ statusRegistration: "complete"});
+    const { schoolYearId } = req.query;
 
-    
-    if(!applicants || applicants.leng === 0) {
-      return res.status(401).json({ message: "No Applicants available."});
+    let targetSchoolYear;
+
+    if (schoolYearId) {
+      targetSchoolYear = await SchoolYear.findById(schoolYearId);
+      if (!targetSchoolYear) {
+        return res.status(404).json({ success: false, data: [], message: "School year not found." });
+      }
+    } else {
+      targetSchoolYear = await SchoolYear.findOne({ isActive: true });
+      if (!targetSchoolYear) {
+        return res.status(400).json({ success: false, data: [], message: "No active school year." });
+      }
     }
-
-    res.status(200).json(applicants);
+    
+    // ✅ IMPROVED: Fetch only from ACTIVE school year (works for 1st & 2nd sem - same schoolYearId)
+    const applicants = await Enrollment.find({ 
+      statusRegistration: "complete",
+      schoolYear: targetSchoolYear.schoolYear,
+      'seniorHigh.semester': targetSchoolYear.semester 
+    });
+    
+    
+    return res.status(200).json({
+      success: true,
+      data: applicants || [],
+      currentSchoolYear: targetSchoolYear.label,
+      total: applicants?.length || 0,
+      message: applicants?.length === 0 ? "No applicants available" : "Success"
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("GetAllEnrollments error:", error);
+    return res.status(500).json({ 
+      success: false, 
+      data: [],
+      message: error.message || "Error fetching applicants" 
+    });
   }
 }
+
+
+
+
+
+
+
+
 
 
 // Multer storage configuration
@@ -589,6 +629,25 @@ export const enrollmentUpload = uploadDocuments.fields([
 ]);
 
 
+const normalizeName = (value) => {
+    if (!value || value === 'N/A') return value;
+    return value.trim().toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+
+const normalizeParent = (parent) => {
+    if (!parent) return parent;
+    return {
+        ...parent,
+        lastName: normalizeName(parent.lastName),
+        firstName: normalizeName(parent.firstName),
+        middleName: normalizeName(parent.middleName),
+    };
+};
+
+
+
+
 
 
 export const EnrollmentRegistration = async (req, res) => {
@@ -602,13 +661,6 @@ export const EnrollmentRegistration = async (req, res) => {
     if (step === "step1") {
       const learnerInfo = JSON.parse(req.body.learnerInfo || '{}');
 
-
-      if (learnerInfo.psaNo && learnerInfo.psaNo !== 'N/A') {
-        if (!/^\d{12}$/.test(learnerInfo.psaNo)) {
-            return res.status(400).json({ message: 'PSA Birth Certificate No. must be exactly 12 digits' });
-        }
-      }
-
       // ✅ VALIDATION: LRN must be exactly 12 digits if provided
       if (learnerInfo.lrn && learnerInfo.lrn !== 'N/A') {
 
@@ -617,9 +669,22 @@ export const EnrollmentRegistration = async (req, res) => {
           }
       }
 
+
+
+      // ✅ VALIDATION: Extension Name (if provided)  <-- DITO ILAGAY
+      // const validExtensionNames = ['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+      // const extensionNameInput = learnerInfo.extensionName?.trim() || '';
+
+      // if (extensionNameInput && extensionNameInput !== 'N/A' && !validExtensionNames.includes(extensionNameInput)) {
+      //     return res.status(400).json({ 
+      //         message: 'Invalid extension name. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA' 
+      //     });
+      // }
+
+      
+
       // ✅ VALIDATION: Check required fields
       const requiredFields = [
-          { field: 'gradeLevelToEnroll', message: 'Grade Level to Enroll is required' },
           { field: 'isReturning', message: 'Please answer "Returning (Balik-Aral)?" question' },
       ];
 
@@ -700,7 +765,6 @@ export const EnrollmentRegistration = async (req, res) => {
 
       }
 
-      
 
       // ✅ VALIDATION: Email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -736,41 +800,48 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
-      
+
+      const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+
+      if (!activeSchoolYear) {
+        return res.status(400).json({ 
+          message: "No active school year." 
+        });
+      }
 
       //  Auto-generate school year
-      const currentYear = new Date().getFullYear();
-      const nextYear = currentYear + 1;
-      const autoSchoolYear = `${currentYear}-${nextYear}`;
+      // const currentYear = new Date().getFullYear();
+      // const nextYear = currentYear + 1;
+      // const autoSchoolYear = `${currentYear}-${nextYear}`;
 
       //  Handle optional fields - set to "N/A" if empty
-      const psaNo = learnerInfo.psaNo?.trim() || 'N/A';
       const extensionName = learnerInfo.extensionName?.trim() || 'N/A';
-
       const lrn = learnerInfo.lrn?.trim() || 'N/A';
 
 
       
       // ✅ Prepare data object
       const enrollmentData = {
-        schoolYear: autoSchoolYear,
-        gradeLevelToEnroll: req.body.gradeLevelToEnroll,
+        schoolYear: activeSchoolYear.schoolYear,
+        schoolYearId: activeSchoolYear._id,
+        
         isReturning: req.body.isReturning === 'Yes',
         
         learnerInfo: {
           email: learnerInfo.email,
           lrn: lrn,
-          psaNo: psaNo,
-          lastName: learnerInfo.lastName,
-          firstName: learnerInfo.firstName,
-          middleName: learnerInfo.middleName?.trim() || 'N/A',
+          lastName: normalizeName(learnerInfo.lastName),
+          firstName: normalizeName(learnerInfo.firstName),
+          middleName: normalizeName(learnerInfo.middleName?.trim() || 'N/A'),
           extensionName: extensionName,
           birthDate: learnerInfo.birthDate,
           age: learnerInfo.age,
           sex: learnerInfo.sex,
-          placeOfBirth: learnerInfo.placeOfBirth,
-          motherTongue: learnerInfo.motherTongue,
+
+          placeOfBirth: normalizeName(learnerInfo.placeOfBirth),
+          motherTongue: normalizeName(learnerInfo.motherTongue),
           
+
           learnerWithDisability: {
               isDisabled: learnerInfo.learnerWithDisability?.isDisabled === 'Yes',
               disabilityType: learnerInfo.learnerWithDisability?.disabilityType || []
@@ -895,31 +966,6 @@ export const EnrollmentRegistration = async (req, res) => {
 
 
 
-      // ✅ VALIDATION: Father is REQUIRED
-      const requiredFatherFields = [
-          { field: 'lastName', message: 'Father Last Name is required' },
-          { field: 'firstName', message: 'Father First Name is required' }
-      ];
-
-      for (const { field, message } of requiredFatherFields) {
-          if (!parentGuardianInfo.father?.[field] || parentGuardianInfo.father[field].trim() === '') {
-              return res.status(400).json({ message });
-          }
-      }
-
-      // ✅ VALIDATION: Mother is REQUIRED
-      const requiredMotherFields = [
-          { field: 'lastName', message: 'Mother Last Name is required' },
-          { field: 'firstName', message: 'Mother First Name is required' }
-      ];
-
-      for (const { field, message } of requiredMotherFields) {
-          if (!parentGuardianInfo.mother?.[field] || parentGuardianInfo.mother[field].trim() === '') {
-              return res.status(400).json({ message });
-          }
-      }
-
-
 
       // ✅ VALIDATION: Guardian is REQUIRED (Father & Mother are OPTIONAL)
       const requiredGuardianFields = [
@@ -935,12 +981,8 @@ export const EnrollmentRegistration = async (req, res) => {
       }
 
 
-
-
       // ✅ VALIDATION: Parent/Guardian Contact Numbers (if provided)
       const parentsToValidate = ['father', 'mother', 'guardian'];
-
-
 
       for (const parentType of parentsToValidate) {
         const contactNumber = parentGuardianInfo[parentType]?.contactNumber;
@@ -968,9 +1010,6 @@ export const EnrollmentRegistration = async (req, res) => {
       }
 
 
-      
-
-
       // ✅ VALIDATION: School History (ONLY if returningLearner is checked)
       if (schoolHistory.returningLearner) {
         if (!req.body.studentType || (req.body.studentType !== 'transferee' && req.body.studentType !== 'returnee')) {
@@ -991,20 +1030,33 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
-
-
       // ✅ VALIDATION: Senior High - ALL REQUIRED
-      const requiredSeniorHighFields = [
-        { field: 'semester', message: 'Semester is required' },
-        { field: 'track', message: 'Track is required' },
-        { field: 'strand', message: 'Strand is required' }
-      ];
+      // const requiredSeniorHighFields = [
+      //   { field: 'semester', message: 'Semester is required' },
+      //   { field: 'track', message: 'Track is required' },
+      //   { field: 'strand', message: 'Strand is required' }
+      // ];
 
-      for (const { field, message } of requiredSeniorHighFields) {
-        if (!seniorHigh[field] || seniorHigh[field].trim() === '') {
-          return res.status(400).json({ message });
-        }
+      // for (const { field, message } of requiredSeniorHighFields) {
+      //   if (!seniorHigh[field] || seniorHigh[field].trim() === '') {
+      //     return res.status(400).json({ message });
+      //   }
+      // }
+
+      const gradeLevelToEnroll = req.body.gradeLevelToEnroll;
+      
+      if (!gradeLevelToEnroll || !['Grade 11', 'Grade 12'].includes(gradeLevelToEnroll)) {
+          return res.status(400).json({ message: 'Grade Level to Enroll is required' });
       }
+      if (!seniorHigh.track || seniorHigh.track.trim() === '') {
+          return res.status(400).json({ message: 'Track is required' });
+      }
+      if (!seniorHigh.strand || seniorHigh.strand.trim() === '') {
+          return res.status(400).json({ message: 'Strand is required' });
+      }
+      
+
+
 
       // ✅ Set N/A for empty houseNo (ONCE only)
       if (!address.current.houseNo || address.current.houseNo.trim() === '') {
@@ -1021,8 +1073,7 @@ export const EnrollmentRegistration = async (req, res) => {
       const parentTypes = ['father', 'mother'];
       const parentFields = ['lastName', 'firstName', 'middleName', 'contactNumber'];
 
-
-
+      
       parentTypes.forEach(parentType => {
         if (!parentGuardianInfo[parentType]) {
           parentGuardianInfo[parentType] = {};
@@ -1044,31 +1095,39 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       });
 
-      
+
+
+      const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+
+      if (!activeSchoolYear) {
+        return res.status(400).json({ message: "No active school year." });
+      }
+            
       
       // ✅ Proceed with update
       const enrollment = await Enrollment.findByIdAndUpdate(
         enrollmentId,
         {
           $set: {
+            gradeLevelToEnroll: gradeLevelToEnroll,
             address: {
               current: address.current,
               permanent: address.permanent
             },
-            parentGuardianInfo: {
-              father: parentGuardianInfo.father,
-              mother: parentGuardianInfo.mother,
-              guardian: parentGuardianInfo.guardian
+              parentGuardianInfo: {
+                father: normalizeParent(parentGuardianInfo.father),
+                mother: normalizeParent(parentGuardianInfo.mother),
+                guardian: normalizeParent(parentGuardianInfo.guardian)
             },
             schoolHistory: {
               returningLearner: schoolHistory.returningLearner,
               lastGradeLevelCompleted: schoolHistory.lastGradeLevelCompleted,
               lastSchoolYearCompleted: schoolHistory.lastSchoolYearCompleted,
-              lastSchoolAttended: schoolHistory.lastSchoolAttended,
+              lastSchoolAttended: normalizeName(schoolHistory.lastSchoolAttended),
               schoolId: schoolHistory.schoolId
             },
             seniorHigh: {
-              semester: seniorHigh.semester,
+              semester: activeSchoolYear.semester,
               track: seniorHigh.track,
               strand: seniorHigh.strand
             },
@@ -1098,6 +1157,21 @@ export const EnrollmentRegistration = async (req, res) => {
         return res.status(400).json({ message: "Enrollment ID is required" });
       }
 
+      // ✅ Parse PSA No. from Step 3
+      const psaNo = req.body.psaNo?.trim() || '';
+
+      // ✅ VALIDATION: PSA No. (allows alphanumeric + hyphens, must have 12 digits)
+      if (psaNo && psaNo !== 'N/A') {
+        const validFormat = /^[a-zA-Z0-9\-]{1,13}$/.test(psaNo);
+        
+        if (!validFormat) {
+          return res.status(400).json({ 
+            message: 'PSA Birth Certificate No. must not exceed 13 characters. Only letters, numbers, and hyphens are allowed.' 
+          });
+        }
+      }
+
+          
 
 
       // ✅ Additional validation - check file types
@@ -1211,6 +1285,10 @@ export const EnrollmentRegistration = async (req, res) => {
         {
           $set: {
             requiredDocuments,
+            psaNo: psaNo || null,
+            signature: {
+              dateSigned: new Date()
+            },
             status: 'pending',
             statusRegistration: 'complete',
             expiresAt: null 
@@ -1219,7 +1297,7 @@ export const EnrollmentRegistration = async (req, res) => {
         { new: true }
       );
 
-      io.emit("new-enrollment", { message: "hello world" });
+      io.emit("new-enrollment", { message: "" });
 
       return res.status(200).json({
         success: true,
@@ -1240,6 +1318,18 @@ export const EnrollmentRegistration = async (req, res) => {
     });
     }
 };
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1688,9 +1778,22 @@ const sendStudentAccount = async (email, studentNo, password, studentName) => {
 // }
 
 
+
+
+
+
 export const ApplicantApproval = async (req, res) => {
   try {
     const { enrollmentId } = req.body;
+    
+
+
+
+    const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+    
+    if (!activeSchoolYear) {
+      return res.status(400).json({ message: "No active school year." });
+    }
 
     // 1. Find the enrollment applicant
     const applicant = await Enrollment.findOne({ _id: enrollmentId });
@@ -1700,8 +1803,6 @@ export const ApplicantApproval = async (req, res) => {
     if (!applicant) {
       return res.status(404).json({ message: "Applicant not found." });
     }
-
-
 
     // 2. Generate student number (SEQUENTIAL, hindi na ma-duplicate)
     const gradeNumber = parseInt(applicant.gradeLevelToEnroll.replace(/\D/g, ""), 10);
@@ -1756,6 +1857,8 @@ export const ApplicantApproval = async (req, res) => {
     const hashedPass = await bcrypt.hash(defaultPass, salt);
 
     await Student.create({
+      schoolYear: activeSchoolYear._id,
+
       studentNumber,
       lrn: applicant.learnerInfo.lrn,
       firstName: applicant.learnerInfo.firstName,
@@ -1770,7 +1873,7 @@ export const ApplicantApproval = async (req, res) => {
       gradeLevel: gradeNumber,
       track: applicant.seniorHigh.track,
       strand: applicant.seniorHigh.strand,
-      semester: parseInt(applicant?.seniorHigh?.semester?.replace(/\D/g, ""), 10),
+      semester: applicant.seniorHigh.semester,
       password: hashedPass,
       enrollmentYear: applicant.schoolYear
     });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { globalContext } from "../context/global";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 
 
@@ -8,9 +8,14 @@ const SectionManagement = () => {
   const { setTextHeader, studentList } = useContext(globalContext);
   const location = useLocation();
 
+  const navigate = useNavigate();
+
+  
   useLayoutEffect(() => {
     setTextHeader(location?.state?.title || "Section Management");
   }, [location?.state?.title]);
+
+
 
   // state
   const [sections, setSections] = useState([]);
@@ -27,8 +32,6 @@ const SectionManagement = () => {
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('success'); // 'success' or 'error'
-
-
 
 
   // options (adjust to your school's lists)
@@ -102,11 +105,6 @@ const SectionManagement = () => {
   }, [searchTerm, filterGrade, filterStrand]);
 
 
-
-
-
-
-
   // modal handlers
   const handleAddSection = () => {
     setSelectedSection({
@@ -122,10 +120,21 @@ const SectionManagement = () => {
     setShowModal(true);
   };
 
+
+
   const handleViewSection = (section) => {
-    setSelectedSection(section);
-    setModalType("view");
-    setShowModal(true);
+
+    navigate(`/admin/student-section-list`, { state: { 
+      sectionId: section._id,
+      sectionName: section.name,
+      title: "Section Management"
+    } });
+
+
+
+    // setSelectedSection(section);
+    // setModalType("view");
+    // setShowModal(true);
   };
 
   const handleEditSection = (section) => {
@@ -141,39 +150,28 @@ const SectionManagement = () => {
   };
 
 
-
-
   // submit (create / update)
   const handleSubmitSection = async () => {
-
-
-
 
     // basic validation
     if (
       !selectedSection.name.trim() ||
       !selectedSection.track.trim() ||
       !selectedSection.strand.trim() ||
-      !selectedSection.gradeLevel ||
-      !selectedSection.semester
+      !selectedSection.gradeLevel
     ) {
       showAlert("Input Field Required!", 'error');
       return;
     }
 
     try {
-      
-      // ← START LOADING
-      setSubmitting(true); 
-
-
+      setSubmitting(true);
 
       const payload = {
         name: selectedSection.name,
         gradeLevel: parseInt(selectedSection.gradeLevel),
         track: selectedSection.track,
         strand: selectedSection.strand,
-        semester: parseInt(selectedSection.semester),
         maxCapacity: parseInt(selectedSection.maxCapacity) || 35,
       };
 
@@ -199,17 +197,15 @@ const SectionManagement = () => {
     } catch (error) {
       showAlert(`Failed to ${modalType} section: ${error.message}`, 'error');
     } finally {
-      setSubmitting(false); // ← STOP LOADING
+      setSubmitting(false);
     }
   };
-
-
 
 
   // delete
   const confirmDelete = async () => {
       try {
-        setDeleting(true); // ← START LOADING
+        setDeleting(true);
         
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deleteSection/${selectedSection._id}`, {
           method: "DELETE",
@@ -224,10 +220,9 @@ const SectionManagement = () => {
       } catch (error) {
         showAlert(`Failed to delete section: ${error.message}`, 'error');
       } finally {
-        setDeleting(false); // ← STOP LOADING
+        setDeleting(false);
       }
   }; 
-
 
 
   // update enrollment status
@@ -252,7 +247,6 @@ const SectionManagement = () => {
 
   // helper: student count and capacity status
   const getStudentCount = (sec) => (Array.isArray(sec.students) ? sec.students.length : sec.studentsCount || 0);
-
   const isFull = (sec) => getStudentCount(sec) >= (sec.maxCapacity || 35);
 
   
@@ -272,67 +266,33 @@ const SectionManagement = () => {
 
     pages.push(
       <li key="prev" className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-        <button 
-          className="page-link" 
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
+        <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
           <i className="fa fa-chevron-left"></i>
         </button>
       </li>
     );
 
     if (startPage > 1) {
-      pages.push(
-        <li key={1} className="page-item">
-          <button className="page-link" onClick={() => handlePageChange(1)}>
-            1
-          </button>
-        </li>
-      );
-      if (startPage > 2) {
-        pages.push(
-          <li key="ellipsis1" className="page-item disabled">
-            <span className="page-link">...</span>
-          </li>
-        );
-      }
+      pages.push(<li key={1} className="page-item"><button className="page-link" onClick={() => handlePageChange(1)}>1</button></li>);
+      if (startPage > 2) pages.push(<li key="ellipsis1" className="page-item disabled"><span className="page-link">...</span></li>);
     }
 
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <li key={i} className={`page-item ${currentPage === i ? 'active' : ''}`}>
-          <button className="page-link" onClick={() => handlePageChange(i)}>
-            {i}
-          </button>
+          <button className="page-link" onClick={() => handlePageChange(i)}>{i}</button>
         </li>
       );
     }
 
     if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        pages.push(
-          <li key="ellipsis2" className="page-item disabled">
-            <span className="page-link">...</span>
-          </li>
-        );
-      }
-      pages.push(
-        <li key={totalPages} className="page-item">
-          <button className="page-link" onClick={() => handlePageChange(totalPages)}>
-            {totalPages}
-          </button>
-        </li>
-      );
+      if (endPage < totalPages - 1) pages.push(<li key="ellipsis2" className="page-item disabled"><span className="page-link">...</span></li>);
+      pages.push(<li key={totalPages} className="page-item"><button className="page-link" onClick={() => handlePageChange(totalPages)}>{totalPages}</button></li>);
     }
 
     pages.push(
       <li key="next" className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-        <button 
-          className="page-link" 
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
+        <button className="page-link" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
           <i className="fa fa-chevron-right"></i>
         </button>
       </li>
@@ -392,9 +352,7 @@ const SectionManagement = () => {
             <select className="form-select" value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
               <option value="">All Grade Levels</option>
               {gradeOptions.map((g) => (
-                <option key={g} value={g}>
-                  Grade {g}
-                </option>
+                <option key={g} value={g}>Grade {g}</option>
               ))}
             </select>
           </div>
@@ -402,20 +360,14 @@ const SectionManagement = () => {
           <div className="col-12 col-md-3 mt-2 mt-md-0">
             <select className="form-select" value={filterStrand} onChange={(e) => setFilterStrand(e.target.value)}>
               <option value="">All Strands</option>
-              {Object.values(trackToStrand)
-                .flat()
-                .map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
+              {Object.values(trackToStrand).flat().map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
           </div>
 
           <div className="col-12 col-md-2 mt-2 mt-md-0 text-end">
-            <p className="text-muted mb-0 mt-2">
-              Total: <strong>{filtered.length}</strong>
-            </p>
+            <p className="text-muted mb-0 mt-2">Total: <strong>{filtered.length}</strong></p>
           </div>
         </div>
 
@@ -425,9 +377,7 @@ const SectionManagement = () => {
               <div className="card-body p-0">
                 {loading ? (
                   <div className="text-center py-5">
-                    <div className="spinner-border text-danger" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
+                    <div className="spinner-border text-danger" role="status"></div>
                     <p className="text-muted mt-2">Loading sections data...</p>
                   </div>
                 ) : filtered.length === 0 ? (
@@ -469,10 +419,10 @@ const SectionManagement = () => {
                             </td>
                             <td className="align-middle">
                               <select 
-                                className={`form-select`}
+                                className="form-select"
                                 value={sec.isOpenEnrollment}
-                                onChange={(e) => handleEnrollmentStatusChange(sec._id, e.target.value === "true" )}
-                                disabled={sec.gradeLevel === 11}
+                                onChange={(e) => handleEnrollmentStatusChange(sec._id, e.target.value === "true")}
+                                disabled={(sec.gradeLevel === 11 && sec.semester === 1 )}
                               >
                                 <option value={"false"}>Closed Enrollment</option>
                                 <option value={"true"}>Open Enrollment</option>
@@ -480,8 +430,9 @@ const SectionManagement = () => {
                             </td>
                             <td className="align-middle">
                               <div className="d-flex gap-2 justify-content-center">
-                                <button className="btn btn-sm btn-outline-primary" onClick={() => handleViewSection(sec)} title="View Details">
-                                  <i className="fa fa-eye"></i>
+                                <button className="btn btn-sm btn-outline-primary text-capitalize" 
+                                onClick={() => handleViewSection(sec)} title="View Students">
+                                  students
                                 </button>
                                 <button className="btn btn-sm btn-outline-warning" onClick={() => handleEditSection(sec)} title="Edit">
                                   <i className="fa fa-edit"></i>
@@ -502,9 +453,7 @@ const SectionManagement = () => {
                         Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filtered.length)} of {filtered.length} entries
                       </div>
                       <nav>
-                        <ul className="pagination mb-0">
-                          {renderPagination()}
-                        </ul>
+                        <ul className="pagination mb-0">{renderPagination()}</ul>
                       </nav>
                     </div>
                   )}
@@ -517,9 +466,8 @@ const SectionManagement = () => {
       </div>
 
       {showModal && (
-        <div className="modal fade show d-block " style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className={`modal-dialog modal-dialog-centered 
-            ${modalType === "delete" ? "" : "modal-lg"}`}>
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className={`modal-dialog modal-dialog-centered ${modalType === "delete" ? "" : "modal-lg"}`}>
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title text-capitalize">
@@ -537,7 +485,6 @@ const SectionManagement = () => {
                     <label className="text-muted small text-uppercase">Section Name</label>
                     <p className="fw-semibold">{selectedSection?.name}</p>
                   </div>
-
                   <div className="row mb-3">
                     <div className="col-6">
                       <label className="text-muted small text-uppercase">Track</label>
@@ -548,7 +495,6 @@ const SectionManagement = () => {
                       <p className="fw-semibold">{selectedSection?.strand || 'N/A'}</p>
                     </div>
                   </div>
-
                   <div className="row mb-3">
                     <div className="col-6">
                       <label className="text-muted small text-uppercase">Grade Level</label>
@@ -556,10 +502,9 @@ const SectionManagement = () => {
                     </div>
                     <div className="col-6">
                       <label className="text-muted small text-uppercase">Semester</label>
-                      <p className="fw-semibold">{selectedSection?.semester}</p>
+                      <p className="fw-semibold">{selectedSection?.semester === 1 ? "First" : "Second"}</p>
                     </div>
                   </div>
-
                   <div className="row mb-3">
                     <div className="col-6">
                       <label className="text-muted small text-uppercase">Students</label>
@@ -582,9 +527,7 @@ const SectionManagement = () => {
                         >
                           <option value="">Select Track</option>
                           {trackOptions.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
+                            <option key={t} value={t}>{t}</option>
                           ))}
                         </select>
                       </div>
@@ -600,9 +543,7 @@ const SectionManagement = () => {
                           <option value="">{!selectedSection?.track ? "Select Track First" : "Select Strand"}</option>
                           {selectedSection?.track &&
                             trackToStrand[selectedSection.track].map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
+                              <option key={s} value={s}>{s}</option>
                             ))}
                         </select>
                       </div>
@@ -614,7 +555,7 @@ const SectionManagement = () => {
                         <input
                           type="text"
                           className="form-control"
-                          placeholder="e.g. ABM-11-A"
+                          placeholder="e.g. STEM-A"
                           value={selectedSection?.name || ""}
                           onChange={(e) => setSelectedSection({ ...selectedSection, name: e.target.value })}
                         />
@@ -637,31 +578,22 @@ const SectionManagement = () => {
                         <select
                           className="form-select"
                           value={selectedSection?.gradeLevel || 11}
-                          onChange={(e) => {
-                            const newGrade = parseInt(e.target.value);
-                            setSelectedSection({ 
-                              ...selectedSection, 
-                              gradeLevel: newGrade,
-                              semester: 1
-                            });
-                          }}
-                          disabled={selectedSection.gradeLevel !== 11}
+                          onChange={(e) => setSelectedSection({ ...selectedSection, gradeLevel: parseInt(e.target.value) })}
                         >
                           {gradeOptions.map((g) => (
-                            <option key={g} value={g}>
-                              Grade {g}
-                            </option>
+                            <option key={g} value={g}>Grade {g}</option>
                           ))}
                         </select>
                       </div>
 
-                     <div className="col-6">
+                      {/* Semester is auto-set from active school year — no need for UI input
+                      <div className="col-6">
                         <label className="form-label text-capitalize fw-bold">Semester</label>
                         <select
                           className="form-select"
                           value={selectedSection?.semester || 1}
                           onChange={(e) => setSelectedSection({ ...selectedSection, semester: parseInt(e.target.value) })}
-                          disabled={selectedSection?.semester !== 1}
+                          disabled
                         >
                           {semesterOptions.map((s) => (
                             <option key={s} value={s}>
@@ -669,91 +601,88 @@ const SectionManagement = () => {
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
 
-                  
                   <div className="modal-footer">  
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary" 
-                        onClick={() => setShowModal(false)}
-                        disabled={submitting} // ← DISABLE WHEN SUBMITTING
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-danger" 
-                        onClick={handleSubmitSection}
-                        disabled={submitting} // ← DISABLE WHEN SUBMITTING
-                      >
-                        {submitting ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm me-2"></span>
-                            {modalType === 'add' ? 'Adding...' : 'Updating...'}
-                          </>
-                        ) : (
-                          <>
-                            <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
-                            {modalType === 'add' ? 'Add Section' : 'Update Section'}
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => setShowModal(false)}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={handleSubmitSection}
+                      disabled={submitting}
+                    >
+                      {submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          {modalType === 'add' ? 'Adding...' : 'Updating...'}
+                        </>
+                      ) : (
+                        <>
+                          <i className={`fa ${modalType === 'add' ? 'fa-plus' : 'fa-save'} me-2`}></i>
+                          {modalType === 'add' ? 'Add Section' : 'Update Section'}
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </>
               )}
 
-            {modalType === "delete" && (
-              <>
-                <div className="modal-body text-center">
-                  <i className="fa fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                  <h5 className="mb-3">Are you sure?</h5>
-                  <p className="text-muted">
-                    Do you really want to delete <strong>{selectedSection?.name}</strong>?
-                    <br />This action cannot be undone. Make sure the section has no students before deleting.
-                  </p>
-                </div>
-                <div className="modal-footer">
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
-                    onClick={() => setShowModal(false)}
-                    disabled={deleting} // ← DISABLE WHEN DELETING
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-danger" 
-                    onClick={confirmDelete}
-                    disabled={deleting} // ← DISABLE WHEN DELETING
-                  >
-                    {deleting ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2"></span>
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa fa-trash me-2"></i>
-                        Yes, Delete
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
-
-
+              {modalType === "delete" && (
+                <>
+                  <div className="modal-body text-center">
+                    <i className="fa fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h5 className="mb-3">Are you sure?</h5>
+                    <p className="text-muted">
+                      Do you really want to delete <strong>{selectedSection?.name}</strong>?
+                      <br />This action cannot be undone. Make sure the section has no students before deleting.
+                    </p>
+                  </div>
+                  <div className="modal-footer">
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => setShowModal(false)}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={confirmDelete}
+                      disabled={deleting}
+                    >
+                      {deleting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa fa-trash me-2"></i>
+                          Yes, Delete
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>
         </div>
       )}
 
-      {/* Alert Modal - Success/Error Messages */}
+      {/* Alert Modal */}
       {showAlertModal && (
         <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
           <div className="modal-dialog modal-dialog-centered">

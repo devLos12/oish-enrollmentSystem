@@ -8,6 +8,7 @@ const SideBar = () => {
     const { role, setModal, setOpenmenu, textHeader, setIsLoggingOut,
         pendingApplicantsCount, setPendingApplicantsCount,
         pendingStudentsCount, setPendingStudentsCount,
+        activeSchoolYear, setActiveSchoolYear
      } = useContext(globalContext);
     const navigate = useNavigate();
     const location = useLocation();
@@ -57,6 +58,10 @@ const SideBar = () => {
             {   label: "subjects",            icon: 'fa-solid fa-book', 
                 link: "/admin/subjects",      title: "subjects"
             },
+            
+            { "label": "Students",   "icon": "fa-solid fa-user-graduate", 
+                link: "/admin/student_management", title: "student management"
+            },
 
             {   label: "Section Management",       icon: "fa-solid fa-layer-group",
                 link: "/admin/section_management", title: "Section Management"
@@ -82,10 +87,7 @@ const SideBar = () => {
             //         }
             //     ]
             // },
-            { "label": "Students",   "icon": "fa-solid fa-user-graduate", 
-
-                link: "/admin/student_management", title: "student management"
-            },
+      
             { "label": "faculty member",          "icon": "fa-solid fa-users-gear", 
                 link: "/admin/staff_member",    title: "faculty"
             },
@@ -99,6 +101,10 @@ const SideBar = () => {
             //     label: "Schedule",             icon: "fa-solid fa-clock",
             //     link: "/admin/schedule",       title: "schedule", 
             // },
+
+            { "label": "Semester",              "icon": "fa-solid fa-calendar-alt",
+                link: "/admin/semester",        title: "Semester"
+            },
 
             { "label": "Logs",                  "icon": "fa-solid fa-clipboard-list",
                 link: "/admin/logs",            title: "Logs"
@@ -212,6 +218,18 @@ const SideBar = () => {
                 FRANCISCO OSORIO INTEGRATED SENIOR HIGH SCHOOL
             </p>
         </div>
+
+        <div>
+            {activeSchoolYear && (
+                <div className="bg-white p-2 bg-opacity-10 rounded-3 mb-3">
+                    <p className="m-0 text-capitalize text-white fw-semibold"> active S.Y /</p>
+                    <p className="m-0 small text-white">
+                        {activeSchoolYear.label}
+                    </p>
+                </div>
+            )}
+        </div>
+
 
         <div className="my-4">
             {navLinks.map((data, i) => (

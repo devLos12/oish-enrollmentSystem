@@ -1,12 +1,19 @@
 import mongoose from "mongoose";
 
 const studentSchema = new mongoose.Schema({
+
+  schoolYear: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "SchoolYear", 
+    required: false 
+  },
+
   studentNumber: {            
     type: String,
     required: true,
     unique: true
   },
-
+  
   lrn: { 
     type: String,
     required: true,
@@ -73,7 +80,8 @@ const studentSchema = new mongoose.Schema({
     }
   ],
 
-  enrollmentYear: { type: String },  
+  enrollmentYear: { type: String },
+
   password: String,  
   section: String , 
 
@@ -100,6 +108,8 @@ const studentSchema = new mongoose.Schema({
       gradeLevel: { type: Number, required: true },
       section: { type: String },
       strand: { type: String },
+      status: { type: String, enum: ["pending", "enrolled", "unenrolled", "dropped", "graduated"], 
+        default: "pending" },
       subjects: [
         {
           subjectId: {
@@ -119,8 +129,14 @@ const studentSchema = new mongoose.Schema({
       dateCreated: { type: Date, default: Date.now }
     }
   ],
+
+
   repeatedSubjects: [
     { 
+      schoolYearId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'SchoolYear'  // ← ref na
+      },
       subjectCode: String,
       subjectName: String,
       semester: { type: Number},

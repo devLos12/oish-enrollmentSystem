@@ -4,6 +4,8 @@ import bcrypt from "bcrypt";
 import Section from "../model/section.js";
 import Staff from "../model/staff.js";
 import cloudinary from "../config/cloudinary.js";
+import SchoolYear from "../model/schoolYear.js";
+
 
 // Helper function to upload to Cloudinary
 const uploadToCloudinary = (fileBuffer, originalname, folder) => {
@@ -213,33 +215,140 @@ export const UpdateProfile = async (req, res) => {
     }
 }
 
+
+
+
+
+
 export const getStudentProfile = async (req, res) => {
     try {
-        const { role, id } = req.account;
+        const { id } = req.account;
 
-        // Kunin yung student
-        const student = await Student.findOne({ _id: id }).lean();
-        if(!student){
-            return res.status(409).json({ message: "User not found." });
-        }
-        // Kunin yung section gamit yung reference sa student
-        const section = await Section.findOne({ name: student.section })
-        .select("isOpenEnrollment isEnrolled");
+        const student = await Student.findOne({ _id: id })
+            .populate({
+                path: 'registrationHistory.subjects.subjectId',
+                select: 'subjectCode subjectName semester sections'
+            })
+            .lean();
 
+        if (!student) return res.status(409).json({ message: "User not found." });
 
+        const currentSchoolYear = await SchoolYear.findOne({ isCurrent: true });
 
-        // Merge section data sa response para sa frontend  
+        // ✅ Current sem history — exact match
+        const currentSemHistory = student.registrationHistory.find(h =>
+            h.schoolYear === currentSchoolYear?.schoolYear &&
+            h.semester === currentSchoolYear?.semester
+        ) || null;
+
+        // ✅ Latest history — fallback para sa repeater
+        const latestHistory = student.registrationHistory
+            .slice()
+            .sort((a, b) => {
+                const yearDiff = b.schoolYear.localeCompare(a.schoolYear);
+                if (yearDiff !== 0) return yearDiff;
+                return b.semester - a.semester;
+            })[0] || null;
+
+        // ✅ Latest sa current SY
+        const currentYearHistory = student.registrationHistory
+            .filter(h => h.schoolYear === currentSchoolYear?.schoolYear)
+            .sort((a, b) => b.semester - a.semester)[0] || null;
+
+        // ✅ Repeater pending — hasEnrollmentRequest lang ang reliable
+        const isRepeaterPending = student.studentType === 'repeater' &&
+                                  student.hasEnrollmentRequest === true;
+
+        // ✅ Source history — pag repeater pending, galing sa latestHistory
+        // Para makuha yung last enrollment record niya (Sem 1 history)
+        const sourceHistory = isRepeaterPending
+            ? latestHistory         // ← Sem 1 history niya — para sa display
+            : (currentSemHistory || latestHistory);
+
+        // ✅ Active section — para i-match sa Subject.sections[]
+        const activeSection = currentSemHistory?.section
+            || latestHistory?.section
+            || '';
+
+        // ✅ derivedSubjects — galing sa sourceHistory
+        // Pag repeater pending — Sem 1 subjects pa rin ang lalabas sa reg form
+        const derivedSubjects = sourceHistory?.subjects?.map(s => {
+            const populatedSubject = s.subjectId;
+
+            const matchedSection = populatedSubject?.sections?.find(
+                sec => sec.sectionName === activeSection
+            );
+
+            return {
+                subjectId:         populatedSubject?._id         || s.subjectId,
+                subjectCode:       populatedSubject?.subjectCode  || '',
+                subjectName:       populatedSubject?.subjectName  || s.subjectName || '',
+                subjectTeacher:    s.subjectTeacher               || '',
+                semester:          populatedSubject?.semester     || s.semester    || null,
+                scheduleStartTime: matchedSection?.scheduleStartTime || s.scheduleStartTime || '',
+                scheduleEndTime:   matchedSection?.scheduleEndTime   || s.scheduleEndTime   || '',
+                room:              matchedSection?.room              || s.room              || '',
+            };
+        }) || [];
+
+        // ✅ Skip section query pag repeater pending — wala pang bagong section
+        const section = isRepeaterPending
+            ? null
+            : await Section.findOne({ 
+                name: currentSemHistory?.section || student.section,
+                schoolYear: currentSchoolYear?._id
+              }).select("isOpenEnrollment isEnrolled");
+
+        const isEnrolledThisSem = !!(currentSemHistory?.status === 'enrolled');
+
         const studentProfile = {
             ...student,
-            currentSection: section 
-        }
+
+            // ✅ Display fields — currentSemHistory first, latestHistory fallback
+            displayGradeLevel:  currentSemHistory?.gradeLevel  || latestHistory?.gradeLevel  || student.gradeLevel,
+            displaySection:     currentSemHistory?.status === 'enrolled'
+                                    ? currentSemHistory.section
+                                    : 'No Section',
+            displayStrand:      currentSemHistory?.strand      || latestHistory?.strand      || student.strand,
+            // ✅ Para sa repeater — latestHistory ang pinaka-accurate na sem/SY
+            displaySemester:    currentSemHistory?.semester    || latestHistory?.semester    || currentSchoolYear?.semester,
+            displaySchoolYear:  currentSemHistory?.schoolYear  || latestHistory?.schoolYear  || student.enrollmentYear,
+
+            currentSemHistory: currentSemHistory ? {
+                ...currentSemHistory,
+                subjects: derivedSubjects
+            } : null,
+            currentYearHistory: currentYearHistory || null,
+
+            // ✅ Repeater pending — Sem 1 subjects pa rin ang makikita sa reg form
+            currentSemSubjects: derivedSubjects,
+            subjects:           derivedSubjects,
+
+            currentSection:     section,
+            isEnrolledThisSem,
+
+            activeSchoolYear: {
+                _id:        currentSchoolYear?._id,
+                schoolYear: currentSchoolYear?.schoolYear,
+                semester:   currentSchoolYear?.semester
+            }
+        };
+
+        
+
 
 
         res.status(200).json(studentProfile);
+
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-}
+};
+
+
+
+
+
 
 export const getProfile = async(req, res) => {
     try {
@@ -255,6 +364,12 @@ export const getProfile = async(req, res) => {
         return res.status(500).json({ message: error.message });
     }
 }
+
+
+
+
+
+
 
 export const changePassword = async (req, res) => {
     try {

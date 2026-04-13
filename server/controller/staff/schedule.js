@@ -1,13 +1,37 @@
 import Subject from "../../model/subject.js";
-import Student from "../../model/student.js"; 
+import Student from "../../model/student.js";
+import SchoolYear from "../../model/schoolYear.js";
+
+
 
 export const getTeacherSubjectSchedule = async(req, res) => {
     try {   
         const { id } = req.account;
+        const { schoolYearId } = req.query;  // ✅ Accept optional schoolYearId from frontend
+
+        // ✅ If schoolYearId provided → use it (teacher selected a specific semester)
+        // ✅ If not → use active school year (backward compatibility)
+        let targetSchoolYear;
+
+        if (schoolYearId) {
+            targetSchoolYear = await SchoolYear.findById(schoolYearId);
+            if (!targetSchoolYear) {
+                return res.status(404).json({ message: "School year not found." });
+            }
+        } else {
+            targetSchoolYear = await SchoolYear.findOne({ isActive: true });
+            if (!targetSchoolYear) {
+                return res.status(404).json({ message: "No active school year." });
+            }
+        }
+
+        // ✅ Fetch subjects based on teacher + selected schoolYear
+        // DATA PERSISTS kahit mag-switch ng admin ng active sem
+        const subjects = await Subject.find({ 
+            teacherId: id,
+            schoolYear: targetSchoolYear._id
+        });
         
-        const subjects = await Subject.find({ teacherId: id });
-        
-        // Check if teacher has any subjects
         if (!subjects || subjects.length === 0) {
             return res.status(200).json({ 
                 success: true,
@@ -16,27 +40,23 @@ export const getTeacherSubjectSchedule = async(req, res) => {
             });
         }
 
-        // Flatten the sections array - each section becomes a separate entry
         const scheduleData = [];
         
         for (const subject of subjects) {
-            // Loop through each section in the subject
             for (const section of subject.sections) {
-                // Find students enrolled in this specific section
+                // ✅ Students based sa selected schoolYear — hindi sa isActive
                 const studentsInSection = await Student.find({
                     section: section.sectionName,
                     strand: subject.strand,
-                    semester: subject.semester,
-                    status: "enrolled" // Only enrolled students
+                    registrationHistory: {
+                        $elemMatch: {
+                            schoolYear: targetSchoolYear.schoolYear,
+                            semester: subject.semester
+                        }
+                    }
                 });
 
-                // Get school year from first enrolled student (or null if none)
-                const schoolYear = studentsInSection.length > 0 
-                    ? studentsInSection[0].enrollmentYear 
-                    : null;
-
                 scheduleData.push({
-                    // Subject info
                     subjectId: subject._id,
                     subjectName: subject.subjectName,
                     subjectCode: subject.subjectCode,
@@ -48,7 +68,6 @@ export const getTeacherSubjectSchedule = async(req, res) => {
                     teacherId: subject.teacherId,
                     teacher: subject.teacher,
                     
-                    // Section info
                     sectionId: section.sectionId,
                     sectionName: section.sectionName,
                     section: section.sectionName,
@@ -56,9 +75,10 @@ export const getTeacherSubjectSchedule = async(req, res) => {
                     scheduleEndTime: section.scheduleEndTime,
                     room: section.room,
                     
-                    // Student and School Year info
                     studentCount: studentsInSection.length,
-                    schoolYear: schoolYear, // ← School year from students
+                    schoolYear: targetSchoolYear.schoolYear,
+                    schoolYearId: targetSchoolYear._id,
+                    semester: subject.semester,
                 });
             }
         }
@@ -70,7 +90,6 @@ export const getTeacherSubjectSchedule = async(req, res) => {
         });
         
     } catch (error) {
-        console.error("Error in getTeacherSubjectSchedule:", error);
         return res.status(500).json({ 
             success: false,
             message: error.message 

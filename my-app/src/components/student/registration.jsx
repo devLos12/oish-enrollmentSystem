@@ -13,17 +13,45 @@ const Registration = () => {
     setTextHeader(location?.state?.title);
   },[location?.state?.title]);
   
-
+  
+  
   const handleDownload = (registration) => {
+      const matchedHistory = profile?.registrationHistory?.find(h =>
+          h.schoolYear === registration.schoolYear &&
+          h.semester === registration.semester
+      );
 
-    navigate('/student/download', { 
-      state: { 
-        ...profile,
-        ...registration,
-        autoDownload: true
-      } 
-    });
+      // ✅ Flatten subjects — same structure sa getStudents derivedSubjects
+      const derivedSubjects = matchedHistory?.subjects?.map(s => ({
+          subjectId:         s.subjectId?._id    || s.subjectId,
+          subjectCode:       s.subjectId?.subjectCode  || '',
+          subjectName:       s.subjectId?.subjectName  || s.subjectName || '',
+          subjectTeacher:    s.subjectTeacher    || '',
+          semester:          s.subjectId?.semester || s.semester || null,
+          scheduleStartTime: s.scheduleStartTime || '',
+          scheduleEndTime:   s.scheduleEndTime   || '',
+          room:              s.room              || '',
+      })) || [];
+
+      navigate('/student/download', { 
+          state: { 
+              ...profile,
+              ...registration,
+              currentSemSubjects:  derivedSubjects,
+              subjects:            derivedSubjects,
+              displayGradeLevel:   registration.gradeLevel,
+              displaySection:      registration.section || 'No Section',
+              displayStrand:       registration.strand,
+              displaySemester:     registration.semester,
+              displaySchoolYear:   registration.schoolYear,
+              currentSemHistory:   matchedHistory 
+                  ? { ...matchedHistory, subjects: derivedSubjects } 
+                  : null,
+              autoDownload: true
+          } 
+      });
   };
+
 
   const getSemesterLabel = (semester) => {
     return semester === 1 ? "FIRST" : semester === 2 ? "SECOND" : "SUMMER";

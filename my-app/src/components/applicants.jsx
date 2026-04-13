@@ -34,6 +34,10 @@ const Applicants = () => {
 
     const [rejectionReason, setRejectionReason] = useState('');
 
+    // ✅ NEW: Active school year state for enrollment toggle
+    const [activeSchoolYear, setActiveSchoolYear] = useState(null);
+    const [togglingStatus, setTogglingStatus] = useState(false);
+    const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -100,6 +104,31 @@ const Applicants = () => {
         setTextHeader(location?.state?.title); 
     }, [location?.state?.title]);
 
+    // ✅ Fetch active school year on mount
+    useEffect(() => {
+        fetch(`${import.meta.env.VITE_API_URL}/api/getAllSchoolYears`, {
+            method: "GET",
+            credentials: "include"
+        })
+        .then(async(res) => {
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.message);
+            return data;
+        })
+        .then((data) => {
+            if(data.success && data.data) {
+                // Get active school year for enrollment toggle button
+                const activeYear = data.data.find(sy => sy.isActive);
+                if(activeYear) {
+                    setActiveSchoolYear(activeYear);
+                }
+            }
+        })
+        .catch((error) => {
+            console.log("Error fetching school years: ", error.message);
+        });
+    }, []);
+
     useEffect(() => {
         getAllApplicants();
     }, []);
@@ -122,11 +151,12 @@ const Applicants = () => {
         setFilteredApplicants(filtered);
         setCurrentPage(1);
     }, [searchTerm, statusFilter, applicants]);
-
+    
 
     const getAllApplicants = async() => {
         try {
             setLoading(true);
+            // ✅ Fetch all applicants for active school year
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getApplicants`, {
                 method: "GET",
                 credentials: "include"
@@ -135,17 +165,56 @@ const Applicants = () => {
             const data = await res.json();
             if(!res.ok) throw new Error(data.message);
 
-            const reversedData = data.reverse();
-
+            // ✅ Handle both old response format (array) and new format (object with data)
+            const applicantsList = data.data ? data.data : data;
+            const reversedData = applicantsList.reverse();
 
             setApplicants(reversedData);
             setFilteredApplicants(reversedData);
 
+
         } catch (error) {
             console.error("Error fetching applicants:", error.message);
-            showAlert("Failed to load applicants data", 'error');
+            setApplicants([]);
+            setFilteredApplicants([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ✅ NEW: Toggle enrollment status - Show confirmation modal
+    const handleToggleEnrollmentStatus = () => {
+        if (!activeSchoolYear) return;
+        setShowEnrollmentModal(true);
+    };
+
+    // ✅ NEW: Confirm toggle enrollment status
+    const confirmToggleEnrollmentStatus = async () => {
+        if (!activeSchoolYear) return;
+        
+        try {
+            setTogglingStatus(true);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/toggleEnrollmentStatus`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ schoolYearId: activeSchoolYear._id }),
+                credentials: "include"
+            });
+            
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            
+            // ✅ Update active school year with new status
+            setActiveSchoolYear(data.data);
+            
+            showAlert(`Enrollment ${data.data.enrollmentStatus === 'open' ? 'Opened' : 'Closed'}`, 'success');
+            setShowEnrollmentModal(false);
+        } catch (error) {
+            console.error("Error toggling enrollment status:", error.message);
+            showAlert(error.message, 'error');
+            setShowEnrollmentModal(false);
+        } finally {
+            setTogglingStatus(false);
         }
     };
 
@@ -561,8 +630,56 @@ const Applicants = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="col-12 mt-2 mt-md-0">
-                        <div className="d-flex justify-content-md-end">
+
+                    <div className="col-12">
+                        
+
+                    </div>
+
+                    <div className="col-12 mt-2 mt-md-0 ">
+
+                        {/* ✅ Enrollment Status Toggle Button */}
+                        
+                        <div className="d-flex justify-content-md-end gap-2">
+
+
+                            {role === "admin" && (
+
+                            <button
+                                className={`btn btn-sm fw-semibold ${
+                                    activeSchoolYear?.enrollmentStatus === 'open'
+                                        ? 'btn-danger'
+                                        : 'btn-success'
+                                }`}
+                                onClick={handleToggleEnrollmentStatus}
+                                disabled={togglingStatus || !activeSchoolYear || activeSchoolYear?.semester === 2}
+                                title={activeSchoolYear?.semester === 2 ? 'Enrollment is not available for 2nd semester' : ''}
+                            >
+                                {togglingStatus ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        {activeSchoolYear?.enrollmentStatus === 'open' ? (
+                                            <>
+                                                <i className="fa fa-lock-open me-2"></i>
+                                                Close Enrollment
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fa fa-lock-open me-2"></i>
+                                                Open Enrollment
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                            </button>
+                            )}
+                            
+                            
+
                             <button 
                                 className="btn btn-outline-secondary btn-sm"
                                 onClick={handleRefresh}
@@ -580,12 +697,15 @@ const Applicants = () => {
                             </button>
                         </div>
                     </div>
+
                 </div>
                 
                 
                 {/* Search Bar and Filter */}
                 <div className="row mb-3">
-                    <div className="col-12 col-md-4">
+                 
+                    <div className="col-12 col-md-4 mt-2 mt-md-0">
+                        <label className="form-label small fw-semibold d-md-none d-lg-none">Search</label>
                         <div className="input-group">
                             <span className="input-group-text bg-white">
                                 <i className="fa fa-search text-muted"></i>
@@ -600,6 +720,7 @@ const Applicants = () => {
                         </div>
                     </div>
                     <div className="col-12 col-md-3 mt-2 mt-md-0">
+                    <label className="form-label small fw-semibold d-md-none d-lg-none">Filter Status</label>
                     <select 
                         className="form-select"
                         value={statusFilter}
@@ -611,9 +732,10 @@ const Applicants = () => {
                         <option value="rejected">Rejected</option>
                     </select>
                     </div>
-                    <div className="col-12 col-md-5 text-end">
+                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                        <label className="form-label small fw-semibold d-md-none d-lg-none">Count</label>
                         <p className="text-muted mb-0 mt-2">
-                            Showing: <strong>{filteredApplicants.length}</strong> applicant(s)
+                            <i className="fa fa-list me-1"></i><strong>{filteredApplicants.length}</strong> applicant(s)
                         </p>
                     </div>
                 </div>
@@ -1061,6 +1183,86 @@ const Applicants = () => {
                                     </div>
                                 </>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ✅ NEW - Enrollment Status Confirmation Modal */}
+            {showEnrollmentModal && (
+                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title text-capitalize">
+                                    {activeSchoolYear?.enrollmentStatus === 'open' ? 'Close Enrollment' : 'Open Enrollment'}
+                                </h5>
+                                <button 
+                                    type="button" 
+                                    className="btn-close"
+                                    onClick={() => setShowEnrollmentModal(false)}
+                                    disabled={togglingStatus}
+                                ></button>
+                            </div>
+                            <div className="modal-body text-center">
+                                <div className={`mb-3 ${activeSchoolYear?.enrollmentStatus === 'open' ? 'text-danger' : 'text-success'}`}>
+                                    <i className={`fa ${activeSchoolYear?.enrollmentStatus === 'open' ? 'fa-lock' : 'fa-lock-open'} fa-3x`}></i>
+                                </div>
+                                <h5 className="mb-3">
+                                    {activeSchoolYear?.enrollmentStatus === 'open' 
+                                        ? 'Close Enrollment?' 
+                                        : 'Open Enrollment?'}
+                                </h5>
+                                <p className="text-muted">
+                                    Do you want to <strong>{activeSchoolYear?.enrollmentStatus === 'open' ? 'close' : 'open'}</strong> this enrollment for:
+                                    <br/>
+                                    <strong className="text-capitalize d-block mt-2">
+                                        {activeSchoolYear?.label}
+                                    </strong>
+                                    <small className="text-muted d-block mt-2">
+                                        {activeSchoolYear?.enrollmentStatus === 'open' 
+                                            ? 'Students will no longer be able to submit applications.'
+                                            : 'Students will be able to submit new applications.'}
+                                    </small>
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowEnrollmentModal(false)}
+                                    disabled={togglingStatus}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className={`btn ${activeSchoolYear?.enrollmentStatus === 'open' ? 'btn-danger' : 'btn-success'}`}
+                                    onClick={confirmToggleEnrollmentStatus}
+                                    disabled={togglingStatus}
+                                >
+                                    {togglingStatus ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2"></span>
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            {activeSchoolYear?.enrollmentStatus === 'open' ? (
+                                                <>
+                                                    <i className="fa fa-lock me-2"></i>
+                                                    Yes, Close Enrollment
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-lock-open me-2"></i>
+                                                    Yes, Open Enrollment
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

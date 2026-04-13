@@ -57,7 +57,6 @@ const Dashboard = () => {
             if(!response.ok) throw new Error(result.message);
             if (result.success) {
                 setStats(result.data);
-                console.log("Data: ", result.data);
             }
         } catch (error) {
             console.error("Error:", error.message);

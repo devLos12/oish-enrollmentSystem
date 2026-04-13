@@ -4,10 +4,13 @@ import { useLocation } from "react-router-dom";
 import html2pdf from 'html2pdf.js';
 
 const TeacherScheduleTable = () => {
+    const { profile } = useContext(globalContext);
     const [teacherSubjects, setTeacherSubjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [teacherInfo, setTeacherInfo] = useState({ name: '', semester: '', schoolYear: '' });
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYearId, setSelectedSchoolYearId] = useState('');  // ✅ New state
     
     const { setTextHeader } = useContext(globalContext);
     const location = useLocation();
@@ -17,9 +20,54 @@ const TeacherScheduleTable = () => {
         setTextHeader(location?.state?.title);
     }, [location?.state?.title]);
 
+
+
+    useEffect(() => {       
+        console.log(profile);
+    }, [profile]);
+
+
+    // ✅ Fetch all school years on mount
     useEffect(() => {
+        fetch(`${import.meta.env.VITE_API_URL}/api/getAllSchoolYears`, {
+            method: "GET",
+            credentials: "include"
+        })
+        .then(async(res) => {
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.message);
+            return data;
+        })
+        .then((data) => {
+            if(data.success && data.data) {
+                setSchoolYears(data.data);
+                // Set default to active school year
+                const activeYear = data.data.find(sy => sy.isCurrent);
+
+
+                if(activeYear) {
+                    setSelectedSchoolYearId(activeYear._id);
+                } else if(data.data.length > 0) {
+                    setSelectedSchoolYearId(data.data[0]._id);
+                }
+            }
+        })
+        .catch((error) => {
+            console.log("Error fetching school years: ", error.message);
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!selectedSchoolYearId) {
+            setTeacherSubjects([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
-        fetch(`${import.meta.env.VITE_API_URL}/api/getTeacherSubjectSchedule`, {
+        const url = `${import.meta.env.VITE_API_URL}/api/getTeacherSubjectSchedule?schoolYearId=${selectedSchoolYearId}`;
+            
+        fetch(url, {
             method: "GET",
             credentials: "include"
         })
@@ -50,7 +98,7 @@ const TeacherScheduleTable = () => {
         .finally(() => {
             setLoading(false);
         });
-    }, []);
+    }, [selectedSchoolYearId]);
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -150,6 +198,29 @@ const TeacherScheduleTable = () => {
         <div className="container-fluid p-4" 
         style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
             <div ref={scheduleRef}>
+                {/* ✅ School Year Selector */}
+                <div className="row mb-4">
+                    <div className="col-12 col-md-4">
+                        <div className="card shadow-sm border-0">
+                            <div className="card-body">
+                                <label className="form-label fw-semibold small mb-2">Select School Year & Semester</label>
+                                <select 
+                                    className="form-select form-select-sm"
+                                    value={selectedSchoolYearId}
+                                    onChange={(e) => setSelectedSchoolYearId(e.target.value)}
+                                >
+                                    <option value="">-- Choose --</option>
+                                    {schoolYears.map(sy => (
+                                        <option key={sy._id} value={sy._id}>
+                                            {sy.label} {sy.isCurrent ? '✓ Active' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="row mb-4">
                     <div className="col-12">
                         <div className="card shadow-sm">
@@ -159,11 +230,21 @@ const TeacherScheduleTable = () => {
                                         <p className='fs-4 text-capitalize fw-semibold'>teacher schedule</p>
                                     </div>
                                     <div className="col-md-6 ">
-                                        <p className="text-muted m-0">{`${teacherInfo?.semester === 1 ? "First Semester" : "Second Semester"}, S.Y ${teacherInfo?.schoolYear}`}</p>
+                                    
+                                        <p className="text-muted m-0">
+                                            {(() => {
+                                                const selected = schoolYears.find(sy => sy._id === selectedSchoolYearId);
+                                                return selected ? selected.label : '';
+                                            })()}
+                                        </p>
+
                                     </div>
+
+                             
+
                                     <div className="col-md-6 text-md-end">
                                         <p className="text-muted mb-1 small">Name of Teacher</p>
-                                        <p className="m-0 fw-bold mb-1 text-uppercase">{teacherInfo.name}</p>
+                                        <p className="m-0 fw-bold mb-1 text-uppercase">{teacherInfo.name || `${profile?.firstName} ${profile?.lastName}`}</p>
                                     </div>
                                 </div>
                             </div>

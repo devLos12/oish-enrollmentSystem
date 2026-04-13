@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect, useContext } from "react";
 import { useLocation } from "react-router-dom";
 import { globalContext } from "../../context/global";
+import { useNavigate } from "react-router-dom";
+
+
+
+
 
 const StudentTable = () => {
     const location = useLocation();
@@ -16,12 +21,16 @@ const StudentTable = () => {
     const [itemsPerPage] = useState(10);
     
     const { setTextHeader} = useContext(globalContext);
+    const navigate = useNavigate();
+
+
+
 
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
     },[location?.state?.title]);
 
-    
+
 
     // Fetch student data from location state
     useEffect(() => {
@@ -33,6 +42,9 @@ const StudentTable = () => {
             setLoading(false);
         }
     }, [location?.state?.data.students]);
+
+
+
 
     // Search filter
     useEffect(() => {
@@ -52,7 +64,6 @@ const StudentTable = () => {
     }, [searchTerm, studentList]);
 
 
-    
 
 
     const handleViewStudent = (student) => {
@@ -65,6 +76,7 @@ const StudentTable = () => {
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentStudents = filteredStudents.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+
 
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
@@ -161,9 +173,24 @@ const StudentTable = () => {
 
     const subjectData = location?.state?.data;
 
+    console.log(subjectData);
+
     return (
         <>
             <div className="container-fluid py-4 ">
+
+
+                <div className="row">
+                    <div className="col-12">
+                        {/* Back button */}
+                        <button className="btn btn-sm btn-outline-secondary mb-2" onClick={() => navigate(-1)}>
+                            <i className="fa fa-arrow-left me-2" />Back
+                        </button>
+                
+                    </div>
+                </div>                
+
+
                 {/* Header Section with Schedule */}
                 <div className="row justify-content-center mb-4">
                     <div className="col-12 ">
@@ -180,7 +207,7 @@ const StudentTable = () => {
                                         </div>
                                        <div className="mt-3">
                                             <p className="m-0 fw-semibold">
-                                                {subjectData?.gradeLevel} - {subjectData.sectionName}
+                                                {subjectData?.gradeLevel} - {subjectData?.section}
                                             </p>
 
                                             <p className="m-0 text-muted  ">

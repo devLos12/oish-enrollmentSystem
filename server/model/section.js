@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
 const sectionSchema = new mongoose.Schema({
+  schoolYear: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "SchoolYear", 
+    required: false 
+  }, 
   name: String, // e.g. STEM-A, HUMSS-B
   gradeLevel: Number,
   track: String,
