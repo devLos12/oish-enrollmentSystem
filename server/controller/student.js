@@ -661,6 +661,7 @@ export const getStudents = async (req, res) => {
 
         const query = {
             $or: [
+                // ✅ May registrationHistory entry sa active SY + sem
                 {
                     registrationHistory: {
                         $elemMatch: {
@@ -669,15 +670,20 @@ export const getStudents = async (req, res) => {
                         }
                     }
                 },
+                // ✅ Newly enrolled — scoped sa active SY
+                
                 {
                     status: 'enrolled',
                     semester: activeSchoolYear.semester,
                     enrollmentYear: activeSchoolYear.schoolYear.split('-')[0]
                 },
+                // ✅ Pending applicants — scoped sa active SY na
                 {
                     status: 'pending',
-                    semester: activeSchoolYear.semester
+                    semester: activeSchoolYear.semester,
+                    schoolYear: activeSchoolYear._id    // ← DAGDAG
                 },
+                // ✅ Repeater na nag-request
                 {
                     studentType: 'repeater',
                     status: 'pending',
@@ -1037,6 +1043,7 @@ export const EnrollStudentFromPortal = async (req, res) => {
         })),
         dateCreated: new Date()
     };
+    
 
     if (historyIndex !== -1) {
         student.registrationHistory[historyIndex] = {

@@ -1896,15 +1896,36 @@ export const ApplicantApproval = async (req, res) => {
 
 
 
-export const revertToPending = async(req, res) => {
+export const revertToPending = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await Enrollment.findOneAndUpdate({_id: id}, { $set: { status: "pending"}});
+    // ✅ Find enrollment muna para makuha yung email/lrn ng applicant
+    const enrollment = await Enrollment.findById(id);
+    if (!enrollment) {
+      return res.status(404).json({ message: "Enrollment not found." });
+    }
 
+    // ✅ Delete matching student record (match by email — unique identifier)
+    const email = enrollment.learnerInfo?.email;
+    const lrn = enrollment.learnerInfo?.lrn;
 
-    return res.status(200).json({ message: "update status successfully."});
+    if (email) {
+      await Student.findOneAndDelete({ email });
+    } else if (lrn && lrn !== 'N/A') {
+      // Fallback — LRN kung walang email match
+      await Student.findOneAndDelete({ lrn });
+    }
+
+    // ✅ Revert enrollment status back to pending
+    await Enrollment.findByIdAndUpdate(
+      id,
+      { $set: { status: "pending" } }
+    );
+
+    return res.status(200).json({ message: "Reverted to pending successfully." });
+
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
+};
