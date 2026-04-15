@@ -649,7 +649,6 @@ export const updateStudent = async (req, res) => {
 };
 
 
-
 export const getStudents = async (req, res) => {
     try {
         const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
@@ -661,52 +660,54 @@ export const getStudents = async (req, res) => {
 
         const query = {
             $or: [
-                // ✅ May registrationHistory entry sa active SY + sem
+                // ✅ May registrationHistory entry sa active SY + sem + enrolled
                 {
                     registrationHistory: {
                         $elemMatch: {
+                            status: 'enrolled',
                             schoolYear: activeSchoolYear.schoolYear,
                             semester: activeSchoolYear.semester
                         }
                     }
                 },
                 // ✅ Newly enrolled — scoped sa active SY
-                
                 {
                     status: 'enrolled',
                     semester: activeSchoolYear.semester,
                     enrollmentYear: activeSchoolYear.schoolYear.split('-')[0]
                 },
-                // ✅ Pending applicants — scoped sa active SY na
+                // ✅ Pending applicants — scoped sa active SY
                 {
                     status: 'pending',
                     semester: activeSchoolYear.semester,
-                    schoolYear: activeSchoolYear._id    // ← DAGDAG
+                    schoolYear: activeSchoolYear._id
                 },
                 // ✅ Repeater na nag-request
                 {
                     studentType: 'repeater',
                     status: 'pending',
                     hasEnrollmentRequest: true,
-                    schoolYear: currentSchoolYear._id
+                    schoolYear: activeSchoolYear._id
                 }
             ]
         };
 
+        
         const students = await Student.find(query)
             .populate({
                 path: 'registrationHistory.subjects.subjectId',
-                select: 'subjectCode subjectName semester sections'  // ✅ sections included
+                select: 'subjectCode subjectName teacher semester sections'
             })
             .sort({ createdAt: -1 });
         
-            
 
         const studentsWithDerivedStatus = students.map(student => {
 
+
             const currentSemHistory = student.registrationHistory.find(h =>
                 h.schoolYear === activeSchoolYear.schoolYear &&
-                h.semester === activeSchoolYear.semester
+                h.semester === activeSchoolYear.semester &&
+                h.status === 'enrolled'
             );
 
             const latestHistory = student.registrationHistory
@@ -721,12 +722,17 @@ export const getStudents = async (req, res) => {
                 .filter(h => h.schoolYear === activeSchoolYear.schoolYear)
                 .sort((a, b) => b.semester - a.semester)[0] || null;
 
-            // ✅ Repeater pending — hindi pa enrolled sa bagong sem
+            // ✅ isRepeaterPending — naka-base sa kung may enrolled entry ba
+            //    sa current active SY + sem, hindi sa global status field
             const isRepeaterPending = student.studentType === 'repeater' &&
-                                    student.status === 'pending' &&
-                                    student.hasEnrollmentRequest === true;
+                                      student.hasEnrollmentRequest === true &&
+                                      !student.registrationHistory.some(h =>
+                                          h.schoolYear === activeSchoolYear.schoolYear &&
+                                          h.semester === activeSchoolYear.semester &&
+                                          h.status === 'enrolled'
+                                      );
 
-            // ✅ Kung repeater pending — null ang source, walang subjects
+            // ✅ sourceHistory — null pag repeater pending
             const sourceHistory = isRepeaterPending
                 ? null
                 : (currentSemHistory || latestHistory);
@@ -734,26 +740,33 @@ export const getStudents = async (req, res) => {
             const activeSection = isRepeaterPending
                 ? ''
                 : (currentSemHistory?.section || latestHistory?.section || '');
-
-            // ✅ derivedSubjects — empty pag repeater pending
+            
+                                      
+            // ✅ derivedSubjects — direct fields from history, no sections lookup
             const derivedSubjects = isRepeaterPending
                 ? []
                 : sourceHistory?.subjects?.map(s => {
-                    const populatedSubject = s.subjectId;
-                    const matchedSection = populatedSubject?.sections?.find(
+                    const pop = s.subjectId; // populated Subject — may sections[] na
+
+                    // ✅ Kunin yung matching section data galing sa Subject.sections[]
+                    const matchedSection = pop?.sections?.find(
                         sec => sec.sectionName === activeSection
                     );
+
+                                        
                     return {
-                        subjectId:         populatedSubject?._id          || s.subjectId,
-                        subjectCode:       populatedSubject?.subjectCode   || '',
-                        subjectName:       populatedSubject?.subjectName   || s.subjectName || '',
-                        subjectTeacher:    s.subjectTeacher                || '',
-                        semester:          populatedSubject?.semester      || s.semester    || null,
+                        subjectId:         pop?._id              || s.subjectId,
+                        subjectCode:       pop?.subjectCode       || '',
+                        subjectName:       pop?.subjectName       || s.subjectName       || '',
+                        subjectTeacher:    pop?.teacher           || s.subjectTeacher    || '',
+                        semester:          pop?.semester          || s.semester          || null,
+                        // ✅ Realtime — galing sa Subject.sections[], hindi snapshot
                         scheduleStartTime: matchedSection?.scheduleStartTime || s.scheduleStartTime || '',
                         scheduleEndTime:   matchedSection?.scheduleEndTime   || s.scheduleEndTime   || '',
                         room:              matchedSection?.room              || s.room              || '',
                     };
                 }) || [];
+            
 
             return {
                 ...student.toObject(),
@@ -773,14 +786,13 @@ export const getStudents = async (req, res) => {
             };
         });
 
+
         return res.status(200).json(studentsWithDerivedStatus);
 
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
 };
-
-
 
 
 export const deleteStudent = async(req, res) => {
@@ -914,7 +926,7 @@ export const EnrollStudentFromPortal = async (req, res) => {
     const student = await Student.findById(studentId);
     if (!student) return res.status(404).json({ message: "Student not found." });
 
-    const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+    const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
     if (!activeSchoolYear) return res.status(400).json({ message: "No active school year." });
 
     const activeSemester      = activeSchoolYear.semester;
@@ -930,16 +942,29 @@ export const EnrollStudentFromPortal = async (req, res) => {
         return res.status(400).json({ message: "You are already enrolled for this semester." });
     }
 
+
+
+
+
     // ✅ Repeater block
     if (student.studentType === 'repeater') {
+
+        const currentSchoolYear = await SchoolYear.findOne({ isCurrent: true }); // ✅ isCurrent — student facing
+        if (!currentSchoolYear) return res.status(400).json({ message: "No current school year." });
+
         student.status = 'pending';
         student.hasEnrollmentRequest = true;
         student.semester = activeSemester;
+        student.schoolYear = currentSchoolYear;
+
         await student.save();
         return res.status(200).json({ 
             message: "Enrollment request submitted. Please wait for admin approval." 
         });
     }
+
+
+
 
     // ✅ Find section — direct via students[] + active SY + sem
     const findSection = await Section.findOne({

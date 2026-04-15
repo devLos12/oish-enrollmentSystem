@@ -801,7 +801,7 @@ export const EnrollmentRegistration = async (req, res) => {
       }
 
 
-      const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+      const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
 
       if (!activeSchoolYear) {
         return res.status(400).json({ 
@@ -1097,7 +1097,7 @@ export const EnrollmentRegistration = async (req, res) => {
 
 
 
-      const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+      const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
 
       if (!activeSchoolYear) {
         return res.status(400).json({ message: "No active school year." });
@@ -1786,10 +1786,8 @@ export const ApplicantApproval = async (req, res) => {
   try {
     const { enrollmentId } = req.body;
     
-
-
-
-    const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+    
+    const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
     
     if (!activeSchoolYear) {
       return res.status(400).json({ message: "No active school year." });
@@ -1909,6 +1907,7 @@ export const revertToPending = async (req, res) => {
     // ✅ Delete matching student record (match by email — unique identifier)
     const email = enrollment.learnerInfo?.email;
     const lrn = enrollment.learnerInfo?.lrn;
+
 
     if (email) {
       await Student.findOneAndDelete({ email });

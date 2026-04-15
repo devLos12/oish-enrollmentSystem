@@ -5,7 +5,6 @@ import { useEffect, useLayoutEffect, useContext, useRef, useState } from "react"
 import { globalContext } from "../context/global";
 import html2pdf from 'html2pdf.js';
 
-
 const RegistrationViewForm = () => {
     const { role } = useContext(globalContext);
     const location = useLocation();
@@ -14,36 +13,29 @@ const RegistrationViewForm = () => {
     const formRef = useRef();
     const [isDownloading, setIsDownloading] = useState(false);
 
-
-
-
     useEffect(() => {
-        console.log(student);
-    },[role, student]);
+        console.log(`ROLE: ${role} DATA: `, student);
+    }, [role, student]);
+
+    // ✅ Source of truth — currentSemHistory from backend
+    const currentSemHistory = student?.currentSemHistory || null;
+
+    // ✅ display* fields — accurate per sem from backend derive
+    const displayGradeLevel = student?.displayGradeLevel  || student?.gradeLevel    || "";
+    const displaySection    = student?.displaySection     || "No Section";
+    const displayStrand     = student?.displayStrand      || student?.strand         || "";
+    const displaySemester   = student?.displaySemester    || student?.semester       || "";
+    const displaySchoolYear = student?.displaySchoolYear  || student?.enrollmentYear || "________";
 
 
+    // ✅ Subjects — currentSemSubjects (derived from backend), 
+    //    fallback sa currentSemHistory.subjects para safety
+    const displaySubjects = student?.currentSemSubjects?.length > 0
+        ? student.currentSemSubjects
+        : student?.currentSemHistory?.subjects || [];
 
 
     
-
-
-    // ✅ Get accurate data from currentSemHistory — source of truth
-    const currentSemHistory = student?.currentSemHistory || null;
-
-    // ✅ display* fields — accurate per sem, not global
-    const displayGradeLevel   = student?.displayGradeLevel  || student?.gradeLevel  || "";
-    const displaySection      = student?.displaySection     || "No Section";
-    const displayStrand       = student?.displayStrand      || student?.strand       || "";
-    const displaySemester     = student?.displaySemester    || student?.semester     || "";
-    const displaySchoolYear   = student?.displaySchoolYear  || student?.enrollmentYear || "________";
-
-    // ✅ Subjects — from currentSemHistory directly (most accurate)
-    const displaySubjects = student?.currentSemSubjects?.length > 0
-        ? student.currentSemSubjects
-        : student?.subjects || [];
-
-
-
 
 
     useEffect(() => {
@@ -104,7 +96,6 @@ const RegistrationViewForm = () => {
         }
     });
 
-    // ✅ AUTO-DOWNLOAD (for students)
     const handleAutoDownloadPDF = async () => {
         const element = formRef.current;
         await convertImagesToBase64(element);
@@ -113,7 +104,6 @@ const RegistrationViewForm = () => {
         });
     };
 
-    // ✅ MANUAL DOWNLOAD (for admin)
     const handleManualDownloadPDF = async () => {
         setIsDownloading(true);
         try {
@@ -138,7 +128,6 @@ const RegistrationViewForm = () => {
         }
         : {};
 
-    // ✅ Format time to 12-hour format
     const formatTime = (time) => {
         if (!time) return '';
         if (time.toLowerCase().includes('am') || time.toLowerCase().includes('pm')) return time;
@@ -159,9 +148,6 @@ const RegistrationViewForm = () => {
                         <button className="btn btn-sm btn-outline-secondary mb-2" onClick={() => navigate(-1)}>
                             <i className="fa fa-arrow-left me-2" />Back
                         </button>
-                
-
-
 
                         {/* Form Content */}
                         <div ref={formRef}>
@@ -172,7 +158,6 @@ const RegistrationViewForm = () => {
                                 <p className="fw-bold mb-1 small fs-5">FRANCISCO OSORIO INTEGRATED SENIOR HIGH SCHOOL</p>
                                 <p className='m-0 my-2 fw-semibold'>Barangay Osorio Trece Martires City, Cavite</p>
                                 <div className="d-inline-block border border-2 border-dark p-2 fw-bold small mt-2">
-                                    {/* ✅ displaySchoolYear — from registrationHistory */}
                                     School Year: {displaySchoolYear}
                                 </div>
                             </div>
@@ -198,29 +183,24 @@ const RegistrationViewForm = () => {
                                     </div>
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Track: </p>
-                                        {/* ✅ track — from currentSemHistory or direct field */}
                                         <p className="m-0 fw-bold">{currentSemHistory?.track || student?.track || ""}</p>
                                     </div>
                                 </div>
                                 <div className="col-12 col-md-6 d-flex flex-column gap-2 mt-2 mt-md-0">
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Grade Level: </p>
-                                        {/* ✅ displayGradeLevel — from registrationHistory */}
                                         <p className="m-0 fw-bold">{displayGradeLevel}</p>
                                     </div>
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Section: </p>
-                                        {/* ✅ displaySection — from registrationHistory, "No Section" if unenrolled */}
                                         <p className="m-0 fw-bold">{displaySection}</p>
                                     </div>
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Strand: </p>
-                                        {/* ✅ displayStrand — from registrationHistory */}
                                         <p className="m-0 fw-bold">{displayStrand}</p>
                                     </div>
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Semester: </p>
-                                        {/* ✅ displaySemester — from registrationHistory */}
                                         <p className="m-0 fw-bold">
                                             {displaySemester === 1 ? "First" : displaySemester === 2 ? "Second" : ""}
                                         </p>
@@ -242,7 +222,6 @@ const RegistrationViewForm = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {/* ✅ displaySubjects — from currentSemHistory.subjects (source of truth) */}
                                         {displaySubjects.length > 0 ? (
                                             displaySubjects.map((subject, index) => (
                                                 <tr key={index}>
@@ -305,14 +284,6 @@ const RegistrationViewForm = () => {
                         {/* Download Button - Only for Admin */}
                         {!location?.state?.autoDownload && role === 'admin' && (
                             <div className='d-flex align-items-center gap-3 my-5 justify-content-center'>
-                                {/* <button
-                                    className='btn btn-secondary px-4 text-capitalize'
-                                    onClick={() => navigate(-1)}
-                                    disabled={isDownloading}
-                                >
-                                    <i className="fa fa-arrow-left me-2"></i>
-                                    Back
-                                </button> */}
                                 <button
                                     className='btn btn-danger text-capitalize px-4'
                                     onClick={handleManualDownloadPDF}

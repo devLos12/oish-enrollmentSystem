@@ -233,6 +233,8 @@ export const addSubjectSection = async(req, res) => {
     }
 }
 
+
+
 export const bulkAddSubjectSections = async (req, res) => {
     try {
         const { id } = req.params;
@@ -247,7 +249,7 @@ export const bulkAddSubjectSections = async (req, res) => {
             return res.status(404).json({ success: false, message: "Subject not found" });
         }
 
-        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
         if (!activeSchoolYear) {
             return res.status(400).json({ success: false, message: "No active school year." });
         }
@@ -350,6 +352,7 @@ export const bulkAddSubjectSections = async (req, res) => {
 
 
 
+
 export const getSubjectDetails = async(req, res) => {
     try {
         const { id } = req.params;
@@ -403,6 +406,8 @@ export const getSubjectDetails = async(req, res) => {
         });
     }
 }
+
+
 
 
 export const getSubjectSection = async (req, res) => {
@@ -545,18 +550,12 @@ export const getAllTeachers = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
 export const bulkAddSubjects = async (req, res) => {
     try {
         const { subjects } = req.body;
+
+
+
 
         // Validate request
         if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
@@ -588,19 +587,29 @@ export const bulkAddSubjects = async (req, res) => {
             });
         }
 
-        // Check for existing subject codes in database
-        const existingSubjects = await Subject.find({ subjectCode: { $in: subjectCodes } });
-        if (existingSubjects.length > 0) {
-            const existing = existingSubjects.map(s => s.subjectCode).join(', ');
-            return res.status(400).json({ message: `Subject codes already exist: ${existing}` });
-        }
-
         // Get active school year — source of truth
-        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
         if (!activeSchoolYear) {
             return res.status(400).json({ message: "No active school year." });
         }
 
+        // Check for existing subject codes in database
+        const existingSubjects = await Subject.find({ 
+            subjectCode: { 
+                $in: subjectCodes 
+            },
+            schoolYear: {
+                $in: activeSchoolYear._id
+            } 
+        });
+
+
+
+        if (existingSubjects.length > 0) {
+            const existing = existingSubjects.map(s => s.subjectCode).join(', ');
+            return res.status(400).json({ message: `Subject codes already exist: ${existing}` });
+        }
+ 
         // Prepare subjects for insertion
         const subjectsToInsert = subjects.map(subject => ({
             schoolYear: activeSchoolYear._id,
@@ -742,10 +751,10 @@ export const createSubject = async (req, res) => {
 
 
 
-        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
         if (!activeSchoolYear) {
             return res.status(400).json({ message: "No active school year." });
-        }
+        }   
 
 
         const newSubject = new Subject({

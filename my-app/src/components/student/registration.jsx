@@ -16,24 +16,38 @@ const Registration = () => {
   
   
   const handleDownload = (registration) => {
+
+
       const matchedHistory = profile?.registrationHistory?.find(h =>
           h.schoolYear === registration.schoolYear &&
           h.semester === registration.semester
       );
 
       // ✅ Flatten subjects — same structure sa getStudents derivedSubjects
-      const derivedSubjects = matchedHistory?.subjects?.map(s => ({
+      const derivedSubjects = matchedHistory?.subjects?.map(s => {
+        const pop = s.subjectId;
+
+        const matchedSection = pop.sections?.find(
+          sec => sec.sectionName = registration.section
+        )
+
+        return {
           subjectId:         s.subjectId?._id    || s.subjectId,
           subjectCode:       s.subjectId?.subjectCode  || '',
           subjectName:       s.subjectId?.subjectName  || s.subjectName || '',
           subjectTeacher:    s.subjectTeacher    || '',
           semester:          s.subjectId?.semester || s.semester || null,
-          scheduleStartTime: s.scheduleStartTime || '',
-          scheduleEndTime:   s.scheduleEndTime   || '',
-          room:              s.room              || '',
-      })) || [];
+          scheduleStartTime: matchedSection?.scheduleStartTime || '',
+          scheduleEndTime:   matchedSection?.scheduleEndTime   || '',
+          room:              matchedSection?.room              || '',
+        }
+    
+      }) || [];
 
+      
+      
       navigate('/student/download', { 
+
           state: { 
               ...profile,
               ...registration,
