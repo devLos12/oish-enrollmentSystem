@@ -43,7 +43,7 @@ const Registration = () => {
         }
     
       }) || [];
-
+      
       
       
       navigate('/student/download', { 

@@ -57,7 +57,6 @@ export const getActiveSchoolYear = async (req, res) => {
 
 
 
-
 // PATCH /api/set-current-school-year/:id
 export const setCurrentSchoolYear = async (req, res) => {
   try {
@@ -93,12 +92,26 @@ export const setCurrentSchoolYear = async (req, res) => {
     });
 
 
-
-
     // ========================================
     // 🔥 Section copy + promotions dito na
     // ========================================
-    if (previousCurrent && !isOlder) {
+
+    const isConsecutive = previousCurrent ? (() => {
+      const prevYear = parseInt(previousCurrent.schoolYear.split('-')[0]);
+      const targetYear = parseInt(target.schoolYear.split('-')[0]);
+      const prevSem = previousCurrent.semester;
+      const targetSem = target.semester;
+
+      // Sem 1 → Sem 2 (same school year)
+      if (prevYear === targetYear && prevSem === 1 && targetSem === 2) return true;
+
+      // Sem 2 → Sem 1 (next school year)
+      if (targetYear === prevYear + 1 && prevSem === 2 && targetSem === 1) return true;
+
+      return false;
+    })() : false;
+
+    if (previousCurrent && !isOlder && isConsecutive) {
       const isNewSchoolYear = previousCurrent.schoolYear !== target.schoolYear;
       const isSem1ToSem2 = previousCurrent.semester === 1 && target.semester === 2;
       const isSem2ToSem1 = previousCurrent.semester === 2 && target.semester === 1;
@@ -160,8 +173,6 @@ export const setCurrentSchoolYear = async (req, res) => {
             studentType: 'regular'
           }).select('_id');
 
-
-
           const eligibleIds = eligibleStudents.map(s => s._id);
 
           // G12 regular → graduated
@@ -194,10 +205,8 @@ export const setCurrentSchoolYear = async (req, res) => {
               maxCapacity: sec.maxCapacity,
               students: eligibleIds
             });
-            
           }
         }
-
 
         await Student.updateMany(
           { 
@@ -210,7 +219,6 @@ export const setCurrentSchoolYear = async (req, res) => {
             } 
           }
         );
-        
       }
     }
 
@@ -223,10 +231,6 @@ export const setCurrentSchoolYear = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
-
-
 
 
 

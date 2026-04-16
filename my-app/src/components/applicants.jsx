@@ -54,7 +54,7 @@ const Applicants = () => {
 
 
     const [refreshing, setRefreshing] = useState(false);
-
+    const [isOthersSelected, setIsOthersSelected] = useState(false);
 
 
     useEffect(() => {
@@ -236,6 +236,7 @@ const Applicants = () => {
         setSelectedApplicant(applicant);
         setModalType('reject');
         setRejectionReason('');
+        setIsOthersSelected(false);
         setShowModal(true);
     };
 
@@ -1022,25 +1023,51 @@ const Applicants = () => {
                                             </p>
                                         </div>
                                         
-                                        {/* ✅ ADD THIS - Rejection Reason Textarea */}
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold">
                                                 Reason for Rejection <span className="text-danger">*</span>
                                             </label>
-                                            <textarea 
-                                                className="form-control" 
-                                                rows="4"
-                                                placeholder="Please provide a clear reason for rejection..."
-                                                value={rejectionReason}
-                                                onChange={(e) => setRejectionReason(e.target.value)}
+                                            <select
+                                                className="form-select mb-2"
+                                                value={isOthersSelected ? 'Others' : rejectionReason}
+                                                onChange={(e) => {
+                                                    if (e.target.value === 'Others') {
+                                                        setIsOthersSelected(true);
+                                                        setRejectionReason('');
+                                                    } else {
+                                                        setIsOthersSelected(false);
+                                                        setRejectionReason(e.target.value);
+                                                    }
+                                                }}
                                                 disabled={modalLoading}
-                                                required
-                                            ></textarea>
+                                            >
+                                                <option value="">-- Select a reason --</option>
+                                                <option>Blurry or unreadable documents</option>
+                                                <option>Incomplete required documents</option>
+                                                <option>Invalid or mismatched information</option>
+                                                <option>Expired documents</option>
+                                                <option>Duplicate application</option>
+                                                <option>Does not meet grade level requirements</option>
+                                                <option value="Others">Others (specify...)</option>
+                                            </select>
+
+                                            {isOthersSelected && (
+                                                <textarea
+                                                    className="form-control mt-2"
+                                                    rows="3"
+                                                    placeholder="Please specify the reason..."
+                                                    value={rejectionReason}
+                                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                                    disabled={modalLoading}
+                                                ></textarea>
+                                            )}
+
                                             <small className="text-muted d-block mt-1">
                                                 <i className="fa fa-info-circle me-1"></i>
                                                 This reason will be sent to the applicant via email.
                                             </small>
                                         </div>
+
                                     </div>
                                     <div className="modal-footer">
                                         <button 
@@ -1048,7 +1075,8 @@ const Applicants = () => {
                                             className="btn btn-secondary"
                                             onClick={() => {
                                                 setShowModal(false);
-                                                setRejectionReason(''); // ✅ Clear reason when canceling
+                                                setRejectionReason('');
+                                                setIsOthersSelected(false); // ✅ dagdag
                                             }}
                                             disabled={modalLoading}
                                         >
@@ -1267,7 +1295,6 @@ const Applicants = () => {
                     </div>
                 </div>
             )}
-
 
 
 

@@ -17,6 +17,7 @@ const validateAccessCode = async (code) => {
 };
 
 
+
 export const StaffRegistration = async (req, res) => {
     try {
         const { verificationCode, firstName, middleName, lastName, suffix, email, password } = req.body;
