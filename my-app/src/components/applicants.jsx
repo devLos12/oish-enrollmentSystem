@@ -65,7 +65,6 @@ const Applicants = () => {
 
         // Listen for new enrollment event
         socket.on('new-enrollment', (data) => {
-            console.log('📩 New enrollment received:', data.message);
             // ✅ Auto-refresh applicants list
             getAllApplicants();
         });
@@ -219,13 +218,12 @@ const Applicants = () => {
     };
 
     const handleViewApplicant = (applicant) => {
-        navigate(`/${role}/enrollmentpdf`, { state: { applicant, autoDownload: false, title: "applicants" } });
+        navigate(`/${role}/applicant_form`,{
+            state: { applicant, }
+        });
     };
+        
     
-    const handleDownloadFile = (applicant) => {
-        navigate(`/${role}/enrollmentpdf`, { state: { applicant, autoDownload: true } });
-    }
-
     const handleApproveApplicant = (applicant) => {
         setSelectedApplicant(applicant);
         setModalType('approve');
@@ -720,7 +718,7 @@ const Applicants = () => {
                             />
                         </div>
                     </div>
-                    <div className="col-12 col-md-3 mt-2 mt-md-0">
+                    <div className="col-12 col-md-4 mt-2 mt-md-0">
                     <label className="form-label small fw-semibold d-md-none d-lg-none">Filter Status</label>
                     <select 
                         className="form-select"
@@ -733,9 +731,10 @@ const Applicants = () => {
                         <option value="rejected">Rejected</option>
                     </select>
                     </div>
-                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                    <div className="col-12 col-md-4 mt-2 mt-md-0 d-flex flex-column flex-md-row align-items-md-center
+                    justify-content-md-end align-items-start justify-content-center">
                         <label className="form-label small fw-semibold d-md-none d-lg-none">Count</label>
-                        <p className="text-muted mb-0 mt-2">
+                        <p className="text-muted mb-0 d-flex align-items-center ">
                             <i className="fa fa-list me-1"></i><strong>{filteredApplicants.length}</strong> applicant(s)
                         </p>
                     </div>
@@ -845,13 +844,7 @@ const Applicants = () => {
                                                                         >
                                                                             view
                                                                         </button>
-                                                                        <button 
-                                                                            className="btn btn-sm btn-outline-secondary"
-                                                                            onClick={() => handleDownloadFile(applicant)}
-                                                                            title="Download to pdf"
-                                                                        >
-                                                                            <i className="fa fa-download"></i>
-                                                                        </button>
+
 
 
                                                                         {/* ✅ NEW - Revert to Pending button */}

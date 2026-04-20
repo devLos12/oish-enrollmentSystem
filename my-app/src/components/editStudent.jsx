@@ -61,9 +61,12 @@ const EditStudent = () => {
 
     const fetchSections = async (gradeLevel, track, strand) => {
         try {
+
             setLoadingSections(true);
+
+            const params = new URLSearchParams({ gradeLevel, track, strand });
             const res = await fetch(
-                `${import.meta.env.VITE_API_URL}/api/getSections?gradeLevel=${gradeLevel}&track=${track}&strand=${strand}`,
+                `${import.meta.env.VITE_API_URL}/api/getSections?${params}`,
                 { method: "GET", credentials: "include" }
             );
             const data = await res.json();

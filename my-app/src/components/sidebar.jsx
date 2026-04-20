@@ -54,6 +54,13 @@ const SideBar = () => {
             {   label: "applicants",          icon: 'fa-solid fa-user', 
                 link: "/admin/applicants",    title: "applicants"
             },
+            
+
+
+            
+            {   label: "Sections ",       icon: "fa-solid fa-layer-group",
+                link: "/admin/section_management", title: "Section Management"
+            },
 
             {   label: "subjects",            icon: 'fa-solid fa-book', 
                 link: "/admin/subjects",      title: "subjects"
@@ -63,10 +70,7 @@ const SideBar = () => {
                 link: "/admin/student_management", title: "student management"
             },
 
-            {   label: "Section Management",       icon: "fa-solid fa-layer-group",
-                link: "/admin/section_management", title: "Section Management"
-            },
-
+     
             // { 
             //     "label": "Access Code",          
             //     "icon": "fa-solid fa-key",
@@ -88,12 +92,27 @@ const SideBar = () => {
             //     ]
             // },
       
+   
+
+
+            { 
+                "label": "Semester",              "icon": "fa-solid fa-calendar-alt",
+                link: "/admin/semester",        title: "Semester"
+            },
+
+            {
+                "label" : "Program",            "icon": "fa-solid fa-book-open  ",
+                link: "/admin/program",         title: "Program"         
+            },
+            
             { "label": "faculty member",          "icon": "fa-solid fa-users-gear", 
                 link: "/admin/staff_member",    title: "faculty"
             },
+            
             { "label": "Announcement",         "icon": "fa-solid fa-bullhorn",
                 link: "/admin/announcement",    title: "announcement"
             },
+
             {   label: "Generate Code",       icon: "fa-solid fa-key",
                 link: "/admin/generate_code", title: "Generate Code", 
             },
@@ -102,10 +121,7 @@ const SideBar = () => {
             //     link: "/admin/schedule",       title: "schedule", 
             // },
 
-            { "label": "Semester",              "icon": "fa-solid fa-calendar-alt",
-                link: "/admin/semester",        title: "Semester"
-            },
-
+        
             { "label": "Logs",                  "icon": "fa-solid fa-clipboard-list",
                 link: "/admin/logs",            title: "Logs"
              },

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
+import usePrograms from "./hooks/useProgram";
+
 
 
 const SectionManagement = () => {
@@ -34,12 +36,8 @@ const SectionManagement = () => {
   const [alertType, setAlertType] = useState('success'); // 'success' or 'error'
 
 
-  // options (adjust to your school's lists)
-  const trackOptions = ["Academic", "TVL"];
-  const trackToStrand = {
-    Academic: ["STEM", "ABM", "HUMSS"],
-    TVL: ["Home Economics", "ICT", "Industrial Arts"],
-  };
+  const { trackOptions, getStrandOptions, allStrands } = usePrograms();
+  
   const gradeOptions = [11, 12];
   const semesterOptions = [1, 2];
 
@@ -360,9 +358,9 @@ const SectionManagement = () => {
           <div className="col-12 col-md-3 mt-2 mt-md-0">
             <select className="form-select" value={filterStrand} onChange={(e) => setFilterStrand(e.target.value)}>
               <option value="">All Strands</option>
-              {Object.values(trackToStrand).flat().map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+                {allStrands.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
             </select>
           </div>
 
@@ -406,9 +404,14 @@ const SectionManagement = () => {
                         {currentSections.map((sec, idx) => (
                           <tr key={sec._id || sec.id}>
                             <td className="align-middle">{indexOfFirstItem + idx + 1}</td>
-                            <td className="align-middle fw-semibold">{sec.name}</td>
+                            <td className="align-middle fw-semibold">
+                              
+                              <span className="badge bg-danger">
+                                {sec.name}
+                              </span>
+                            </td>
                             <td className="align-middle">
-                              <span className="badge bg-danger">{sec.strand || 'N/A'}</span>
+                              <p className="m-0 text-muted fw-semibold">{sec.strand || "N/A"}</p>
                             </td>
                             <td className="align-middle">Grade {sec.gradeLevel}</td>
                             <td className="align-middle small">{sec.semester === 1 ? "First" : "Second"}</td>
@@ -541,9 +544,8 @@ const SectionManagement = () => {
                           disabled={!selectedSection?.track}
                         >
                           <option value="">{!selectedSection?.track ? "Select Track First" : "Select Strand"}</option>
-                          {selectedSection?.track &&
-                            trackToStrand[selectedSection.track].map((s) => (
-                              <option key={s} value={s}>{s}</option>
+                            {getStrandOptions(selectedSection?.track).map((s) => (
+                                <option key={s} value={s}>{s}</option>
                             ))}
                         </select>
                       </div>

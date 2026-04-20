@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import { globalContext } from '../context/global';
 import deped from "../assets/image/deped.png";
 import logo from "../assets/image/logo.png";
+
 
 
 
@@ -17,758 +17,780 @@ const EnrollmentFormPDF = () => {
   const enrollmentData = location?.state?.applicant || {};
   const [isDownloading, setIsDownloading] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
-
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('success');
 
-
-
-  useLayoutEffect(() => {
-    setTextHeader(location?.state?.title);
-  },[location?.state?.title]);
-
-
+  const isPDF = !!location?.state?.autoDownload;
   
+
+  useLayoutEffect(() => { setTextHeader(location?.state?.title); }, [location?.state?.title]);
+
+
   useEffect(() => {
-    if (!location?.state) {
-      navigate(`/admin`, { replace: true });
-      return;
-    }
+    if (!location?.state) navigate(`/admin`, { replace: true });
   }, [location?.state, navigate]);
 
+
+
   useLayoutEffect(() => {
-    if (location?.state?.autoDownload) {
-      handleDownloadPDF();
-    }
+    if (location?.state?.autoDownload) handleDownloadPDF();
   }, [location?.state?.autoDownload]);
 
 
   const showAlert = (message, type = 'success') => {
-      setAlertMessage(message);
-      setAlertType(type);
-      setShowAlertModal(true);
+    setAlertMessage(message); setAlertType(type); setShowAlertModal(true);
   };
+
 
 
   const handleDownloadPDF = async () => {
-      setIsDownloading(true); // ✅ Start loading
-      
-      try {
-          const element = formRef.current;
-          
-          const images = element.getElementsByTagName('img');
-          const imagePromises = Array.from(images).map(img => {
-              return new Promise((resolve) => {
-                  if (img.complete) {
-                      const canvas = document.createElement('canvas');
-                      canvas.width = img.naturalWidth;
-                      canvas.height = img.naturalHeight;
-                      const ctx = canvas.getContext('2d');
-                      ctx.drawImage(img, 0, 0);
-                      img.src = canvas.toDataURL('image/png');
-                      resolve();
-                  } else {
-                      img.onload = () => {
-                          const canvas = document.createElement('canvas');
-                          canvas.width = img.naturalWidth;
-                          canvas.height = img.naturalHeight;
-                          const ctx = canvas.getContext('2d');
-                          ctx.drawImage(img, 0, 0);
-                          img.src = canvas.toDataURL('image/png');
-                          resolve();
-                      };
-                  }
-              });
-          });
-
-          await Promise.all(imagePromises);
-
-          const opt = {
-              margin: [10, 10, 10, 10],
-              filename: `Enrollment-Form-${enrollmentData?.learnerInfo?.lastName || 'Unknown'}-${enrollmentData?.schoolYear || ''}.pdf`,
-              image: { type: 'jpeg', quality: 0.98 },
-              html2canvas: { 
-                  scale: 2,
-                  useCORS: true,
-                  allowTaint: true,
-                  logging: false
-              },
-              jsPDF: { 
-                  unit: 'mm', 
-                  format: 'a4', 
-                  orientation: 'portrait' 
-              }
+    setIsDownloading(true);
+    try {
+      const element = formRef.current;
+      const images = element.getElementsByTagName('img');
+      const imagePromises = Array.from(images).map(img =>
+        new Promise(resolve => {
+          const convert = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            img.src = canvas.toDataURL('image/png'); resolve();
           };
-          
-          await html2pdf().set(opt).from(element).save();
-          
-          // ✅ Only navigate if auto-download
-          if(location?.state?.autoDownload){
-              navigate(`/${role}/applicants`);
-          }
-      } catch (error) {
-          console.error('Error downloading PDF:', error);
-          alert('Failed to download PDF. Please try again.');
-      } finally {
-          setIsDownloading(false); // ✅ Stop loading
-      }
+          img.complete ? convert() : (img.onload = convert);
+        })
+      );
+      await Promise.all(imagePromises);
+      const opt = {
+        margin: [5, 5, 5, 5],
+        filename: `Enrollment-Form-${enrollmentData?.learnerInfo?.lastName || 'Unknown'}-${enrollmentData?.schoolYear || ''}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      await html2pdf().set(opt).from(element).save();
+      if (location?.state?.autoDownload) navigate(`/${role}/applicants`);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally { setIsDownloading(false); }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
   };
 
 
-  const CheckBox = ({ checked }) => (
-    <span className="d-inline-block border border-dark text-center me-1" style={{ width: '16px', height: '16px', lineHeight: '16px', fontSize: '11px' }}>
-      {checked && '✓'}
+
+  const hiddenStyle = isPDF
+    ? { position: "absolute", opacity: 0, pointerEvents: "none", left: "-9999px", top: "-9999px" }
+    : {};
+  
+
+  const val = (v) => v || '—';
+
+  // ═══════════════════════════════════════════════════════════
+  // PDF STYLES — ultra compact, fits full form in 1 A4 page
+  // ═══════════════════════════════════════════════════════════
+  const s = {
+    page: {
+      fontFamily: "'Arial', 'Helvetica', sans-serif",
+      fontSize: '7.5px',
+      color: '#1a1a1a',
+      background: '#fff',
+      padding: '8px 10px',
+      width: '794px',
+      boxSizing: 'border-box',
+    },
+    header: {
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: '8px', marginBottom: '4px', paddingBottom: '4px',
+      borderBottom: '1.5px solid #7f1d1d',
+    },
+    schoolName: { fontSize: '10px', fontWeight: 'bold', color: '#7f1d1d', margin: 0 },
+    schoolSub: { fontSize: '7.5px', color: '#555', margin: '1px 0 0' },
+    formTitle: {
+      textAlign: 'center', fontSize: '9.5px', fontWeight: 'bold',
+      letterSpacing: '1.5px', color: '#7f1d1d', margin: '4px 0 1px', textTransform: 'uppercase',
+    },
+    syBadge: { textAlign: 'center', fontSize: '7.5px', color: '#444', marginBottom: '5px' },
+    sectionHeader: {
+      background: '#7f1d1d', color: '#fff', fontSize: '7px', fontWeight: 'bold',
+      letterSpacing: '0.6px', padding: '2px 6px', textTransform: 'uppercase',
+      pageBreakAfter: 'avoid', breakAfter: 'avoid',
+    },
+    sectionBody: {
+      border: '1px solid #e5e7eb', borderTop: 'none',
+      padding: '4px 6px', marginBottom: '4px',
+      pageBreakInside: 'avoid', breakInside: 'avoid',
+    },
+    pdfRow: { display: 'flex', gap: '5px', marginBottom: '3px' },
+    field: { flex: 1 }, 
+    fieldLabel: {
+      fontSize: '6px', fontWeight: 'bold', color: '#7f1d1d',
+      letterSpacing: '0.3px', textTransform: 'uppercase', marginBottom: '1px',
+    },
+    fieldValue: {
+      fontSize: '7.5px', color: '#1a1a1a',
+      borderBottom: '0.5px solid #d1d5db', paddingBottom: '1px', minHeight: '11px',
+    },
+    checkbox: {
+      width: '8px', height: '8px', border: '0.8px solid #7f1d1d',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '7px', color: '#7f1d1d', flexShrink: 0,
+    },
+    divider: { borderTop: '0.5px dashed #e5e7eb', margin: '3px 0' },
+    docPage: {
+      pageBreakBefore: 'always', breakBefore: 'page',
+      padding: '8px 10px', width: '794px',
+      boxSizing: 'border-box', background: '#fff',
+    },
+    docHeader: {
+      background: '#7f1d1d', color: '#fff', fontSize: '7.5px', fontWeight: 'bold',
+      padding: '3px 6px', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '5px',
+    },
+    docImg: {
+      width: '100%', maxHeight: '218mm',
+      objectFit: 'contain', border: '1px solid #e5e7eb',
+      display: 'block', margin: '0 auto',
+    },
+    statusBadge: (status) => ({
+      display: 'inline-block', padding: '1px 6px', borderRadius: '2px',
+      fontSize: '7px', fontWeight: 'bold',
+      background: status === 'approved' ? '#dcfce7' : status === 'rejected' ? '#fee2e2' : '#fef9c3',
+      color: status === 'approved' ? '#166534' : status === 'rejected' ? '#991b1b' : '#854d0e',
+      border: `0.5px solid ${status === 'approved' ? '#86efac' : status === 'rejected' ? '#fca5a5' : '#fde047'}`,
+    }),
+    sigSection: { marginTop: '10px', display: 'flex', justifyContent: 'flex-end' },
+    sigBox: { textAlign: 'center', width: '160px' },
+    sigLine: { borderTop: '0.8px solid #1a1a1a', marginBottom: '2px' },
+    sigLabel: { fontSize: '6.5px', color: '#555' },
+    subSectionLabel: {
+      fontSize: '6.5px', fontWeight: 'bold', color: '#7f1d1d',
+      marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px',
+    },
+    footerText: {
+      textAlign: 'center', fontSize: '6.5px', color: '#9ca3af',
+      marginTop: '4px', borderTop: '0.5px solid #f3f4f6', paddingTop: '3px',
+    },
+    studentInfoStrip: {
+      background: '#fef2f2', border: '0.8px solid #fecaca', borderRadius: '2px',
+      padding: '3px 6px', marginBottom: '5px',
+      display: 'flex', gap: '10px', fontSize: '7px', flexWrap: 'wrap',
+    },
+  };
+
+  // ─── PDF Field ─────────────────────────────────────────────
+  const PdfField = ({ label, value, flex }) => (
+    <div style={{ ...s.field, flex: flex || 1 }}>
+      <div style={s.fieldLabel}>{label}</div>
+      <div style={s.fieldValue}>{val(value)}</div>
+    </div>
+  );
+
+  // ─── Web Field — labels small/muted, values 14px medium ───
+  const WebField = ({ label, value, col = 'col-12 col-sm-6 col-md-3' }) => (
+    <div className={`${col} mb-2`}>
+      <div className="text-uppercase fw-semibold text-muted" style={{ fontSize: '10px', letterSpacing: '0.6px', marginBottom: '3px' }}>
+        {label}
+      </div>
+      <div className="border-bottom pb-1" style={{ fontSize: '14px', minHeight: '22px', color: '#1a1a1a', fontWeight: '500' }}>
+        {val(value)}
+      </div>
+    </div>
+  );
+
+  const CB = ({ checked }) => <span style={s.checkbox}>{checked ? '✓' : ''}</span>;
+
+  const WCB = ({ checked }) => (
+    <span className="d-inline-flex align-items-center justify-content-center border border-danger flex-shrink-0"
+      style={{ width: '16px', height: '16px', fontSize: '12px', color: '#7f1d1d' }}>
+      {checked ? '✓' : ''}
     </span>
   );
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
+  const SectionHeader = ({ title }) => isPDF
+    ? <div style={s.sectionHeader}>{title}</div>
+    : <div className="fw-bold text-white px-3 py-2 mb-0 text-uppercase"
+        style={{ background: '#7f1d1d', fontSize: '13px', letterSpacing: '1px' }}>{title}</div>;
 
-  const hiddenStyle = location?.state?.autoDownload
-    ? { position: "absolute", opacity: 0, pointerEvents: "none", left: "-9999px", top: "-9999px" }
-    : {};
+  const SubLabel = ({ children }) => isPDF
+    ? <div style={s.subSectionLabel}>{children}</div>
+    : <div className="fw-semibold text-uppercase mb-2" style={{ color: '#7f1d1d', fontSize: '11px', letterSpacing: '0.5px' }}>{children}</div>;
 
+  const documents = [
+    { title: 'PSA Birth Certificate', path: enrollmentData.requiredDocuments?.psaBirthCert?.filePath },
+    { title: 'Report Card (Form 138)', path: enrollmentData.requiredDocuments?.reportCard?.filePath },
+    { title: 'Good Moral Certificate', path: enrollmentData.requiredDocuments?.goodMoral?.filePath },
+    { title: '2x2 ID Picture', path: enrollmentData.requiredDocuments?.idPicture?.filePath },
+  ].filter(d => d.path);
 
-    
-  const FieldRow = ({ fields }) => (
-    <div className="row mb-2 mb-md-3 g-2">
-      {fields.map((field, idx) => (
-        <div key={idx} className={`col-${field.col || 12} col-sm-${field.colSm || field.col || 12}`}>
-          <div className="small fw-bold mb-1 text-uppercase">{field.label}</div>
-          <div className="border-bottom border-dark pb-1 small text-break" style={{ minHeight: '20px' }}>
-            {field.value || ''}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  const PageWrap = ({ children, pdfStyle }) => isPDF
+    ? <div style={{ ...pdfStyle, background: '#fff' }}>{children}</div>
+    : <div className="container-fluid px-3 mb-4" style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <div className="bg-white rounded shadow-sm p-3 p-md-4">{children}</div>
+      </div>;
 
-  const SectionHeader = ({ title, bgClass = 'bg-danger' }) => (
-    <div className={`${bgClass} text-white p-2 fw-bold small`}>
-      {title}
-    </div>
-  );
-
-  const sections = {
-    learnerInfo: [
-      { label: 'LAST NAME', value: enrollmentData.learnerInfo?.lastName, col: 12, colSm: 3 },
-      { label: 'FIRST NAME', value: enrollmentData.learnerInfo?.firstName, col: 12, colSm: 3 },
-      { label: 'MIDDLE NAME', value: enrollmentData.learnerInfo?.middleName, col: 12, colSm: 3 },
-      { label: 'EXT.', value: enrollmentData.learnerInfo?.extensionName, col: 12, colSm: 3 }
-    ],
-    currentAddress: [
-      { label: 'PROVINCE', value: enrollmentData.address?.current?.province, col: 12, colSm: 4 },
-      { label: 'MUNICIPALITY/CITY', value: enrollmentData.address?.current?.municipality, col: 12, colSm: 4 },
-      { label: 'BARANGAY', value: enrollmentData.address?.current?.barangay, col: 12, colSm: 4 },
-      { label: 'HOUSE NO./STREET', value: `${enrollmentData.address?.current?.houseNo || ''} ${enrollmentData.address?.current?.street || ''}`, col: 12, colSm: 4 },
-      { label: 'ZIP CODE', value: enrollmentData.address?.current?.zipCode, col: 12, colSm: 4 }
-    ],
-    permanentAddress: [
-      { label: 'PROVINCE', value: enrollmentData.address?.current?.province, col: 12, colSm: 4 },
-      { label: 'MUNICIPALITY/CITY', value: enrollmentData.address?.current?.municipality, col: 12, colSm: 4 },
-      { label: 'BARANGAY', value: enrollmentData.address?.current?.barangay, col: 12, colSm: 4 },
-      { label: 'HOUSE NO./STREET', value: `${enrollmentData.address?.current?.houseNo || ''} ${enrollmentData.address?.current?.street || ''}`, col: 12, colSm: 4 },
-      { label: 'ZIP CODE', value: enrollmentData.address?.current?.zipCode, col: 12, colSm: 4 }
-    ],
-    
-    
-    parents: [
-      {
-        title: "FATHER'S NAME",
-        fields: [
-          { label: 'Last Name', value: enrollmentData.parentGuardianInfo?.father?.lastName },
-          { label: 'First Name', value: enrollmentData.parentGuardianInfo?.father?.firstName },
-          { label: 'Middle Name', value: enrollmentData.parentGuardianInfo?.father?.middleName },
-          { label: 'Contact Number', value: enrollmentData.parentGuardianInfo?.father?.contactNumber, fullWidth: true }
-        ]
-      },
-      {
-        title: "MOTHER'S NAME",
-        fields: [
-          { label: 'Last Name', value: enrollmentData.parentGuardianInfo?.mother?.lastName },
-          { label: 'First Name', value: enrollmentData.parentGuardianInfo?.mother?.firstName },
-          { label: 'Middle Name', value: enrollmentData.parentGuardianInfo?.mother?.middleName },
-          { label: 'Contact Number', value: enrollmentData.parentGuardianInfo?.mother?.contactNumber, fullWidth: true }
-        ]
-      },
-      {
-        title: "GUARDIAN'S NAME",
-        fields: [
-          { label: 'Last Name', value: enrollmentData.parentGuardianInfo?.guardian?.lastName },
-          { label: 'First Name', value: enrollmentData.parentGuardianInfo?.guardian?.firstName },
-          { label: 'Middle Name', value: enrollmentData.parentGuardianInfo?.guardian?.middleName },
-          { label: 'Contact Number', value: enrollmentData.parentGuardianInfo?.guardian?.contactNumber, fullWidth: true }
-        ]
-      }
-    ],
-    seniorHigh: [
-      // PALITAN NG — number na ang check
-      {label: 'SEMESTER', value: enrollmentData.seniorHigh?.semester === 1 ? "First" : enrollmentData.seniorHigh?.semester === 2 ? "Second" : "", col: 12, colSm: 4 },
-      { label: 'TRACK', value: enrollmentData.seniorHigh?.track, col: 12, colSm: 4 },
-      { label: 'STRAND', value: enrollmentData.seniorHigh?.strand, col: 12, colSm: 4 }
-    ],
-    documents: [
-      { title: 'PSA Birth Certificate', path: enrollmentData.requiredDocuments?.psaBirthCert?.filePath },
-      { title: 'ID Picture', path: enrollmentData.requiredDocuments?.idPicture?.filePath },
-      { title: 'Report Card', path: enrollmentData.requiredDocuments?.reportCard?.filePath },
-      { title: 'Certificate of Good Moral', path: enrollmentData.requiredDocuments?.goodMoral?.filePath }
-    ]
-  };
+  const SectionBody = ({ children, mb = true }) => isPDF
+    ? <div style={{ ...s.sectionBody, marginBottom: mb ? '4px' : 0 }}>{children}</div>
+    : <div className={`border border-top-0 p-3 ${mb ? 'mb-3' : ''}`}>{children}</div>;
 
   return (
     <>
-    <div style={hiddenStyle}>
-      <div className="container-fluid min-vh-100 bg-light">
-        <div className="row justify-content-center">
-          <div className="col-12 col-lg-11 bg-white p-2 p-md-4">
-                 {/* Back button */}
-            <button className="btn btn-sm btn-outline-secondary mb-2 " onClick={() => navigate(-1)}>
-                <i className="fa fa-arrow-left me-2" />Back
-            </button>
+      <div style={hiddenStyle}>
+        <div style={isPDF ? {} : { background: '#f3f4f6', minHeight: '100vh', padding: '20px 0' }}>
 
-
-
-            <div ref={formRef}>
-              
-              {/* Header */}
-              <div className="text-center mb-3 mb-md-4 ">
-                <img src={deped} alt="DepEd Logo" style={{ width: '120px', height: '120px' }} crossOrigin="anonymous" className="mb-2 mb-md-3 me-4" />
-                <img src={logo} alt="DepEd Logo" style={{ width: '120px', height: '120px' }} crossOrigin="anonymous" className="mb-2 mb-md-3" />
-                <p className="fw-bold mb-1 small fs-5">FRANCISCO OSORIO INTEGRATED SENIOR HIGH SCHOOL</p>
-                <p className='m-0 my-2 fw-semibold'>Barangay Osorio Trece Martires City, Cavite</p>
-
-                <div className="d-inline-block border border-2 border-dark p-2 fw-bold small mt-2">
-                  School Year: {enrollmentData.schoolYear || '________'}
-                </div>
+          {/* ── Action Buttons (web only) ── */}
+          {!isPDF && (
+            <div className="container-fluid px-3 mb-3" style={{ maxWidth: '900px' }}>
+              <div className="d-flex flex-wrap gap-2 align-items-center">
+                <h4 className="fw-bold mb-0 me-auto fs-4" style={{ color: '#7f1d1d' }}>
+                  Enrollment Form
+                </h4>
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate(-1)} disabled={isDownloading}>
+                  <i className="fa fa-arrow-left me-2" />Back
+                </button>
+                <button className="btn btn-sm btn-danger" onClick={handleDownloadPDF} disabled={isDownloading}>
+                  {isDownloading
+                    ? <><span className="spinner-border spinner-border-sm me-2" />Downloading...</>
+                    : <><i className="fa fa-download me-2" />Download PDF</>}
+                </button>
+                <button
+                  className="btn btn-sm btn-success"
+                  onClick={() => setOpenModal(true)}
+                  disabled={enrollmentData?.status === "approved" || isDownloading || isApproving}
+                >
+                  {enrollmentData?.status === "approved" ? "Approved"
+                    : isApproving
+                      ? <><span className="spinner-border spinner-border-sm me-2" />Approving...</>
+                      : "Approve"}
+                </button>
               </div>
+            </div>
+          )}
 
-              {/* LRN and PSA Section */}
-              <div className="border border-2 border-dark mb-2 mb-md-3">
-                {/* Learner Information */}
-                <SectionHeader title="LEARNER INFORMATION " />
-                <div className="p-2 p-md-3">
-                  <FieldRow fields={sections.learnerInfo} />
-                  
-                  <div className="row mb-2 mb-md-3 g-1">
-                    <div className="col-12 col-sm-6">
-                      <div className="small fw-bold mb-1">DATE OF BIRTH (MM/DD/YYYY)</div>
-                      <div className="border-bottom border-dark pb-1 small" 
-                      style={{ minHeight: '20px' }}>
-                        {formatDate(enrollmentData.learnerInfo?.birthDate?.$date || enrollmentData.learnerInfo?.birthDate)}
-                      </div>
-                    </div>
-                    <div className="col-6 col-sm-2">
-                      <div className="small fw-bold mb-1">SEX</div>
-                      <div className="d-flex gap-1 align-items-center small flex-wrap" style={{ minHeight: '20px' }}>
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={enrollmentData.learnerInfo?.sex === 'Male'} /> <span>M</span>
-                        </div>
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={enrollmentData.learnerInfo?.sex === 'Female'} /> <span>F</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-6 col-sm-2">
-                      <div className="small fw-bold mb-1">AGE</div>
-                      <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
-                        {enrollmentData.learnerInfo?.age || ''}
-                      </div>
-                    </div>
-                    <div className="col-12 col-sm-2">
-                      <div className="small fw-bold mb-1">MOTHER TONGUE</div>
-                      <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
-                        {enrollmentData.learnerInfo?.motherTongue || ''}
-                      </div>
-                    </div>
+          <div ref={formRef}>
+            {/* ══════════════════════════════════════════════
+                PAGE 1 — ENROLLMENT FORM
+            ══════════════════════════════════════════════ */}
+            <PageWrap pdfStyle={s.page}>
+
+              {/* ── School Header ── */}
+              {isPDF ? (
+                <div style={s.header}>
+                  <img src={deped} alt="DepEd" style={{ width: '38px', height: '38px' }} crossOrigin="anonymous" />
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={s.schoolName}>Francisco Osorio Integrated Senior High School</p>
+                    <p style={s.schoolSub}>Barangay Osorio, Trece Martires City, Cavite</p>
+                    <p style={s.schoolSub}>Department of Education — Region IV-A CALABARZON</p>
                   </div>
-
-                  <div className="row mb-2 mb-md-3 g-2">
-                    <div className="col-12 col-sm-6">
-                      <div className="small fw-bold mb-1">EMAIL ADDRESS</div>
-                      <div className="border-bottom border-dark pb-1 small text-break" style={{ minHeight: '20px' }}>
-                        {enrollmentData.learnerInfo?.email || ''}
-                      </div>
-                    </div>
-                    <div className="col-12 col-sm-6">
-                      <div className="small fw-bold mb-1">CONTACT NUMBER</div>
-                      <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
-                        {enrollmentData.address?.current?.contactNumber || ''}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-2 mb-md-3">
-                    <div className="small fw-bold mb-1">PLACE OF BIRTH (Municipality/City)</div>
-                    <div className="border-bottom border-dark pb-1 small text-break" style={{ minHeight: '20px' }}>
-                      {enrollmentData.learnerInfo?.placeOfBirth || ''}
-                    </div>
-                  </div>
-
-                  <div className="row mb-md-4 ">
-                    <div className="col-12 my-3">
-                      <span className='fw-bold'>Grade level:</span>
-                      <span className='ms-2 border-bottom border-dark px-2 '>{enrollmentData.gradeLevelToEnroll}</span>
-                    </div>
-                    <div className="col-12 col-md-6  mt-md-0 ">
-                      <div className="col-auto">
-                        <span className="fw-bold">LRN: </span>
-                        <span className="border-bottom border-dark px-2" 
-                        >{enrollmentData.learnerInfo?.lrn || ''}</span>
-                      </div>
-                      <div className="col-auto">
-                        <span className="fw-bold">PSA Birth Cert No.: </span>
-                        <span className="border-bottom border-dark px-2 d-inline-block my-2">{enrollmentData.psaNo || ''}</span>
-                      </div>
-                    </div>
-
-                    <div className="col-12 col-md-6 my-3 my-md-0 mt-md-0">
-                      <div className="col-auto d-flex align-items-center gap-2 ">
-                          <CheckBox checked={enrollmentData.withLRN} />
-                          <span className="small">With LRN</span>
-                          <CheckBox checked={!enrollmentData.withLRN} />
-                          <span className="small">No LRN</span>
-                      </div>
-                      <div className="col-auto d-flex align-items-center gap-2 my-2">
-                          <span className="fw-bold">Returning (Balik-Aral)?</span>
-                          <CheckBox checked={enrollmentData.schoolHistory?.returningLearner} />
-                          <span>Yes</span>
-                          <CheckBox checked={!enrollmentData.schoolHistory?.returningLearner} />
-                          <span>No</span>
-                      </div>
-                    </div>
-                  </div>
-
-
-
-                  {/* Disability */}
-                  <div className="mb-2 mb-md-3 small">
-                    <div className="d-flex gap-2 align-items-start mb-2 flex-wrap">
-                      <span className="fw-bold">Is this child a learner with disability?</span>
-                      <div className="d-flex gap-2">
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={enrollmentData.learnerInfo?.learnerWithDisability?.isDisabled} /> Yes
-                        </div>
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={!enrollmentData.learnerInfo?.learnerWithDisability?.isDisabled} /> No
-                        </div>
-                      </div>
-                    </div>
-                    {enrollmentData.learnerInfo?.learnerWithDisability?.isDisabled && (
-                      <div className="ps-2 ps-md-3 mb-2">
-                        <div className="row align-items-start">
-                          <div className="col-auto pe-1" style={{ minWidth: '220px' }}>
-                            <span className="fw-bold">If Yes, specify the type of disability:</span>
-                          </div>
-                          <div className="col ps-1">
-                            <span className="text-break">{enrollmentData.learnerInfo?.learnerWithDisability?.disabilityType?.join(', ')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Indigenous */}
-                  <div className="mb-2 mb-md-3 small">
-                    <div className="d-flex gap-2 align-items-start mb-2 flex-wrap">
-                      <span className="fw-bold">Is this child a member of Indigenous People (IP) Community?</span>
-                      <div className="d-flex gap-2">
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={enrollmentData.learnerInfo?.indigenousCommunity?.isMember} /> Yes
-                        </div>
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={!enrollmentData.learnerInfo?.indigenousCommunity?.isMember} /> No
-                        </div>
-                      </div>
-                    </div>
-                    {enrollmentData.learnerInfo?.indigenousCommunity?.isMember && (
-                      <div className="ps-2 ps-md-3 mb-2">
-                        <div className="row align-items-start">
-                          <div className="col-auto pe-1" style={{ minWidth: '150px' }}>
-                            <span className="fw-bold">If Yes, please specify:</span>
-                          </div>
-                          <div className="col ps-1">
-                            <span className="text-break">{enrollmentData.learnerInfo?.indigenousCommunity?.name}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 4Ps */}
-                  <div className="small">
-                    <div className="d-flex gap-2 align-items-start mb-2 flex-wrap">
-                      <span className="fw-bold">Is this child a 4Ps beneficiary?</span>
-                      <div className="d-flex gap-2">
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={enrollmentData.learnerInfo?.fourPs?.isBeneficiary} /> Yes
-                        </div>
-                        <div className="d-flex align-items-center gap-1">
-                          <CheckBox checked={!enrollmentData.learnerInfo?.fourPs?.isBeneficiary} /> No
-                        </div>
-                      </div>
-                    </div>
-                    {enrollmentData.learnerInfo?.fourPs?.isBeneficiary && (
-                      <div className="ps-2 ps-md-3">
-                        <div className="row align-items-start">
-                          <div className="col-auto pe-1" style={{ minWidth: '310px' }}>
-                            <span className="fw-bold">If Yes, write the 4Ps Household ID Number below:</span>
-                          </div>
-                          <div className="col ps-1">
-                            <span className="text-break">{enrollmentData.learnerInfo?.fourPs?.householdId}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <img src={logo} alt="Logo" style={{ width: '38px', height: '38px' }} crossOrigin="anonymous" />
                 </div>
-              </div>
-
-
-
-              
-
-              {/* Current Address */}
-              <div className="border border-2 border-dark mb-2 mb-md-3">
-                <SectionHeader title="CURRENT ADDRESS" />
-                <div className="p-2 p-md-3">
-                  <FieldRow fields={sections.currentAddress} />
-                </div>
-              </div>
-
-              {/* Permanent Address */}
-              <div className="border border-2 border-dark mb-2 mb-md-3">
-                <SectionHeader title="PERMANENT ADDRESS" />
-                <div className="p-2 p-md-3">
-                  <div className="mb-2 mb-md-3 small">
-                    <CheckBox checked={enrollmentData.address?.permanent?.sameAsCurrent} />
-                    <span>Same as Current Address</span>
+              ) : (
+                <div className="d-flex align-items-center justify-content-center gap-3 pb-3 mb-3" style={{ borderBottom: '2px solid #7f1d1d' }}>
+                  <img src={deped} alt="DepEd" style={{ width: '56px', height: '56px' }} />
+                  <div className="text-center">
+                    <p className="fw-bold mb-0 fs-5" style={{ color: '#7f1d1d' }}>Francisco Osorio Integrated Senior High School</p>
+                    <p className="mb-0 text-muted" style={{ fontSize: '13px' }}>Barangay Osorio, Trece Martires City, Cavite</p>
+                    <p className="mb-0 text-muted" style={{ fontSize: '13px' }}>Department of Education — Region IV-A CALABARZON</p>
                   </div>
-                  <FieldRow fields={sections.permanentAddress} />
+                  <img src={logo} alt="Logo" style={{ width: '56px', height: '56px' }} />
                 </div>
-              </div>
+              )}
 
-              {/* Parent/Guardian Information */}
-              <div className="border border-2 border-dark mb-2 mb-md-3">
-                <SectionHeader title="PARENT/GUARDIAN INFORMATION" />
-                <div className="p-2 p-md-3">
-                  {sections.parents.map((parent, idx) => (
-                    <div key={idx} className="mb-3 mb-md-4">
-                      <h6 className="fw-bold small mb-2">{parent.title}</h6>
-                      <div className="row mb-2 g-2">
-                        {parent.fields.slice(0, 3).map((field, fidx) => (
-                          <div key={fidx} className="col-12 col-sm-4">
-                            <div className="small mb-1">{field.label}</div>
-                            <div className="border-bottom border-dark pb-1 small text-break" style={{ minHeight: '20px' }}>
-                              {field.value || ''}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      {parent.fields[3] && (
-                        <div className="col-12">
-                          <div className="small mb-1">{parent.fields[3].label}</div>
-                          <div className="border-bottom border-dark pb-1 small text-break" style={{ minHeight: '20px', maxWidth: '100%' }}>
-                            {parent.fields[3].value || ''}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Returning Learner */}
-              {enrollmentData.schoolHistory?.returningLearner && (
-                <div className="border border-2 border-dark mb-2 mb-md-3">
-                  <SectionHeader title="FOR RETURNING LEARNER (BALIK-ARAL) AND THOSE WHO WILL TRANSFER" />
-                  <div className="p-2 p-md-3">
-                    <div className="row mb-2 mb-md-3 g-2">
-                      <div className="col-12 col-sm-6">
-                        <div className="small fw-bold mb-1">LAST GRADE LEVEL COMPLETED</div>
-                        <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
-                          {enrollmentData.schoolHistory?.lastGradeLevelCompleted || ''}
-                        </div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <div className="small fw-bold mb-1">LAST SCHOOL YEAR COMPLETED</div>
-                        <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
-                          {enrollmentData.schoolHistory?.lastSchoolYearCompleted || ''}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mb-2 mb-md-3">
-                      <div className="small fw-bold mb-1">LAST SCHOOL ATTENDED</div>
-                      <div className="border-bottom border-dark pb-1 small text-break" style={{ minHeight: '20px' }}>
-                        {enrollmentData.schoolHistory?.lastSchoolAttended || ''}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="small fw-bold mb-1">SCHOOL ID</div>
-                      <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
-                        {enrollmentData.schoolHistory?.schoolId || ''}
-                      </div>
-                    </div>
+              {/* ── Form Title ── */}
+              {isPDF ? (
+                <>
+                  <div style={s.formTitle}>Student Enrollment Form</div>
+                  <div style={s.syBadge}>
+                    School Year: <strong>{enrollmentData.schoolYear || '________'}</strong>&nbsp;|&nbsp;
+                    Grade Level: <strong>{enrollmentData.gradeLevelToEnroll || '________'}</strong>&nbsp;|&nbsp;
+                    Semester: <strong>{enrollmentData.seniorHigh?.semester === 1 ? 'First' : enrollmentData.seniorHigh?.semester === 2 ? 'Second' : '—'}</strong>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center mb-3">
+                  <div className="fw-bold text-uppercase fs-5" style={{ color: '#7f1d1d', letterSpacing: '2px' }}>Student Enrollment Form</div>
+                  <div className="text-muted mt-1" style={{ fontSize: '13px' }}>
+                    School Year: <strong>{enrollmentData.schoolYear || '________'}</strong>&nbsp;|&nbsp;
+                    Grade Level: <strong>{enrollmentData.gradeLevelToEnroll || '________'}</strong>&nbsp;|&nbsp;
+                    Semester: <strong>{enrollmentData.seniorHigh?.semester === 1 ? 'First' : enrollmentData.seniorHigh?.semester === 2 ? 'Second' : '—'}</strong>
                   </div>
                 </div>
               )}
 
-              {/* Senior High */}
-              <div className="border border-2 border-dark mb-2 mb-md-3">
-                <SectionHeader title="FOR SENIOR HIGH SCHOOL LEARNER" />
-                <div className="p-2 p-md-3">
-                  <FieldRow fields={sections.seniorHigh} />
-                </div>
-              </div>
+              {/* ══ I. LEARNER INFO ══ */}
+              <SectionHeader title="I. Learner Information" />
+              <SectionBody>
+                {isPDF ? (
+                  <>
+                    <div style={s.pdfRow}>
+                      <PdfField label="Last Name" value={enrollmentData.learnerInfo?.lastName} />
+                      <PdfField label="First Name" value={enrollmentData.learnerInfo?.firstName} />
+                      <PdfField label="Middle Name" value={enrollmentData.learnerInfo?.middleName} />
+                      <PdfField label="Ext." value={enrollmentData.learnerInfo?.extensionName} flex={0.3} />
+                    </div>
+                    <div style={s.pdfRow}>
+                      <PdfField label="Date of Birth" value={formatDate(enrollmentData.learnerInfo?.birthDate)} />
+                      <PdfField label="Place of Birth" value={enrollmentData.learnerInfo?.placeOfBirth} />
+                      <PdfField label="Age" value={enrollmentData.learnerInfo?.age} flex={0.35} />
+                      <div style={{ flex: 0.6 }}>
+                        <div style={s.fieldLabel}>Sex</div>
+                        <div style={{ display: 'flex', gap: '5px', paddingTop: '1px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '7.5px' }}><CB checked={enrollmentData.learnerInfo?.sex === 'Male'} /> Male</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '7.5px' }}><CB checked={enrollmentData.learnerInfo?.sex === 'Female'} /> Female</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={s.pdfRow}>
+                      <PdfField label="Email Address" value={enrollmentData.learnerInfo?.email} />
+                      <PdfField label="Mother Tongue" value={enrollmentData.learnerInfo?.motherTongue} />
+                    </div>
+                    <div style={s.pdfRow}>
+                      <PdfField label="Learner Reference No. (LRN)" value={enrollmentData.learnerInfo?.lrn} />
+                      <PdfField label="PSA Birth Certificate No." value={enrollmentData.psaNo} />
+                    </div>
+                    <div style={s.divider} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: 0 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '7px' }}><CB checked={enrollmentData.isReturning} /> Returning Learner (Balik-Aral)</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '7px' }}>
+                        <CB checked={enrollmentData.learnerInfo?.learnerWithDisability?.isDisabled} /> Learner with Disability
+                        {enrollmentData.learnerInfo?.learnerWithDisability?.isDisabled && <span style={{ color: '#7f1d1d' }}>({enrollmentData.learnerInfo?.learnerWithDisability?.disabilityType?.join(', ')})</span>}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '7px' }}>
+                        <CB checked={enrollmentData.learnerInfo?.indigenousCommunity?.isMember} /> IP Community Member
+                        {enrollmentData.learnerInfo?.indigenousCommunity?.isMember && <span style={{ color: '#7f1d1d' }}>({enrollmentData.learnerInfo?.indigenousCommunity?.name})</span>}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '7px' }}>
+                        <CB checked={enrollmentData.learnerInfo?.fourPs?.isBeneficiary} /> 4Ps Beneficiary
+                        {enrollmentData.learnerInfo?.fourPs?.isBeneficiary && <span style={{ color: '#7f1d1d' }}>(ID: {enrollmentData.learnerInfo?.fourPs?.householdId})</span>}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="row g-2 mb-1">
+                      <WebField label="Last Name" value={enrollmentData.learnerInfo?.lastName} col="col-12 col-sm-6 col-md-3" />
+                      <WebField label="First Name" value={enrollmentData.learnerInfo?.firstName} col="col-12 col-sm-6 col-md-3" />
+                      <WebField label="Middle Name" value={enrollmentData.learnerInfo?.middleName} col="col-12 col-sm-6 col-md-3" />
+                      <WebField label="Ext." value={enrollmentData.learnerInfo?.extensionName} col="col-6 col-sm-3 col-md-1" />
+                    </div>
+                    <div className="row g-2 mb-1">
+                      <WebField label="Date of Birth" value={formatDate(enrollmentData.learnerInfo?.birthDate)} col="col-12 col-sm-6 col-md-3" />
+                      <WebField label="Place of Birth" value={enrollmentData.learnerInfo?.placeOfBirth} col="col-12 col-sm-6 col-md-4" />
+                      <WebField label="Age" value={enrollmentData.learnerInfo?.age} col="col-6 col-sm-3 col-md-1" />
+                      <div className="col-6 col-sm-3 col-md-2 mb-2">
+                        <div className="text-uppercase fw-semibold text-muted" style={{ fontSize: '10px', letterSpacing: '0.6px', marginBottom: '3px' }}>Sex</div>
+                        <div className="d-flex gap-3" style={{ fontSize: '14px', fontWeight: '500' }}>
+                          <span className="d-flex align-items-center gap-1"><WCB checked={enrollmentData.learnerInfo?.sex === 'Male'} /> Male</span>
+                          <span className="d-flex align-items-center gap-1"><WCB checked={enrollmentData.learnerInfo?.sex === 'Female'} /> Female</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="row g-2 mb-1">
+                      <WebField label="Email Address" value={enrollmentData.learnerInfo?.email} col="col-12 col-sm-6" />
+                      <WebField label="Mother Tongue" value={enrollmentData.learnerInfo?.motherTongue} col="col-12 col-sm-6" />
+                    </div>
+                    <div className="row g-2 mb-1">
+                      <WebField label="Learner Reference No. (LRN)" value={enrollmentData.learnerInfo?.lrn} col="col-12 col-sm-6" />
+                      <WebField label="PSA Birth Certificate No." value={enrollmentData.psaNo} col="col-12 col-sm-6" />
+                    </div>
+                    <hr className="my-2" style={{ borderStyle: 'dashed' }} />
+                    <div className="d-flex flex-wrap gap-3" style={{ fontSize: '13px' }}>
+                      <span className="d-flex align-items-center gap-2"><WCB checked={enrollmentData.isReturning} /> Returning Learner (Balik-Aral)</span>
+                      <span className="d-flex align-items-center gap-2">
+                        <WCB checked={enrollmentData.learnerInfo?.learnerWithDisability?.isDisabled} /> Learner with Disability
+                        {enrollmentData.learnerInfo?.learnerWithDisability?.isDisabled && <span className="text-danger" style={{ fontSize: '12px' }}>({enrollmentData.learnerInfo?.learnerWithDisability?.disabilityType?.join(', ')})</span>}
+                      </span>
+                      <span className="d-flex align-items-center gap-2">
+                        <WCB checked={enrollmentData.learnerInfo?.indigenousCommunity?.isMember} /> IP Community Member
+                        {enrollmentData.learnerInfo?.indigenousCommunity?.isMember && <span className="text-danger" style={{ fontSize: '12px' }}>({enrollmentData.learnerInfo?.indigenousCommunity?.name})</span>}
+                      </span>
+                      <span className="d-flex align-items-center gap-2">
+                        <WCB checked={enrollmentData.learnerInfo?.fourPs?.isBeneficiary} /> 4Ps Beneficiary
+                        {enrollmentData.learnerInfo?.fourPs?.isBeneficiary && <span className="text-danger" style={{ fontSize: '12px' }}>(ID: {enrollmentData.learnerInfo?.fourPs?.householdId})</span>}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </SectionBody>
 
-              {/* Required Documents */}
-              <div className="mb-2 mb-md-3">
-                <SectionHeader title="REQUIRED DOCUMENTS" bgClass="bg-danger" />
-                {sections.documents.map((doc, idx) => doc.path && (
-                  <div key={idx} className="border border-2 border-dark mb-3 mb-md-4" style={{ pageBreakInside: 'avoid' }}>
-                    <div className="bg-secondary bg-opacity-25 p-2 fw-bold small border-bottom border-dark">
-                      {doc.title}
+              {/* ══ II. ADDRESS ══ */}
+              <SectionHeader title="II. Address" />
+              <SectionBody>
+                {isPDF ? (
+                  <>
+                    <div style={s.subSectionLabel}>Current Address</div>
+                    <div style={s.pdfRow}>
+                      <PdfField label="House No. / Street" value={`${enrollmentData.address?.current?.houseNo || ''} ${enrollmentData.address?.current?.street || ''}`.trim()} />
+                      <PdfField label="Barangay" value={enrollmentData.address?.current?.barangay} />
                     </div>
-                    <div className="p-2 p-md-4 d-flex justify-content-center align-items-center" style={{ minHeight: '250px' }}>
-                      <img 
-                        src={doc.path}
-                        alt={doc.title}
-                        className="img-fluid"
-                        style={{ maxHeight: '400px', objectFit: 'contain' }}
-                        crossOrigin="anonymous"
-                      />
+                    {/* Condensed: municipality/province/region/zip/contact all in one row */}
+                    <div style={s.pdfRow}>
+                      <PdfField label="Municipality / City" value={enrollmentData.address?.current?.municipality} />
+                      <PdfField label="Province" value={enrollmentData.address?.current?.province} />
+                      <PdfField label="Region" value={enrollmentData.address?.current?.region} />
+                      <PdfField label="Zip" value={enrollmentData.address?.current?.zipCode} flex={0.4} />
+                      <PdfField label="Contact No." value={enrollmentData.address?.current?.contactNumber} />
                     </div>
+                    <div style={s.divider} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px' }}>
+                      <CB checked={enrollmentData.address?.permanent?.sameAsCurrent} />
+                      <span style={s.subSectionLabel}>Permanent Address</span>
+                      {enrollmentData.address?.permanent?.sameAsCurrent && <span style={{ color: '#555', fontSize: '6.5px' }}>(Same as current)</span>}
+                    </div>
+                    {!enrollmentData.address?.permanent?.sameAsCurrent && (
+                      <>
+                        <div style={s.pdfRow}>
+                          <PdfField label="House No. / Street" value={`${enrollmentData.address?.permanent?.houseNo || ''} ${enrollmentData.address?.permanent?.street || ''}`.trim()} />
+                          <PdfField label="Barangay" value={enrollmentData.address?.permanent?.barangay} />
+                        </div>
+                        <div style={{ ...s.pdfRow, marginBottom: 0 }}>
+                          <PdfField label="Municipality / City" value={enrollmentData.address?.permanent?.municipality} />
+                          <PdfField label="Province" value={enrollmentData.address?.permanent?.province} />
+                          <PdfField label="Zip Code" value={enrollmentData.address?.permanent?.zipCode} flex={0.4} />
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <SubLabel>Current Address</SubLabel>
+                    <div className="row g-2">
+                      <WebField label="House No. / Street" value={`${enrollmentData.address?.current?.houseNo || ''} ${enrollmentData.address?.current?.street || ''}`.trim()} col="col-12 col-sm-6" />
+                      <WebField label="Barangay" value={enrollmentData.address?.current?.barangay} col="col-12 col-sm-6" />
+                    </div>
+                    <div className="row g-2">
+                      <WebField label="Municipality / City" value={enrollmentData.address?.current?.municipality} col="col-12 col-sm-6 col-md-3" />
+                      <WebField label="Province" value={enrollmentData.address?.current?.province} col="col-12 col-sm-6 col-md-3" />
+                      <WebField label="Region" value={enrollmentData.address?.current?.region} col="col-12 col-sm-6 col-md-3" />
+                      <WebField label="Zip Code" value={enrollmentData.address?.current?.zipCode} col="col-6 col-sm-3 col-md-2" />
+                    </div>
+                    <div className="row g-2">
+                      <WebField label="Contact Number" value={enrollmentData.address?.current?.contactNumber} col="col-12 col-sm-6" />
+                    </div>
+                    <hr className="my-2" style={{ borderStyle: 'dashed' }} />
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <WCB checked={enrollmentData.address?.permanent?.sameAsCurrent} />
+                      <span className="fw-semibold text-uppercase" style={{ color: '#7f1d1d', fontSize: '11px' }}>Permanent Address</span>
+                      {enrollmentData.address?.permanent?.sameAsCurrent && <span className="text-muted" style={{ fontSize: '12px' }}>(Same as current)</span>}
+                    </div>
+                    {!enrollmentData.address?.permanent?.sameAsCurrent && (
+                      <>
+                        <div className="row g-2">
+                          <WebField label="House No. / Street" value={`${enrollmentData.address?.permanent?.houseNo || ''} ${enrollmentData.address?.permanent?.street || ''}`.trim()} col="col-12 col-sm-6" />
+                          <WebField label="Barangay" value={enrollmentData.address?.permanent?.barangay} col="col-12 col-sm-6" />
+                        </div>
+                        <div className="row g-2">
+                          <WebField label="Municipality / City" value={enrollmentData.address?.permanent?.municipality} col="col-12 col-sm-6 col-md-4" />
+                          <WebField label="Province" value={enrollmentData.address?.permanent?.province} col="col-12 col-sm-6 col-md-4" />
+                          <WebField label="Zip Code" value={enrollmentData.address?.permanent?.zipCode} col="col-6 col-sm-3 col-md-2" />
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </SectionBody>
+
+              {/* ══ III. PARENT / GUARDIAN ══ */}
+              <SectionHeader title="III. Parent / Guardian Information" />
+              <SectionBody>
+                {[
+                  { title: "Father's Information", data: enrollmentData.parentGuardianInfo?.father },
+                  { title: "Mother's Information", data: enrollmentData.parentGuardianInfo?.mother },
+                  { title: "Guardian's Information", data: enrollmentData.parentGuardianInfo?.guardian, extra: enrollmentData.parentGuardianInfo?.guardian?.relationship },
+                ].map((p, i) => (
+                  <div key={i} style={{ marginBottom: i < 2 ? (isPDF ? '3px' : '10px') : 0 }}>
+                    <SubLabel>{p.title}{p.extra ? ` — Relationship: ${p.extra}` : ''}</SubLabel>
+                    {isPDF ? (
+                      <div style={{ ...s.pdfRow, marginBottom: 0 }}>
+                        <PdfField label="Last Name" value={p.data?.lastName} />
+                        <PdfField label="First Name" value={p.data?.firstName} />
+                        <PdfField label="Middle Name" value={p.data?.middleName} />
+                        <PdfField label="Contact No." value={p.data?.contactNumber} />
+                      </div>
+                    ) : (
+                      <div className="row g-2">
+                        <WebField label="Last Name" value={p.data?.lastName} col="col-12 col-sm-6 col-md-3" />
+                        <WebField label="First Name" value={p.data?.firstName} col="col-12 col-sm-6 col-md-3" />
+                        <WebField label="Middle Name" value={p.data?.middleName} col="col-12 col-sm-6 col-md-3" />
+                        <WebField label="Contact No." value={p.data?.contactNumber} col="col-12 col-sm-6 col-md-3" />
+                      </div>
+                    )}
+                    {i < 2 && (isPDF ? <div style={s.divider} /> : <hr className="my-2" style={{ borderStyle: 'dashed' }} />)}
                   </div>
                 ))}
-              </div>
+              </SectionBody>
 
-              {/* Registrar Section */}
-              <div className="border border-2 border-dark mb-2 mb-md-3">
-                <SectionHeader title="TO BE FILLED OUT BY THE REGISTRAR" bgClass="bg-dark" />
-                <div className="p-2 p-md-3">
-                  <div className="row mb-2 mb-md-3 g-2 align-items-end">
-                    <div className="col-12 col-sm-4">
-                      <div className="small fw-bold mb-1">STATUS</div>
-                      <div className="border-bottom border-dark pb-1 small text-capitalize" style={{ minHeight: '20px' }}>
-                        {enrollmentData.status || ''}
-                      </div>
-                    </div>
-                    <div className="col-12 col-sm-4">
-                      <div className="small fw-bold mb-1">STUDENT TYPE</div>
-                      <div className="border-bottom border-dark pb-1 small text-capitalize" style={{ minHeight: '20px' }}>
-                        {enrollmentData.studentType || ''}
-                      </div>
-                    </div>
-                    <div className="col-12 col-sm-4">
-                      <div className="small fw-bold mb-1">DATE & TIME</div>
-                      <div className="border-bottom border-dark pb-1 small" style={{ minHeight: '20px' }}>
-                        {new Date().toLocaleString('en-US', {
-                          month: '2-digit',
-                          day: '2-digit', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </div>
-                    </div>
+              {/* ══ IV. SCHOOL HISTORY (conditional) ══ */}
+              {enrollmentData.schoolHistory?.returningLearner && (
+                <>
+                  <SectionHeader title="IV. School History (For Returning / Transferee)" />
+                  <SectionBody>
+                    {isPDF ? (
+                      <>
+                        <div style={s.pdfRow}>
+                          <PdfField label="Last Grade Level Completed" value={enrollmentData.schoolHistory?.lastGradeLevelCompleted} />
+                          <PdfField label="Last School Year Completed" value={enrollmentData.schoolHistory?.lastSchoolYearCompleted} />
+                        </div>
+                        <div style={{ ...s.pdfRow, marginBottom: 0 }}>
+                          <PdfField label="Last School Attended" value={enrollmentData.schoolHistory?.lastSchoolAttended} />
+                          <PdfField label="School ID" value={enrollmentData.schoolHistory?.schoolId} flex={0.5} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="row g-2">
+                          <WebField label="Last Grade Level Completed" value={enrollmentData.schoolHistory?.lastGradeLevelCompleted} col="col-12 col-sm-6" />
+                          <WebField label="Last School Year Completed" value={enrollmentData.schoolHistory?.lastSchoolYearCompleted} col="col-12 col-sm-6" />
+                        </div>
+                        <div className="row g-2">
+                          <WebField label="Last School Attended" value={enrollmentData.schoolHistory?.lastSchoolAttended} col="col-12 col-sm-8" />
+                          <WebField label="School ID" value={enrollmentData.schoolHistory?.schoolId} col="col-12 col-sm-4" />
+                        </div>
+                      </>
+                    )}
+                  </SectionBody>
+                </>
+              )}
+
+              {/* ══ SHS PROGRAM ══ */}
+              <SectionHeader title={`${enrollmentData.schoolHistory?.returningLearner ? 'V.' : 'IV.'} Senior High School Program`} />
+              <SectionBody>
+                {isPDF ? (
+                  <div style={{ ...s.pdfRow, marginBottom: 0 }}>
+                    <PdfField label="Grade Level" value={enrollmentData.gradeLevelToEnroll} />
+                    <PdfField label="Semester" value={enrollmentData.seniorHigh?.semester === 1 ? 'First Semester' : enrollmentData.seniorHigh?.semester === 2 ? 'Second Semester' : '—'} />
+                    <PdfField label="Track" value={enrollmentData.seniorHigh?.track} />
+                    <PdfField label="Strand" value={enrollmentData.seniorHigh?.strand} />
+                    <PdfField label="Student Type" value={enrollmentData.studentType} flex={0.6} />
                   </div>
-                  <div className="text-center d-flex gap-2 flex-column " 
-                  style={{marginTop:"100px"}}
-                  >
-                    <div className="border-top border-2 border-dark mx-auto" 
-                    style={{ width: '250px',}}
-                    
-                    ></div>
-                    <div className="small fw-bold ">Signature of Registrar</div>
+                ) : (
+                  <div className="row g-2">
+                    <WebField label="Grade Level" value={enrollmentData.gradeLevelToEnroll} col="col-6 col-sm-4 col-md-2" />
+                    <WebField label="Semester" value={enrollmentData.seniorHigh?.semester === 1 ? 'First Semester' : enrollmentData.seniorHigh?.semester === 2 ? 'Second Semester' : '—'} col="col-6 col-sm-4 col-md-3" />
+                    <WebField label="Track" value={enrollmentData.seniorHigh?.track} col="col-12 col-sm-4 col-md-3" />
+                    <WebField label="Strand" value={enrollmentData.seniorHigh?.strand} col="col-12 col-sm-4 col-md-2" />
+                    <WebField label="Student Type" value={enrollmentData.studentType} col="col-12 col-sm-4 col-md-2" />
                   </div>
-                </div>
-              </div>
+                )}
+              </SectionBody>
+
+              {/* ══ REGISTRAR'S USE ══ */}
+              <SectionHeader title="For Registrar's Use Only" />
+              <SectionBody mb={false}>
+                {isPDF ? (
+                  <>
+                    <div style={s.pdfRow}>
+                      <div style={{ flex: 1 }}>
+                        <div style={s.fieldLabel}>Application Status</div>
+                        <div style={{ marginTop: '2px' }}>
+                          <span style={s.statusBadge(enrollmentData.status)}>{enrollmentData.status?.toUpperCase() || '—'}</span>
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={s.fieldLabel}>Date Submitted</div>
+                        <div style={s.fieldValue}>{formatDate(enrollmentData.signature?.dateSigned || enrollmentData.createdAt)}</div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={s.fieldLabel}>Date Printed</div>
+                        <div style={s.fieldValue}>{new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                      </div>
+                    </div>
+                    <div style={s.sigSection}>
+                      <div style={s.sigBox}>
+                        <div style={s.sigLine}></div>
+                        <div style={s.sigLabel}>Signature of Registrar over Printed Name</div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="row g-2 align-items-start">
+                      <div className="col-12 col-sm-4 mb-2">
+                        <div className="text-uppercase fw-semibold text-muted mb-1" style={{ fontSize: '10px', letterSpacing: '0.6px' }}>Application Status</div>
+                        {(() => {
+                          const st = enrollmentData.status;
+                          const cls = st === 'approved' ? 'bg-success-subtle text-success border border-success-subtle'
+                            : st === 'rejected' ? 'bg-danger-subtle text-danger border border-danger-subtle'
+                            : 'bg-warning-subtle text-warning border border-warning-subtle';
+                          return <span className={`badge fs-6 px-3 py-1 ${cls}`}>{st?.toUpperCase() || '—'}</span>;
+                        })()}
+                      </div>
+                      <WebField label="Date Submitted" value={formatDate(enrollmentData.signature?.dateSigned || enrollmentData.createdAt)} col="col-12 col-sm-4" />
+                      <WebField label="Date Printed" value={new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} col="col-12 col-sm-4" />
+                    </div>
+                    <div className="d-flex justify-content-end mt-4">
+                      <div className="text-center" style={{ width: '220px' }}>
+                        <div className="border-top border-dark mb-1"></div>
+                        <div className="text-muted" style={{ fontSize: '12px' }}>Signature of Registrar over Printed Name</div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </SectionBody>
 
               {/* Footer */}
-              <div className="text-center text-muted mt-3 mt-md-4 small">
-                <p className="mb-1">FRANCISCO OSORIO INTEGRATED SENIOR HIGH SCHOOL</p>
-                <p className="mb-1">Trece Martires City</p>
-              </div>
-
-            </div>
-
-            
-            {/* Download Button */}
-            {!location?.state?.autoDownload && (
-                <div className='d-flex align-items-center gap-3 my-4 justify-content-start'> 
-                    <button 
-                        className='btn btn-secondary px-4 text-capitalize'
-                        onClick={() => navigate(-1)}
-                        disabled={isDownloading} // ✅ Disable while downloading
-                    >
-                        <i className="fa fa-arrow-left me-2"></i>
-                        Back
-                    </button>
-                    <button 
-                        className='btn btn-danger text-capitalize px-4'
-                        onClick={handleDownloadPDF}
-                        disabled={isDownloading} // ✅ Disable while downloading
-                    >
-                        {isDownloading ? (
-                            <>
-                                <span className="spinner-border spinner-border-sm me-2" role="status">
-                                    <span className="visually-hidden">Loading...</span>
-                                </span>
-                                Downloading...
-                            </>
-                        ) : (
-                            <>
-                                <i className="fa fa-download me-2"></i>
-                                Download PDF
-                            </>
-                        )}
-                    </button>
-                    <button 
-                        className='btn btn-success text-capitalize'
-                        onClick={() => setOpenModal(true)}
-                        disabled={enrollmentData?.status === "approved" || isDownloading || isApproving}
-                    >
-                        {enrollmentData?.status === "approved" 
-                            ? "Approved"
-                            : isApproving 
-                                ? <>
-                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                    Approving...
-                                  </>
-                                : "Approve"
-                        }
-                    </button>
-                </div>              
-            )}
-
-            {openModal &&  (
-                <div className="modal fade show d-block" 
-                style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
-                    <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable 
-                        `}>
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h5 className="modal-title text-capitalize">
-                                    {'Approve Applicant'}
-                                </h5>
-                                <button 
-                                    type="button" 
-                                    className="btn-close"
-                                    onClick={() => setOpenModal(false)}
-                                ></button>
-                            </div>
-
-                            <div className="modal-body text-center">
-                                <i className="fa fa-check-circle fa-3x text-success mb-3"></i>
-                                <h5 className="mb-3">Approve Application?</h5>
-                                <p className="text-muted">
-                                    Do you want to approve the enrollment application of:
-                                    <br/>
-                                    <strong className="text-capitalize">
-                                        {enrollmentData?.learnerInfo?.firstName} {enrollmentData?.learnerInfo?.lastName}
-                                    </strong>
-                                    <br/>
-                                    <span className="badge bg-secondary mt-2">
-                                        {enrollmentData?.gradeLevelToEnroll} - S.Y. {enrollmentData?.schoolYear}
-                                    </span>
-                                </p>
-                            </div>
-                            <div className="modal-footer">
-                              <button 
-                                  type="button" 
-                                  className="btn btn-secondary"
-                                  onClick={()=>setOpenModal(false)}
-                              >
-                                  Cancel
-                              </button>
-                                
-                              <button 
-                                type="button" 
-                                className="btn btn-success"
-                                onClick={async()=>{
-                                  try {
-                                      setIsApproving(true); // ✅ START LOADING
-                                      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/approveApplicant`, {
-                                          method: "PATCH",
-                                          headers: {"Content-Type": "application/json"},
-                                          body: JSON.stringify({ enrollmentId: enrollmentData._id }),
-                                          credentials: "include",
-                                      })
-                                      const data = await res.json();
-                                      if(!res.ok) throw new Error(data.message);
-                                      
-                                      setOpenModal(false); // ✅ CLOSE MODAL
-                                      showAlert(data.message, 'success'); // ✅ SHOW SUCCESS ALERT
-                                      
-                                      // ✅ OPTIONAL: Navigate after short delay
-                                      setTimeout(() => {
-                                          navigate(`/${role}/applicants`, {replace: true })
-                                      }, 1500);
-                                      
-                                  } catch (error) {
-                                      setOpenModal(false);
-                                      showAlert(error.message, 'error'); // ✅ SHOW ERROR ALERT
-                                  } finally {
-                                      setIsApproving(false); // ✅ STOP LOADING
-                                  }
-                                }}
-                                disabled={isApproving} // ✅ DISABLE WHILE APPROVING
-                              >
-                                {isApproving ? (
-                                    <>
-                                        <span className="spinner-border spinner-border-sm me-2"></span>
-                                        Approving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="fa fa-check me-2"></i>
-                                        Yes, Approve
-                                    </>
-                                )}
-                              </button>
-                            </div>
-                        </div>
-                    </div>  
+              {isPDF ? (
+                <div style={s.footerText}>
+                  Francisco Osorio Integrated Senior High School &nbsp;|&nbsp; Trece Martires City, Cavite &nbsp;|&nbsp; This document is system-generated and valid without signature unless otherwise specified.
+                </div>
+              ) : (
+                <div className="text-center text-muted border-top pt-2 mt-3" style={{ fontSize: '11px' }}>
+                  Francisco Osorio Integrated Senior High School &nbsp;|&nbsp; Trece Martires City, Cavite &nbsp;|&nbsp; This document is system-generated and valid without signature unless otherwise specified.
                 </div>
               )}
+
+            </PageWrap>
+
+            {/* ══════════════════════════════════════════════
+                DOCUMENT PAGES — forced page break, zero gap
+            ══════════════════════════════════════════════ */}
+            {documents.map((doc, idx) => (
+              <PageWrap key={idx} pdfStyle={s.docPage}>
+
+                {isPDF ? (
+                  <div style={{ ...s.header, marginBottom: '5px' }}>
+                    <img src={deped} alt="DepEd" style={{ width: '32px', height: '32px' }} crossOrigin="anonymous" />
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ ...s.schoolName, fontSize: '9.5px', margin: 0 }}>Francisco Osorio Integrated Senior High School</p>
+                      <p style={{ ...s.schoolSub, margin: '1px 0 0' }}>Enrollment Supporting Document — S.Y. {enrollmentData.schoolYear}</p>
+                    </div>
+                    <img src={logo} alt="Logo" style={{ width: '32px', height: '32px' }} crossOrigin="anonymous" />
+                  </div>
+                ) : (
+                  <div className="d-flex align-items-center justify-content-center gap-3 pb-3 mb-3 border-bottom">
+                    <img src={deped} alt="DepEd" style={{ width: '44px', height: '44px' }} />
+                    <div className="text-center">
+                      <p className="fw-bold mb-0 fs-5" style={{ color: '#7f1d1d' }}>Francisco Osorio Integrated Senior High School</p>
+                      <p className="mb-0 text-muted" style={{ fontSize: '13px' }}>Enrollment Supporting Document — S.Y. {enrollmentData.schoolYear}</p>
+                    </div>
+                    <img src={logo} alt="Logo" style={{ width: '44px', height: '44px' }} />
+                  </div>
+                )}
+
+                {isPDF ? (
+                  <div style={s.studentInfoStrip}>
+                    <span><strong>Name:</strong> {val(enrollmentData.learnerInfo?.lastName)}, {val(enrollmentData.learnerInfo?.firstName)} {val(enrollmentData.learnerInfo?.middleName)}</span>
+                    <span><strong>LRN:</strong> {val(enrollmentData.learnerInfo?.lrn)}</span>
+                    <span><strong>Grade:</strong> {val(enrollmentData.gradeLevelToEnroll)}</span>
+                    <span><strong>Track/Strand:</strong> {val(enrollmentData.seniorHigh?.track)} - {val(enrollmentData.seniorHigh?.strand)}</span>
+                  </div>
+                ) : (
+                  <div className="rounded px-3 py-2 mb-3 d-flex flex-wrap gap-3" style={{ background: '#fef2f2', border: '1px solid #fecaca', fontSize: '13px' }}>
+                    <span><strong>Name:</strong> {val(enrollmentData.learnerInfo?.lastName)}, {val(enrollmentData.learnerInfo?.firstName)} {val(enrollmentData.learnerInfo?.middleName)}</span>
+                    <span><strong>LRN:</strong> {val(enrollmentData.learnerInfo?.lrn)}</span>
+                    <span><strong>Grade:</strong> {val(enrollmentData.gradeLevelToEnroll)}</span>
+                    <span><strong>Track/Strand:</strong> {val(enrollmentData.seniorHigh?.track)} - {val(enrollmentData.seniorHigh?.strand)}</span>
+                  </div>
+                )}
+
+                {isPDF ? (
+                  <div style={s.docHeader}>{`Document ${idx + 1} of ${documents.length}: ${doc.title}`}</div>
+                ) : (
+                  <div className="fw-bold text-white px-3 py-2 mb-3 text-uppercase"
+                    style={{ background: '#7f1d1d', fontSize: '13px', letterSpacing: '1px' }}>
+                    {`Document ${idx + 1} of ${documents.length}: ${doc.title}`}
+                  </div>
+                )}
+
+                <div className="d-flex justify-content-center align-items-center border"
+                  style={isPDF ? { padding: '4px', overflow: 'hidden' } : { minHeight: '400px', padding: '12px' }}>
+                  <img src={doc.path} alt={doc.title} style={s.docImg} crossOrigin="anonymous" />
+                </div>
+
+                {isPDF ? (
+                  <div style={s.footerText}>
+                    {doc.title} &nbsp;|&nbsp; {enrollmentData.learnerInfo?.lastName}, {enrollmentData.learnerInfo?.firstName} &nbsp;|&nbsp; S.Y. {enrollmentData.schoolYear} &nbsp;|&nbsp; Page {idx + 2}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted border-top pt-2 mt-2" style={{ fontSize: '11px' }}>
+                    {doc.title} &nbsp;|&nbsp; {enrollmentData.learnerInfo?.lastName}, {enrollmentData.learnerInfo?.firstName} &nbsp;|&nbsp; S.Y. {enrollmentData.schoolYear} &nbsp;|&nbsp; Page {idx + 2}
+                  </div>
+                )}
+
+              </PageWrap>
+            ))}
+
           </div>
         </div>
       </div>
 
-    </div>
-    {/* Alert Modal - Success/Error Messages */}
-    {showAlertModal && (
-        <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999}}>
-            <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content border-0 shadow-lg">
-                    <div className="modal-body text-center p-4">
-                        <div className={`mb-3 ${alertType === 'success' ? 'text-success' : 'text-danger'}`}>
-                            <i className={`fa ${alertType === 'success' ? 'fa-check-circle' : 'fa-times-circle'} fa-3x`}></i>
-                        </div>
-                        <h5 className="fw-bold mb-2">{alertType === 'success' ? 'Success!' : 'Error!'}</h5>
-                        <p className="text-muted mb-4">{alertMessage}</p>
-                        <button 
-                            type="button" 
-                            className={`btn ${alertType === 'success' ? 'btn-success' : 'btn-danger'} px-4`}
-                            onClick={() => setShowAlertModal(false)}
-                        >
-                            OK
-                        </button>
-                    </div>
-                </div>
+      {/* ── Approve Modal ── */}
+      {openModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Approve Applicant</h5>
+                <button type="button" className="btn-close" onClick={() => setOpenModal(false)}></button>
+              </div>
+              <div className="modal-body text-center">
+                <i className="fa fa-check-circle fa-3x text-success mb-3"></i>
+                <h5 className="mb-3">Approve Application?</h5>
+                <p className="text-muted">
+                  Do you want to approve the enrollment application of:<br />
+                  <strong className="text-capitalize">{enrollmentData?.learnerInfo?.firstName} {enrollmentData?.learnerInfo?.lastName}</strong><br />
+                  <span className="badge bg-secondary mt-2">{enrollmentData?.gradeLevelToEnroll} - S.Y. {enrollmentData?.schoolYear}</span>
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setOpenModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-success" disabled={isApproving}
+                  onClick={async () => {
+                    try {
+                      setIsApproving(true);
+                      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/approveApplicant`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ enrollmentId: enrollmentData._id }),
+                        credentials: "include",
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.message);
+                      setOpenModal(false);
+                      showAlert(data.message, 'success');
+                      setTimeout(() => navigate(`/${role}/applicants`, { replace: true }), 1500);
+                    } catch (error) {
+                      setOpenModal(false);
+                      showAlert(error.message, 'error');
+                    } finally { setIsApproving(false); }
+                  }}
+                >
+                  {isApproving
+                    ? <><span className="spinner-border spinner-border-sm me-2" />Approving...</>
+                    : <><i className="fa fa-check me-2" />Yes, Approve</>}
+                </button>
+              </div>
             </div>
+          </div>
         </div>
-    )}
-    </>
+      )}
 
-    
+      {/* ── Alert Modal ── */}
+      {showAlertModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-body text-center p-4">
+                <div className={`mb-3 ${alertType === 'success' ? 'text-success' : 'text-danger'}`}>
+                  <i className={`fa ${alertType === 'success' ? 'fa-check-circle' : 'fa-times-circle'} fa-3x`}></i>
+                </div>
+                <h5 className="fw-bold mb-2">{alertType === 'success' ? 'Success!' : 'Error!'}</h5>
+                <p className="text-muted mb-4">{alertMessage}</p>
+                <button type="button"
+                  className={`btn ${alertType === 'success' ? 'btn-success' : 'btn-danger'} px-4`}
+                  onClick={() => setShowAlertModal(false)}>
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

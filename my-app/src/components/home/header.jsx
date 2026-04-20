@@ -151,7 +151,7 @@ const Header = () => {
                                     <p className="m-0 text-white fw-semibold d-flex flex-column text-capitalize"
                                         style={{lineHeight: "1.2"}}
                                     >
-                                        fransisco osorio integrated SHS                                
+                                        francisco osorio integrated SHS                                
                                         <span className="m-0 text-white fw-semibold text-capitalize">trece martires city.</span>
                                     </p>
                                 </div>
@@ -241,7 +241,7 @@ const Header = () => {
                             <p className="m-0 text-white fw-semibold d-flex flex-column text-capitalize w-75"
                                 style={{lineHeight: "1.2"}}
                             >
-                                fransisco osorio integrated SHS                                
+                                francisco osorio integrated SHS                                
                                 <span className="m-0 text-white fw-semibold text-capitalize">trece martires city.</span>
                             </p>
                         </div>

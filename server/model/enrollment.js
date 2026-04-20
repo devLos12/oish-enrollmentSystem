@@ -37,6 +37,7 @@ const enrollmentSchema = new mongoose.Schema({
     current: {
       houseNo: { type: String },
       street: { type: String },
+      region: { type: String }, 
       barangay: { type: String },
       municipality: { type: String },
       province: { type: String },
@@ -46,6 +47,7 @@ const enrollmentSchema = new mongoose.Schema({
     },
     permanent: {
       sameAsCurrent: { type: Boolean, default: false },
+      region: { type: String }, 
       houseNo: { type: String },
       street: { type: String },
       barangay: { type: String },
@@ -150,6 +152,18 @@ const enrollmentSchema = new mongoose.Schema({
     type: String, 
     default: null 
   },
+
+  // Idagdag bago mag-close ng enrollmentSchema (bago yung enrollmentSchema.index(...))
+  updateToken: { 
+    type: String, 
+    default: null 
+  },
+
+  updateTokenExpiry: { 
+    type: Date, 
+    default: null 
+  },
+  
 
 });
 

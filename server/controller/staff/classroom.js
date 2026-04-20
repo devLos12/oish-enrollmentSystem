@@ -21,8 +21,12 @@ export const getTeacherStudents = async(req, res) => {
         const subject = await Subject.findOne({ 
             _id: subjectId, 
             teacherId: teacherId
+        })
+        .populate({ 
+            path: "sections.sectionId", 
+            model: "Section" // ← exact model name
         });
-        
+
         if (!subject) {
             return res.status(404).json({ 
                 success: false,
@@ -30,11 +34,11 @@ export const getTeacherStudents = async(req, res) => {
             });
         }
 
-        // Find the specific section
+        // ← _id na since populated na yung sectionId
         const findSection = subject.sections?.find((sec) => 
-            sec.sectionId.toString() === sectionId
+            sec.sectionId._id.toString() === sectionId
         );
-
+        
         if (!findSection) {
             return res.status(404).json({ 
                 success: false,
@@ -49,7 +53,6 @@ export const getTeacherStudents = async(req, res) => {
         }).select('firstName lastName email semester sex status strand studentNumber gradeLevel section ');
 
 
-
         // Return empty array if no students (not an error)
         return res.status(200).json({ 
             success: true, 
@@ -57,11 +60,10 @@ export const getTeacherStudents = async(req, res) => {
                 students: sectionStudents,
                 subject: { 
                     room: findSection.room,
-                    // scheduleDay: findSection.scheduleDay,
                     scheduleEndTime: findSection.scheduleEndTime,
                     scheduleStartTime: findSection.scheduleStartTime,
-                    sectionId: findSection.sectionId,
-                    sectionName: findSection.sectionName,
+                    sectionId: findSection.sectionId._id,               // ← actual ObjectId
+                    sectionName: findSection.sectionId.name,     // ← from populated Section doc na
                     
                     gradeLevel: subject.gradeLevel,
                     subjectCode: subject.subjectCode,
@@ -83,8 +85,6 @@ export const getTeacherStudents = async(req, res) => {
         });
     }
 }
-
-
 
 
 
@@ -168,7 +168,6 @@ export const getTeacherStudents = async(req, res) => {
 
 
 
-
 export const getTeacherSubjectBySchoolYear = async (req, res) => {
     try {
         const teacherId = req.account.id;
@@ -186,7 +185,11 @@ export const getTeacherSubjectBySchoolYear = async (req, res) => {
         const subjects = await Subject.find({ 
             teacherId: teacherId,
             schoolYear: schoolYearId
-        }).populate('schoolYear', 'schoolYear semester label isActive');
+        })
+        .populate('schoolYear', 'schoolYear semester label isActive')
+        .populate('sections.sectionId');
+
+
 
         if (!subjects || subjects.length === 0) {
             return res.status(200).json({ 
@@ -199,11 +202,15 @@ export const getTeacherSubjectBySchoolYear = async (req, res) => {
         // ✅ Map sections with subject info
         const sectionsWithSubjectInfo = [];
         
+        
+
         subjects.forEach(subject => {
             subject.sections.forEach(section => {
+                const populatedSection = section.sectionId;
+
                 sectionsWithSubjectInfo.push({
-                    sectionId: section.sectionId,
-                    sectionName: section.sectionName,
+                    sectionId: populatedSection._id,
+                    sectionName: populatedSection.name,
                     scheduleDay: section.scheduleDay,
                     scheduleStartTime: section.scheduleStartTime,
                     scheduleEndTime: section.scheduleEndTime,

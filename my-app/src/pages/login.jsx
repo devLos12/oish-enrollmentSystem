@@ -185,7 +185,7 @@ const Login = () => {
             }
             
             if(data.success && data.data) {
-                const activeYear = data.data.find(sy => sy.isActive);
+                const activeYear = data.data.find(sy => sy.isCurrent);
                 if (activeYear) {
                     setActiveSchoolYear(activeYear);
                 }
@@ -200,7 +200,9 @@ const Login = () => {
 
 
 
+    
 
+    
     const showNotification = (message, type = "success", role = null) => {
         setModalMessage(message);
         setModalType(type);

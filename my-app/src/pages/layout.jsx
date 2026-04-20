@@ -11,6 +11,9 @@ import { Step1, Step2, Step3 } from "./enrollmentForm.jsx";
 import Announcement from "../components/home/annoucement.jsx";
 import Programs from "../components/home/programs.jsx";
 import ForgotPassword from "../components/forgotpassword.jsx";
+import UpdateEnrollment from "../components/updateEnrollment.jsx";
+
+
 
 
 const Layout = () => {
@@ -42,6 +45,7 @@ const Layout = () => {
             <Route path="enrollment/step1"   element={<Step1/> }/>
             <Route path="enrollment/step2"   element={<Step2/>}/>
             <Route path="enrollment/step3"   element={<Step3/>} />
+            <Route path="enrollment/update" element={<UpdateEnrollment />} />
             {/* <Route path='login/admin-staff'  element={<Login/>}/> */}
             {/* <Route path='login/student'      element={<Login/>}/> */}
             <Route path="login"              element={<Login/>}/>

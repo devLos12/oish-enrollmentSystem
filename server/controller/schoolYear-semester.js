@@ -43,7 +43,6 @@ export const getActiveSchoolYear = async (req, res) => {
     }
 
 
-
     res.status(200).json({
       success: true,
       data: activeSchoolYear,

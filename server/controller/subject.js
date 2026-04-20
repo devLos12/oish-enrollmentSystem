@@ -414,9 +414,7 @@ export const getSubjectSection = async (req, res) => {
     try {
         const { gradeLevel, track, strand, semester, subjectId } = req.query;
 
-
-
-
+        
         // Build filter object
         const filter = {};
         

@@ -147,6 +147,11 @@ const Home = () => {
 
     
 
+
+
+
+
+
     const getSchoolmentYear = async () => {
 
         try {
@@ -163,7 +168,7 @@ const Home = () => {
             }
             
             if(data.success && data.data) {
-                const activeYear = data.data.find(sy => sy.isActive);
+                const activeYear = data.data.find(sy => sy.isCurrent);
                 if (activeYear) {
                     setActiveSchoolYear(activeYear);
                 }
@@ -175,6 +180,9 @@ const Home = () => {
             setLoadingYear(false);
         }
     }
+
+
+
 
 
 
@@ -240,7 +248,7 @@ const Home = () => {
                             
                             <div className="d-flex align-items-center justify-content-center gap-3 flex-column">
                                 <p className="m-0 text-capitalize fw-light fs-2 w-100 text-white ">
-                                   welcome to fransisco osorio integrated senior high school
+                                   welcome to francisco osorio integrated senior high school
                                 </p>
                                 <p className="text-capitalize fw-semibold text-light fs-5">trece martires city</p>
 

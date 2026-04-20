@@ -44,7 +44,7 @@ const Footer = () => {
                         />
                         <p className="text-light small text-capitalize fw-semibold fs-4 m-0" 
                         >
-                            fransisco osorio integrated SHS
+                            francisco osorio integrated SHS
                             trece martires city.
                         </p>
                     </div>
@@ -115,7 +115,7 @@ const Footer = () => {
 
                 {/* Divider */}
                 <div style={{borderTop: '1px solid #e5e7eb', padding: '2rem 0'}} className="d-flex align-items-center justify-content-center flex-wrap gap-2">
-                    <p className="text-light small m-0 text-center fs-6">© 2026 Fransisco Osorio Integrated Senior High School. All rights reserved.</p>
+                    <p className="text-light small m-0 text-center fs-6">© 2026 Francisco Osorio Integrated Senior High School. All rights reserved.</p>
                 </div>
             </div>
         </footer>

@@ -21,6 +21,10 @@ const Students = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     
+
+
+
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -33,6 +37,11 @@ const Students = () => {
         setTextHeader(location?.state?.title);
     },[location?.state?.title]);
 
+
+
+    useEffect(() => {
+        console.log("Subject Info: ", subjectInfo);
+    },[subjectInfo]);
 
 
     useEffect(() => {
@@ -59,7 +68,6 @@ const Students = () => {
             if(!res.ok) throw new Error(data.message);
 
             if(data.success){
-                console.log(data);
                 setSubjectInfo(data.data.subject);
                 setStudents(data.data.students);
             }
@@ -318,11 +326,11 @@ const Students = () => {
                                     {/* Left Column - Subject Info */}
                                     <div className="col-12 col-lg-8">
                                         <div className="d-flex align-items-center gap-2 mb-2">
-                                            <h2 className="m-0 fw-bold text-capitalize">{subjectInfo.subjectName}</h2>
+                                            <h2 className="m-0 fw-bold text-capitalize fs-3">{subjectInfo.subjectName}</h2>
                                             <span className="badge bg-info text-white">{subjectInfo.subjectCode}</span>
                                         </div>
                                         <p className="text-muted mb-2">
-                                            {students.length > 0 ? `${students[0].gradeLevel} - ${students[0].section}` : 'No section info'}
+                                            {`${subjectInfo.gradeLevel} - ${subjectInfo.sectionName}`}
                                         </p>
                                         <p className="text-muted mb-0">List of students enrolled in this subject</p>
                                     </div>

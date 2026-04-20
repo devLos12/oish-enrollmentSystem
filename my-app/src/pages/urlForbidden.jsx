@@ -34,7 +34,7 @@ const UrlForbidden = () => {
                         </div>
                     </div>
                     <p className="m-0 mt-2 text-red fs-2 fw-bold text-capitalize">
-                        fransisco osorio integrated senior high school
+                        francisco osorio integrated senior high school
                     </p>
                 </div>
             </div>

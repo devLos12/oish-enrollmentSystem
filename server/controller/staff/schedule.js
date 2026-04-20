@@ -30,7 +30,10 @@ export const getTeacherSubjectSchedule = async(req, res) => {
         const subjects = await Subject.find({ 
             teacherId: id,
             schoolYear: targetSchoolYear._id
-        });
+        })
+        .populate("sections.sectionId");
+
+
         
         if (!subjects || subjects.length === 0) {
             return res.status(200).json({ 
@@ -44,9 +47,13 @@ export const getTeacherSubjectSchedule = async(req, res) => {
         
         for (const subject of subjects) {
             for (const section of subject.sections) {
+
+                const populatedSection = section.sectionId;
+
+
                 // ✅ Students based sa selected schoolYear — hindi sa isActive
                 const studentsInSection = await Student.find({
-                    section: section.sectionName,
+                    section: populatedSection.name,
                     strand: subject.strand,
                     registrationHistory: {
                         $elemMatch: {
@@ -68,9 +75,9 @@ export const getTeacherSubjectSchedule = async(req, res) => {
                     teacherId: subject.teacherId,
                     teacher: subject.teacher,
                     
-                    sectionId: section.sectionId,
-                    sectionName: section.sectionName,
-                    section: section.sectionName,
+                    sectionId: populatedSection._id,
+                    sectionName: populatedSection.name,
+                    section: populatedSection.name,
                     scheduleStartTime: section.scheduleStartTime,
                     scheduleEndTime: section.scheduleEndTime,
                     room: section.room,

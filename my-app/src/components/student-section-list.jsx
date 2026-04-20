@@ -321,11 +321,15 @@ const StudentSectionList = () => {
                     <div className="row align-items-center">
                         <div className="col">
                             <div className="mb-3">
-                                <h4 className="fw-bold mb-1">{section?.name || "Section Details"}</h4>
+                                <div className="d-flex gap-2 align-items-center">
+                                    <p className="m-0 fw-bold fs-3">{section?.name || "Section Details"}</p>
+                                    <span className="fw-semibold">|</span>
+                                    <p className="m-0 text-muted fw-bold fs-5">{section?.strand}</p>
+                                </div>
+
                                 <p className="text-muted mb-0">List of all students within this section</p>
                             </div>
                             <div className="d-flex flex-wrap gap-2 mt-2">
-                                <span className="badge bg-danger">{section?.strand}</span>
                                 <span className="badge bg-secondary">Grade {section?.gradeLevel}</span>
                                 <span className="badge bg-dark">{section?.semester === 1 ? "1st Semester" : "2nd Semester"}</span>
                                 <span className={`badge ${section?.isOpenEnrollment ? "bg-success" : "bg-warning text-dark"}`}>

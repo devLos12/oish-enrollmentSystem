@@ -49,6 +49,9 @@ const SubjectDetails = () => {
         }
     }, [subjectData?.gradeLevel, subjectData?.strand, subjectData?.track, subjectData?.semester]);
 
+
+
+
     const getSubjectDetails = async () => {
         try {
             setLoading(true);
@@ -74,9 +77,18 @@ const SubjectDetails = () => {
 
     const fetchAvailableSections = async () => {
         try {
+
+            const params = new URLSearchParams({
+                gradeLevel: subjectData.gradeLevel,
+                track: subjectData.track,
+                strand: subjectData.strand,
+                semester: subjectData.semester,
+                subjectId: subjectId,
+            });
+            
             setLoadingSections(true);
             const res = await fetch(
-                `${import.meta.env.VITE_API_URL}/api/getSubjetSections?gradeLevel=${subjectData.gradeLevel}&track=${subjectData.track}&strand=${subjectData.strand}&semester=${subjectData.semester}&subjectId=${subjectId}`,
+                `${import.meta.env.VITE_API_URL}/api/getSubjetSections?${params}`,
                 { method: "GET", credentials: "include" }
             );
             const data = await res.json();
@@ -516,11 +528,16 @@ const SubjectDetails = () => {
                     <div className="col-12">
                         <div className="card border-0 shadow-sm">
                             <div className="card-body">
-                                <h4 className="fw-bold mb-1 text-capitalize">{subjectData.subjectName}</h4>
-                                <p className="text-muted mb-2">
-                                    <span className="badge bg-info me-2">{subjectData.subjectCode}</span>
-                                    <span className="badge bg-danger me-2">{subjectData.strand}</span>
-                                </p>
+                                <div className="d-flex align-items-center gap-2">
+                                    <span className="badge bg-info">{subjectData.subjectCode}</span>
+                                    <p className="m-0">|</p>
+                                    <p className="fw-bold m-0 fs-4">{subjectData.subjectName}</p>
+
+                                </div>
+                              
+                                <div className="text-muted d-flex gap-2 my-3">
+                                    <p className="m-0 text-muted fw-semibold">{subjectData.strand}</p>
+                                </div>
                                 <p className="mb-0 gap-2 d-flex text-capitalize">
                                     <strong>Teacher:</strong> {subjectData.teacher}
                                 </p>

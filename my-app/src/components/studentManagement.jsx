@@ -3,6 +3,11 @@ import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 import html2pdf from "html2pdf.js";
 import { io } from "socket.io-client";
+import usePrograms from "./hooks/useProgram";
+
+
+
+
 
 
 const StudentManagement = () => {
@@ -13,7 +18,6 @@ const StudentManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterGrade, setFilterGrade] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
-    const [filterSemester, setFilterSemester] = useState('');
     const [filterStrand, setFilterStrand] = useState('');
     const [studentType, setStudentType] = useState('all');
     const [loading, setLoading] = useState(true);
@@ -57,7 +61,6 @@ const StudentManagement = () => {
     const [alertType, setAlertType] = useState('success');
 
     const gradeOptions = [11, 12];
-    const semesterOptions = [1, 2];
 
     const sanitizeNameInput = (value) => value.replace(/[^a-zA-Z\s\-]/g, '');
 
@@ -70,20 +73,10 @@ const StudentManagement = () => {
 
     const getEndOfYearDate = () => `${new Date().getFullYear()}-12-31`;
 
-    const STRAND_OPTIONS = {
-        'Academic': [
-            { value: 'STEM', label: 'STEM (Science, Technology, Engineering, and Mathematics)' },
-            { value: 'ABM', label: 'ABM (Accountancy, Business, and Management)' },
-            { value: 'HUMSS', label: 'HUMSS (Humanities and Social Sciences)' },
-            { value: 'GAS', label: 'GAS (General Academic Strand)' }
-        ],
-        'TVL': [
-            { value: 'HE', label: 'HE (Home Economics)' },
-            { value: 'ICT', label: 'ICT (Information and Communications Technology)' },
-            { value: 'IA', label: 'IA (Industrial Arts)' },
-            { value: 'Agri-Fishery', label: 'Agri-Fishery Arts' }
-        ]
-    };
+    const { trackOptions, getStrandOptions, allStrands } = usePrograms();
+
+
+
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [addFormData, setAddFormData] = useState({
@@ -304,10 +297,7 @@ const StudentManagement = () => {
             }
         }
 
-        if (filterSemester) {
-            // ✅ displaySemester — from registrationHistory or activeSchoolYear
-            filtered = filtered.filter(s => s.displaySemester === parseInt(filterSemester));
-        }
+        
 
         if (filterStrand) {
             // ✅ displayStrand — from registrationHistory or direct field
@@ -316,7 +306,7 @@ const StudentManagement = () => {
 
         setFilteredStudents(filtered);
         setCurrentPage(1);
-    }, [searchTerm, filterGrade, filterStatus, filterSemester, filterStrand, studentType, studentList]);
+    }, [searchTerm, filterGrade, filterStatus, filterStrand, studentType, studentList]);
 
     const showAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -673,15 +663,15 @@ const StudentManagement = () => {
                     </div>
                 </div>
 
-                <div className="row mb-3">
-                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                <div className="row mb-3 ">
+                    <div className="col-12 col-md-6 mt-2">
                         <select className="form-select" value={studentType} onChange={(e) => setStudentType(e.target.value)}>
                             <option value="all">All Students</option>
                             <option value="regular">Regular</option>
                             <option value="repeater">Repeater</option>
                         </select>
                     </div>
-                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                    <div className="col-12 col-md-6 mt-2">
                         <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                             <option value="all">All Status</option>
                             <option value="pending">Pending</option>
@@ -690,19 +680,21 @@ const StudentManagement = () => {
                             <option value="graduated">Graduated</option>
                         </select>
                     </div>
-                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                    <div className="col-12 col-md-6 mt-2 ">
                         <FilterSelect value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)} options={gradeOptions} placeholder="All Grade Levels" renderOption={(grade) => <option key={grade} value={grade}>Grade {grade}</option>} />
                     </div>
-                    <div className="col-12 col-md-2 mt-2 mt-md-0">
-                        <FilterSelect value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)} options={semesterOptions} placeholder="All Semesters" renderOption={(sem) => <option key={sem} value={sem}>{sem === 1 ? "First" : "Second"}</option>} />
-                    </div>
-                    <div className="col-12 col-md-2 mt-2 mt-md-0">
+                        
+                    <div className="col-12 col-md-6 mt-2 ">
                         <select className="form-select" value={filterStrand} onChange={(e) => setFilterStrand(e.target.value)}>
                             <option value="">All Strands</option>
-                            {strandOptions.map(strand => <option key={strand} value={strand}>{strand}</option>)}
+                            
+                            {allStrands.map(strand => (
+                                <option key={strand} value={strand}>{strand}</option>
+                            ))}
+                            
                         </select>
                     </div>
-                    <div className="col-12 col-md-2 mt-2 mt-md-0 d-flex justify-content-end align-items-center">
+                    <div className="col-12 col-md-12 mt-2  d-flex justify-content-end align-items-center">
                         <p className="text-muted mb-0">Total: <strong>{filteredStudents.length}</strong></p>
                     </div>
                 </div>
@@ -752,8 +744,14 @@ const StudentManagement = () => {
                                                                 </td>
                                                             )}
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
-                                                            <td className="align-middle"><span className="badge bg-info text-dark font-monospace">{student.studentNumber}</span></td>
-                                                            <td className="align-middle"><span className="badge bg-secondary font-monospace">{student.lrn}</span></td>
+                                                            <td className="align-middle">
+                                                                <span className="badge bg-info text-dark font-monospace">
+                                                                    {student.studentNumber}
+                                                                </span>
+                                                            </td>
+                                                            <td className="align-middle">
+                                                                <p className="m-0 fw-semibold">{student.lrn}</p>
+                                                            </td>
                                                             <td className="align-middle fw-semibold text-capitalize">
                                                                 {`${student.lastName}, ${student.firstName} ${student.middleName === "N/A" ? "" : student.middleName || ""} ${(student.extensionName === "N/A" || student.extensionName === "n/a") ? "" : student.extensionName || ""}`.trim()}
                                                             </td>
@@ -768,7 +766,7 @@ const StudentManagement = () => {
 
                                                             {/* ✅ displayStrand — from registrationHistory or direct field */}
                                                             <td className="align-middle">
-                                                                <span className="badge bg-danger">{student.displayStrand || 'N/A'}</span>
+                                                                <p className="m-0 text-muted fw-semibold ">{student.displayStrand}</p>
                                                             </td>
 
                                                             {/* ✅ displaySection — from registrationHistory or direct field */}
@@ -1175,15 +1173,9 @@ const StudentManagement = () => {
                                     </div>
                                     <div className="row mb-3">
                                         <div className="col-md-6">
-                                            <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-calendar-alt text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">semester: <span className="text-danger">*</span></label></div>
-                                            <select className="form-select shadow-sm" name="semester" value={addFormData.semester} onChange={handleAddFormChange} required>
-                                                <option value="">Select semester</option><option value={1}>First Semester</option><option value={2}>Second Semester</option>
-                                            </select>
-                                        </div>
-                                        <div className="col-md-6">
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-road text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">track: <span className="text-danger">*</span></label></div>
                                             <select className="form-select shadow-sm" name="track" value={addFormData.track} onChange={handleAddFormChange} required>
-                                                <option value="">Select track</option><option value="Academic">Academic</option><option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
+                                                {trackOptions.map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
                                         </div>
                                     </div>
@@ -1192,7 +1184,9 @@ const StudentManagement = () => {
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-book text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">strand: <span className="text-danger">*</span></label></div>
                                             <select className="form-select shadow-sm" name="strand" value={addFormData.strand} onChange={handleAddFormChange} disabled={!addFormData.track} required>
                                                 <option value="">{!addFormData.track ? 'Select track first' : 'Select strand'}</option>
-                                                {addFormData.track && STRAND_OPTIONS[addFormData.track]?.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                {getStrandOptions(addFormData.track).map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>

@@ -20,8 +20,18 @@ import { getLogs, } from "../controller/logs.js";
 import { deleteEmailHistory, getAllEmails, getAllStudents, scheduleRequirements } from "../controller/schedule.js";
 import { activateSchoolYear, createSchoolYear, getSchoolYears, toggleEnrollmentStatus, getAllSchoolYears, setCurrentSchoolYear, getActiveSchoolYear, deleteSchoolYear, } from "../controller/schoolYear-semester.js";
 
-
-
+// Import sa taas:
+import {
+    getAllPrograms,
+    getActivePrograms,
+    createTrack,
+    updateTrack,
+    deleteTrack,
+    addStrand,
+    updateStrand,
+    deleteStrand,
+} from "../controller/program.js";
+ 
 
 
 
@@ -114,6 +124,27 @@ SharedRouter.delete('/sections/:id/remove-student/:studentId', removeStudentFrom
 
 
 SharedRouter.get('/activeSchoolYear', verifyAuth, getActiveSchoolYear);
+
+
+
+
+
+// ── Program / Track / Strand Routes ──
+
+
+SharedRouter.get('/getActivePrograms', getActivePrograms);             // active only (dropdowns)
+
+SharedRouter.get('/getPrograms', verifyAuth, getAllPrograms);           // all (admin)
+SharedRouter.post('/addTrack', verifyAuth, createTrack);
+SharedRouter.patch('/updateTrack/:id', verifyAuth, updateTrack);
+SharedRouter.delete('/deleteTrack/:id', verifyAuth, deleteTrack);
+ 
+SharedRouter.post('/addStrand/:trackId', verifyAuth, addStrand);
+SharedRouter.patch('/updateStrand/:trackId/:strandId', verifyAuth, updateStrand);
+SharedRouter.delete('/deleteStrand/:trackId/:strandId', verifyAuth, deleteStrand);
+
+
+
 
 
 SharedRouter.get("/Logout", verifyAuth, Logout);

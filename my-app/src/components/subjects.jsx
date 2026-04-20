@@ -2,6 +2,14 @@ import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as XLSX from 'xlsx';
+import usePrograms from "./hooks/useProgram";
+
+
+
+
+
+
+
 
 
 const SubjectManagement = () => {
@@ -20,17 +28,12 @@ const SubjectManagement = () => {
     const gradeOptions = [11, 12];
     const semesterOptions = [1, 2];
     const subjectTypeOptions = ['core', 'specialized', 'applied'];
-    const trackOptions = ['Academic', 'TVL'];
     const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const allStrandOptions = ['STEM', 'ABM', 'HUMSS', 'Home Economics', 'ICT', 'Industrial Arts'];
+   
+    
+    const { trackOptions, getStrandOptions, allStrands } = usePrograms();
 
-    const getStrandOptionsForTrack = (track) => {
-        const trackToStrand = {
-            'Academic': ['STEM', 'ABM', 'HUMSS'],
-            'TVL': ['Home Economics', 'ICT', 'Industrial Arts'],
-        };
-        return trackToStrand[track] || [];
-    };
+    
 
     const location = useLocation();
     const [teachersList, setTeachersList] = useState([]);
@@ -65,6 +68,8 @@ const SubjectManagement = () => {
 
     const navigate = useNavigate();
 
+
+
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
     }, [location?.state?.title]);
@@ -73,6 +78,7 @@ const SubjectManagement = () => {
         fetchSubjectsData();
         fetchTeachers();
     }, []);
+
 
     useEffect(() => {
         let filtered = subjectList.filter(subject =>
@@ -87,11 +93,18 @@ const SubjectManagement = () => {
         setCurrentPage(1);
     }, [searchTerm, filterGrade, filterSemester, filterStrand, subjectList]);
 
+
+
     useEffect(() => {
         if (selectedSubject?.gradeLevel && selectedSubject?.strand && selectedSubject?.track && selectedSubject?.semester) {
             fetchSections(selectedSubject.gradeLevel, selectedSubject.track, selectedSubject.strand, selectedSubject.semester);
         }
     }, [selectedSubject?.gradeLevel, selectedSubject?.strand, selectedSubject?.track, selectedSubject?.semester]);
+
+
+
+
+
 
     const fetchSections = async (gradeLevel, track, strand, semester) => {
         try {
@@ -386,8 +399,9 @@ const SubjectManagement = () => {
 
                 if (normalizedRow.gradeLevel && ![11, 12].includes(parseInt(normalizedRow.gradeLevel)))
                     rowErrors.push('Grade Level must be 11 or 12');
+
                 if (normalizedRow.track && !trackOptions.includes(normalizedRow.track.toString().trim()))
-                    rowErrors.push('Invalid Track (must be Academic or TVL)');
+                    rowErrors.push(`Invalid Track (must be: ${validTracks.join(', ')})`);
 
                 const subjectType = normalizedRow.subjectType?.toString().toLowerCase().trim();
                 if (subjectType && !subjectTypeOptions.includes(subjectType))
@@ -632,25 +646,25 @@ const SubjectManagement = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
                     </div>
-                    <div className="col-6 col-md-2 mt-2 mt-md-0">
+                    <div className="col-6 col-md-4 mt-2 mt-md-0">
                         <select className="form-select" value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
                             <option value="">All Grades</option>
                             {gradeOptions.map(grade => <option key={grade} value={grade}>Grade {grade}</option>)}
                         </select>
                     </div>
-                    <div className="col-6 col-md-2 mt-2 mt-md-0">
+                    {/* <div className="col-6 col-md-2 mt-2 mt-md-0">
                         <select className="form-select" value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)}>
                             <option value="">All Semesters</option>
                             {semesterOptions.map(sem => <option key={sem} value={sem}>{sem === 1 ? "First" : "Second"}</option>)}
                         </select>
-                    </div>
-                    <div className="col-6 col-md-2 mt-2 mt-md-0">
+                    </div> */}
+                    <div className="col-6 col-md-4 mt-2 mt-md-0">
                         <select className="form-select" value={filterStrand} onChange={(e) => setFilterStrand(e.target.value)}>
                             <option value="">All Strands</option>
-                            {allStrandOptions.map(strand => <option key={strand} value={strand}>{strand}</option>)}
+                            {allStrands.map(strand => <option key={strand} value={strand}>{strand}</option>)}
                         </select>
                     </div>
-                    <div className="col-12 col-md-3 mt-2 mt-md-0 text-end">
+                    <div className="col-12 col-md-4 mt-2 mt-md-0 text-end">
                         <p className="text-muted mb-0 mt-2">Total: <strong>{filteredSubjects.length}</strong></p>
                     </div>
                 </div>
@@ -679,7 +693,6 @@ const SubjectManagement = () => {
                                                         <th className="fw-semibold">Subject Code</th>
                                                         <th className="fw-semibold">Subject Name</th>
                                                         <th className="fw-semibold">Grade</th>
-                                                        <th className="fw-semibold">Track</th>
                                                         <th className="fw-semibold">Strand</th>
                                                         <th className="fw-semibold">Semester</th>
                                                         <th className="fw-semibold">Type</th>
@@ -691,11 +704,12 @@ const SubjectManagement = () => {
                                                     {currentSubjects.map((subject, index) => (
                                                         <tr key={subject._id}>
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
-                                                            <td className="align-middle"><span className="badge bg-secondary font-monospace">{subject.subjectCode}</span></td>
+                                                            <td className="align-middle"><span className="badge bg-info text-dark font-monospace ">{subject.subjectCode}</span></td>
                                                             <td className="align-middle fw-semibold text-capitalize">{subject.subjectName}</td>
                                                             <td className="align-middle">Grade {subject.gradeLevel}</td>
-                                                            <td className="align-middle"><span className="badge bg-warning text-dark">{subject.track || 'N/A'}</span></td>
-                                                            <td className="align-middle"><span className="badge bg-danger">{subject.strand || 'N/A'}</span></td>
+                                                            <td className="align-middle">
+                                                                <p className="m-0 text-muted fw-semibold ">{subject.strand}</p>
+                                                            </td>
                                                             <td className="align-middle small">{subject.semester === 1 ? "First" : "Second"}</td>
                                                             <td className="align-middle"><span className={`badge ${getSubjectTypeBadge(subject.subjectType)} text-capitalize`}>{subject.subjectType}</span></td>
                                                             <td className="align-middle text-capitalize">{subject.teacher || 'N/A'}</td>
@@ -759,7 +773,7 @@ const SubjectManagement = () => {
                                                     onChange={(e) => setSelectedSubject({ ...selectedSubject, strand: e.target.value })}
                                                     disabled={!selectedSubject?.track}>
                                                     <option value="">{!selectedSubject?.track ? 'Select Track First' : 'Select Strand'}</option>
-                                                    {selectedSubject?.track && getStrandOptionsForTrack(selectedSubject.track).map(s => <option key={s} value={s}>{s}</option>)}
+                                                    {selectedSubject?.track && getStrandOptions(selectedSubject.track).map(s => <option key={s} value={s}>{s}</option>)}
                                                 </select>
                                             </div>
                                         </div>
@@ -1104,7 +1118,7 @@ const SubjectManagement = () => {
                                                                             onChange={(e) => updateExcelRow(idx, { strand: e.target.value })}
                                                                             disabled={!row.track}>
                                                                             <option value="">Select</option>
-                                                                            {row.track && getStrandOptionsForTrack(row.track).map(s => <option key={s} value={s}>{s}</option>)}
+                                                                            {row.track && getStrandOptions(row.track).map(s => <option key={s} value={s}>{s}</option>)}
                                                                         </select>
                                                                     ) : row.strand || <span className="text-danger fst-italic">missing</span>}
                                                                 </td>

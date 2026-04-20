@@ -26,6 +26,8 @@ import SubjectDetails from "../components/subjectDetails.jsx";
 import { io } from "socket.io-client";
 import Semester from "../components/semester.jsx";
 import StudentSectionList from "../components/student-section-list.jsx";
+import Program from "../components/program.jsx";
+import ApplicantForm from "../components/applicant-form.jsx";
 
 
 
@@ -88,10 +90,11 @@ const Admin = () => {
         {path: "announcement",          element: <Announcement/> },
         {path: "edit_student",          element: <EditStudent/> },
         {path: "logs",                  element: <Logs/> },
-        {path: "enrollmentpdf",         element: <EnrollmentFormPDF/>},
+        {path: "applicant_form",         element: <ApplicantForm/>},
         {path: "schedule",              element: <Schedule/>},
         {path: "semester",              element: <Semester/>},
         {path: 'student-section-list',  element: <StudentSectionList/>},
+        {path: "program",               element: <Program/>},
         {path: "*",                      element: <Navigate to={"/404_forbidden"}/>}
 
     ]   

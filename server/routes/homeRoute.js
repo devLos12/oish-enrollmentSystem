@@ -2,7 +2,7 @@ import express from "express";
 import LoginPortal from "../controller/login.js";
 import { UrlAuthentication } from "../auth/authMiddleware.js";
 import { StaffRegistration } from "../controller/registration.js";
-import {EnrollmentRegistration, enrollmentUpload, getAllEmails } from "../controller/enrollment.js";
+import {EnrollmentRegistration, enrollmentUpload, getAllEmails, getEnrollmentByToken } from "../controller/enrollment.js";
 import { getAnnouncements } from "../controller/announcement.js";
 import {  changePassword, requestCode, verifyCode } from "../controller/forgotPassword.js";
 
@@ -12,6 +12,8 @@ const HomeRouter = express.Router();
 HomeRouter.get("/urlAuthentication", UrlAuthentication);
 HomeRouter.post('/staff_registration', StaffRegistration);
 HomeRouter.post('/enrollment', enrollmentUpload, EnrollmentRegistration);
+HomeRouter.get("/getEnrollmentByToken/:token", getEnrollmentByToken);
+
 
 HomeRouter.get('/getHomeAnnouncement', getAnnouncements);
 HomeRouter.post('/requestCode', requestCode);

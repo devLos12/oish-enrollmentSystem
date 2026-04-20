@@ -109,10 +109,15 @@ export const Step1 = () => {
 
 
     useEffect(() => {
-        if (!location?.state?.allowed) {
+        if (!location?.state?.allowed && !location?.state?.isUpdate) {
             navigate("/404_forbidden", { replace: true });
         }
 
+            // ✅ Skip terms modal agad kung update flow
+        if (location?.state?.isUpdate) {
+            setHasAcceptedTerms(true);
+            return; // ✅ importante — stop na dito
+        }
 
           // ✅ ADD: Check if terms were already accepted
         const termsAccepted = sessionStorage.getItem("termsAccepted");
@@ -127,7 +132,7 @@ export const Step1 = () => {
 
 
 
-    if(!location?.state?.allowed) return
+    if(!location?.state?.allowed && !location?.state?.isUpdate) return
 
     
     useEffect(( )=> {
@@ -137,32 +142,37 @@ export const Step1 = () => {
 
     useEffect(() => {
         getAllEmailsForValidations();
-
     },[]);
 
 
+
+
+
     const getAllEmailsForValidations = async () => {
-        
         try {
-        
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getAllEmails`, {
                 method: "GET",
                 credentials: "include"
-            })
+            });
 
             const data = await res.json();
             if(data.success){
-                setEmailVerify(data.emails);
+                // Kung update flow — i-exclude yung sariling email nya
+                // para hindi mag-appear as duplicate
+                if(location?.state?.isUpdate) {
+                    const ownEmail = location?.state?.enrollmentData?.learnerInfo?.email?.toLowerCase();
+                    setEmailVerify(data.emails.filter(e => 
+                        e.learnerInfo?.email?.toLowerCase() !== ownEmail
+                    ));
+                } else {
+                    setEmailVerify(data.emails);
+                }
             }
 
         } catch (error) {
-            
             console.log("Error: ", error.message);
-            
         }
-        
     }
-
 
 
 
@@ -183,9 +193,9 @@ export const Step1 = () => {
 
 
 
-
     useEffect(() => {
-        if(role === "admin" || role === "staff") return
+        // ✅ Skip sessionStorage load kung update flow
+        if(location?.state?.isUpdate) return;
         const saved = sessionStorage.getItem("myForm");
         if (saved) {
             setFormData(JSON.parse(saved));
@@ -193,60 +203,52 @@ export const Step1 = () => {
     },[]);
 
 
-    //this work for prefill in admin and staff.
-    useEffect(() => {
-        if (role !== "admin" && role !== "staff") return;
 
-        const prefill = location?.state?.applicant;
+    // ✅ Prefill para sa update flow
+    useEffect(() => {
+        if (!location?.state?.isUpdate) return;
+
+        const prefill = location?.state?.enrollmentData;
         if (!prefill) return;
+
+        // ✅ I-save sa sessionStorage para ma-access ng Steps 2 at 3
+        sessionStorage.setItem("enrollmentId", prefill._id);
+        sessionStorage.setItem("updateToken", location?.state?.token);
+        sessionStorage.setItem("isUpdate", "true");
+
+
 
         setFormData(prev => ({
             ...prev,
-
-            schoolYear: prefill.schoolYear || prev.schoolYear || '',
-            gradeLevelToEnroll: prefill.gradeLevelToEnroll || prev.gradeLevelToEnroll || '',
-
-            // convert boolean → "Yes"/"No"
-            withLRN: prefill.withLRN ? "Yes" : "No",
             isReturning: prefill.isReturning ? "Yes" : "No",
-
             learnerInfo: {
                 ...prev.learnerInfo,
-
                 email: prefill.learnerInfo?.email || '',
                 lrn: prefill.learnerInfo?.lrn || '',
                 lastName: prefill.learnerInfo?.lastName || '',
                 firstName: prefill.learnerInfo?.firstName || '',
-                middleName: prefill.learnerInfo?.middleName || '',
-                extensionName: prefill.learnerInfo?.extensionName || '',
+                middleName: prefill.learnerInfo?.middleName === 'N/A' ? '' : prefill.learnerInfo?.middleName || '',
+                extensionName: prefill.learnerInfo?.extensionName === 'N/A' ? '' : prefill.learnerInfo?.extensionName || '',
                 birthDate: new Date(prefill.learnerInfo.birthDate).toISOString().split("T")[0] || '',
-                age: prefill.learnerInfo?.age || '',
+                age: prefill.learnerInfo?.age?.toString() || '',
                 sex: prefill.learnerInfo?.sex || '',
                 placeOfBirth: prefill.learnerInfo?.placeOfBirth || '',
                 motherTongue: prefill.learnerInfo?.motherTongue || '',
-
                 learnerWithDisability: {
-                    ...prev.learnerInfo?.learnerWithDisability,
                     isDisabled: prefill.learnerInfo?.learnerWithDisability?.isDisabled ? "Yes" : "No",
                     disabilityType: prefill.learnerInfo?.learnerWithDisability?.disabilityType || []
                 },
-
                 indigenousCommunity: {
-                    ...prev.learnerInfo?.indigenousCommunity,
                     isMember: prefill.learnerInfo?.indigenousCommunity?.isMember ? "Yes" : "No",
                     name: prefill.learnerInfo?.indigenousCommunity?.name || ''
                 },
-
                 fourPs: {
-                    ...prev.learnerInfo?.fourPs,
                     isBeneficiary: prefill.learnerInfo?.fourPs?.isBeneficiary ? "Yes" : "No",
                     householdId: prefill.learnerInfo?.fourPs?.householdId || ''
                 }
             }
         }));
-        
-        setViewOnly(true);
-    }, [location?.state.applicant, role, setFormData]);
+    }, [location?.state?.isUpdate, location?.state?.enrollmentData]);
 
    
 
@@ -648,7 +650,17 @@ export const Step1 = () => {
         // ✅ If already submitted, no need for loading - just navigate
         if(isIncomplete && !hasChanges){
             window.scrollTo({ top: 0, behavior: "auto"});
-            navigate("/enrollment/step2", { state: { allowed: true }});
+            
+
+            navigate("/enrollment/step2", { 
+                state: { 
+                    allowed: true,
+                    isUpdate: location?.state?.isUpdate || false,
+                    enrollmentData: location?.state?.enrollmentData  // ✅ dagdag
+                }
+            });
+
+
             return 
         }
 
@@ -672,9 +684,10 @@ export const Step1 = () => {
                     step: "step1",
                     enrollmentId: enrollmentId,
                     isReturning: formData.isReturning,
-                    learnerInfo: JSON.stringify(formData.learnerInfo)
+                    learnerInfo: JSON.stringify(formData.learnerInfo),
                 })
             });
+
 
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
@@ -682,10 +695,19 @@ export const Step1 = () => {
             sessionStorage.setItem("myForm", JSON.stringify(formData));
             sessionStorage.setItem("step1Saved", data.step1);
 
-            
+
 
             window.scrollTo({ top: 0, behavior: "auto"});
-            navigate("/enrollment/step2", { state: { allowed: true }});
+
+            navigate("/enrollment/step2", { 
+                state: { 
+                    allowed: true,
+                    isUpdate: location?.state?.isUpdate || false,
+                    enrollmentData: location?.state?.enrollmentData  
+                }
+            });
+
+
         } catch (error) {
             setErrorMessage(error.message);  
             setShowErrorModal(true);
@@ -1373,20 +1395,6 @@ export const Step1 = () => {
 
 
 
-
-// Constants moved outside component
-const STRAND_OPTIONS = {
-    Academic: [
-        { value: 'STEM', label: 'STEM (Science, Technology, Engineering, Mathematics)' },
-        { value: 'ABM', label: 'ABM (Accountancy, Business, Management)' },
-        { value: 'HUMSS', label: 'HUMSS (Humanities and Social Sciences)' },
-    ],
-    TVL: [
-        { value: 'Home Economics', label: 'Home Economics' },
-        { value: 'ICT', label: 'Information and Communications Technology' },
-        { value: 'Industrial Arts', label: 'Industrial Arts' },
-    ],
-};
 
 const FORM_FIELDS = {
     parentInfo: [
@@ -2282,18 +2290,59 @@ export const Step2 = () => {
     });
 
 
+
+    const [programs, setPrograms] = useState([]);
+    const [loadingPrograms, setLoadingPrograms] = useState(false);
+
+
     // Access control check
     useEffect(() => {
-        if (!location?.state?.allowed) {
+        if (!location?.state?.allowed && !location?.state?.isUpdate) {
             navigate("/404_forbidden", { replace: true });
         }
     }, [location, navigate]);
 
-    if (!location?.state?.allowed) return null;
+    if (!location?.state?.allowed && !location?.state?.isUpdate) return null;
+
+
+
+
+
+
+    useEffect(() => {
+        const fetchProgram = async() => {
+            try {
+
+                setLoadingPrograms(true);
+
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getActivePrograms`, {
+                    method: "GET",
+                    credentials: "include"
+                });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.message);
+                setPrograms(data);
+                
+            } catch (error) {
+                console.log("Error: ", error.message);
+            } finally {
+                setLoadingPrograms(false);
+            }
+        }
+
+        fetchProgram();
+    },[]);
+
+    
+
+
+
 
     // Load from sessionStorage (runs once)
     useEffect(() => {
         if (hasLoadedData.current) return;
+        // ✅ Skip sessionStorage load kung update flow
+        if (location?.state?.isUpdate) return;
         const saved = sessionStorage.getItem("myForm");
         if (saved) {
             try {
@@ -2308,12 +2357,12 @@ export const Step2 = () => {
 
 
 
+
     // Prefill for admin/staff view
     useEffect(() => {
-        if (role !== "admin" && role !== "staff") return;
-        if (viewOnly) return;
+        if (!location?.state?.isUpdate) return;
 
-        const prefill = location?.state?.applicant;
+        const prefill = location?.state?.enrollmentData;
         if (!prefill) return;
 
         setFormData(prev => ({
@@ -2333,7 +2382,6 @@ export const Step2 = () => {
                 guardian: { ...prev.parentGuardianInfo?.guardian, ...(prefill?.parentGuardianInfo?.guardian || {}) }
             },
             schoolHistory: { ...prev.schoolHistory, ...(prefill?.schoolHistory || {}) },
-            // ✅ Normalize semester to number when prefilling
             seniorHigh: {
                 ...prev.seniorHigh,
                 ...(prefill?.seniorHigh || {}),
@@ -2341,9 +2389,14 @@ export const Step2 = () => {
             }
         }));
 
-        setViewOnly(true);
-    }, [location?.state?.applicant, role, setFormData, viewOnly]);
+    }, [location?.state?.isUpdate, location?.state?.enrollmentData]);
 
+
+
+    
+
+
+    
     // Auto-fill permanent address
     useEffect(() => {
         if (!formData.address?.permanent?.sameAsCurrent || !formData.address?.current || hasAutoFilled.current) {
@@ -2669,7 +2722,16 @@ export const Step2 = () => {
         // ✅ If already submitted and NO changes, just navigate
         if (step2Saved === "true" && !hasChanges) {
             window.scrollTo({ top: 0, behavior: "auto" });
-            navigate("/enrollment/step3", { state: { allowed: true } });
+
+            navigate("/enrollment/step3", { 
+                state: { 
+                    allowed: true,
+                    isUpdate: location?.state?.isUpdate || false,
+                    enrollmentData: location?.state?.enrollmentData
+                }
+            });
+
+
             return;
         }
 
@@ -2716,7 +2778,16 @@ export const Step2 = () => {
             
 
             window.scrollTo({ top: 0, behavior: "auto" });
-            navigate("/enrollment/step3", { state: { allowed: true } });
+
+            navigate("/enrollment/step3", { 
+                state: { 
+                    allowed: true,
+                    isUpdate: location?.state?.isUpdate || false,
+                    enrollmentData: location?.state?.enrollmentData
+                }
+            });
+
+
         } catch (error) {
             setErrorMessage(error.message);
             setShowErrorModal(true);
@@ -3213,9 +3284,14 @@ export const Step2 = () => {
                                                     className="form-select"
                                                     disabled={viewOnly}
                                                 >
-                                                    <option value="">Select Track</option>
-                                                    <option value="Academic">Academic</option>
-                                                    <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
+                                                    <option value="">
+                                                        {loadingPrograms ? 'Loading tracks...' : 'Select Track'}
+                                                    </option>
+                                                    {programs.map(p => (
+                                                        <option key={p._id} value={p.trackName}>
+                                                            {p.trackName}
+                                                        </option>
+                                                    ))}
                                                 </select>
                                             </div>
 
@@ -3235,10 +3311,13 @@ export const Step2 = () => {
                                                     <option value="">
                                                         {!formData.seniorHigh?.track ? 'Select Track First' : 'Select Strand'}
                                                     </option>
-                                                    {formData.seniorHigh?.track && 
-                                                        STRAND_OPTIONS[formData.seniorHigh.track]?.map(option => (
-                                                            <option key={option.value} value={option.value}>
-                                                                {option.label}
+                                                    {programs
+                                                        .find(p => p.trackName === formData.seniorHigh?.track)
+                                                        ?.strands
+                                                        .filter(s => s.isActive)
+                                                        .map(s => (
+                                                            <option key={s._id} value={s.strandName}>
+                                                                {s.strandName}
                                                             </option>
                                                         ))
                                                     }
@@ -3296,26 +3375,6 @@ export const Step2 = () => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export const Step3 = () => {
     const { formData, setFormData, role } = useContext(globalContext);   
     const navigate = useNavigate();
@@ -3338,11 +3397,20 @@ export const Step3 = () => {
 
     const [psaError, setPsaError] = useState('');
 
+
+
+
     useEffect(() => {
-        if (!location?.state?.allowed) {
+        if (!location?.state?.allowed && !location?.state?.isUpdate) {
             navigate("/404_forbidden", { replace: true });
         }
     }, [location, navigate]);
+
+    if(!location?.state?.allowed && !location?.state?.isUpdate) return;
+
+
+
+
 
     if(!location?.state?.allowed) return;
 
@@ -3369,23 +3437,28 @@ export const Step3 = () => {
         }
     }, []);
 
+    
+    
     useEffect(() => {
+        if (location?.state?.isUpdate) return; // ✅ skip
         const saved = localStorage.getItem("myForm");
         if (saved) {
             setFormData(JSON.parse(saved));
         }
     },[]);
 
-    useEffect(() => {
-        if (role !== "admin" && role !== "staff") return;
 
-        const prefill = location?.state?.applicant;
-        setApproveShowModal((prev) => ({...prev, data: prefill, isShow: prev.isShow }))
+
+    // ✅ Prefill existing documents para sa update flow
+    useEffect(() => {
+        if (!location?.state?.isUpdate) return;
+
+        const prefill = location?.state?.enrollmentData;
         if (!prefill) return;
 
         const getFilePreviewUrl = (filePath) => {
             if (!filePath) return null;
-            if (filePath.startsWith("data:")) return filePath;
+            if (filePath.startsWith("data:") || filePath.startsWith("http")) return filePath;
             const normalized = filePath.replace(/\\/g, "/");
             return `${import.meta.env.VITE_API_URL}/api/${normalized}`;
         };
@@ -3393,29 +3466,31 @@ export const Step3 = () => {
         setFormData(prev => ({
             ...prev,
             certification: {
-                goodMoralFile: prefill.requiredDocuments.goodMoral?.filePath || null,
-                goodMoralFileName: prefill.requiredDocuments.goodMoral?.filePath?.split("/").pop() || '',
-                goodMoralPreview: getFilePreviewUrl(prefill.requiredDocuments.goodMoral?.filePath),
+                ...prev.certification,
+                psaBirthCertFile: prefill.requiredDocuments?.psaBirthCert?.filePath || null,
+                psaBirthCertFileName: prefill.requiredDocuments?.psaBirthCert?.filePath?.split("/").pop() || '',
+                psaBirthCertPreview: getFilePreviewUrl(prefill.requiredDocuments?.psaBirthCert?.filePath),
 
-                idPictureFile: prefill.requiredDocuments.idPicture?.filePath || null,
-                idPictureFileName: prefill.requiredDocuments.idPicture?.filePath?.split("/").pop() || '',
-                idPicturePreview: getFilePreviewUrl(prefill.requiredDocuments.idPicture?.filePath),
+                reportCardFile: prefill.requiredDocuments?.reportCard?.filePath || null,
+                reportCardFileName: prefill.requiredDocuments?.reportCard?.filePath?.split("/").pop() || '',
+                reportCardPreview: getFilePreviewUrl(prefill.requiredDocuments?.reportCard?.filePath),
 
-                psaBirthCertFile: prefill.requiredDocuments.psaBirthCert?.filePath || null,
-                psaBirthCertFileName: prefill.requiredDocuments.psaBirthCert?.filePath?.split("/").pop() || '',
-                psaBirthCertPreview: getFilePreviewUrl(prefill.requiredDocuments.psaBirthCert?.filePath),
+                goodMoralFile: prefill.requiredDocuments?.goodMoral?.filePath || null,
+                goodMoralFileName: prefill.requiredDocuments?.goodMoral?.filePath?.split("/").pop() || '',
+                goodMoralPreview: getFilePreviewUrl(prefill.requiredDocuments?.goodMoral?.filePath),
 
-                reportCardFile: prefill.requiredDocuments.reportCard?.filePath || null,
-                reportCardFileName: prefill.requiredDocuments.reportCard?.filePath?.split("/").pop() || '',
-                reportCardPreview: getFilePreviewUrl(prefill.requiredDocuments.reportCard?.filePath),
+                idPictureFile: prefill.requiredDocuments?.idPicture?.filePath || null,
+                idPictureFileName: prefill.requiredDocuments?.idPicture?.filePath?.split("/").pop() || '',
+                idPicturePreview: getFilePreviewUrl(prefill.requiredDocuments?.idPicture?.filePath),
 
                 psaNo: prefill.psaNo || ''
-            },
-            status: prefill.status
+            }
         }));
+    }, [location?.state?.isUpdate, location?.state?.enrollmentData]);
 
-        setViewOnly(true);
-    }, [location?.state?.applicant, approveModal?.data, role, viewOnly]);
+
+
+
 
     const checkPreferredAndCert = () => {
         const r = formData;
