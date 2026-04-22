@@ -3,10 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
 import { globalContext } from '../context/global';
 import ApplicantFormPDF from './applicant-Form-Pdf';
-import depedLogo from "../assets/image/deped.png";
-import schoolLogo from "../assets/image/logo.png";
 
-
+import deped from "../assets/image/deped.png";
+import logo from "../assets/image/logo.png";
 
 
 
@@ -210,7 +209,7 @@ const ApplicantForm = () => {
 
             {/* School Header */}
             <div className="d-flex align-items-center justify-content-center gap-3 pb-3 mb-3" style={{ borderBottom: '2px solid #7f1d1d' }}>
-              <img src={`${depedLogo}`} alt="DepEd" style={{ width: '56px', height: '56px' }} />
+              <img src={deped} alt="DepEd" style={{ width: '56px', height: '56px' }} />
               <div className="text-center">
                 <p className="fw-bold mb-0" style={{ fontSize: '18px', color: '#7f1d1d' }}>
                   Francisco Osorio Integrated Senior High School
@@ -222,7 +221,7 @@ const ApplicantForm = () => {
                   Department of Education — Region IV-A CALABARZON
                 </p>
               </div>
-              <img src={`${schoolLogo}`} alt="Logo" style={{ width: '56px', height: '56px' }} />
+              <img src={logo} alt="Logo" style={{ width: '56px', height: '56px' }} />
             </div>
 
             {/* Form Title */}
