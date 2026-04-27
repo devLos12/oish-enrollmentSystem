@@ -10,8 +10,6 @@ import usePrograms from "./hooks/useProgram";
 
 
 
-
-
 const SubjectManagement = () => {
     const { setTextHeader } = useContext(globalContext);
     const [subjectList, setSubjectList] = useState([]);
@@ -323,26 +321,163 @@ const SubjectManagement = () => {
     // ✅ EXCEL IMPORT — Matches SubjectDetails style
     // ============================================================
 
+
     const downloadTemplate = () => {
-        const templateData = [
-            ['Subject Code', 'Subject Name', 'Grade Level', 'Track', 'Strand', 'Subject Type', 'Teacher Name'],
-            ['GENMATH-01', 'General Mathematics', '11', 'Academic', 'STEM', 'core', 'Juan Dela Cruz'],
-            ['ENGLISH-01', 'Oral Communication', '11', 'Academic', 'HUMSS', 'specialized', 'Maria Santos'],
-            ['ICT-01', 'Computer Systems Servicing', '12', 'TVL', 'ICT', 'applied', 'Pedro Reyes'],
-        ];
+    // ✅ Build template data dynamically from actual tracks and strands
+    const templateData = [
+        ['Subject Code', 'Subject Name', 'Grade Level', 'Track', 'Strand', 'Subject Type', 'Teacher Name'],
+    ];
+    
+    // ✅ Add example rows for each track + strand combination
+    let exampleCounter = 1;
+    const subjectExamples = {
+        'core': ['Mathematics', 'English', 'Science', 'Social Studies', 'Filipino'],
+        'specialized': ['Technical Drawing', 'ICT', 'Accounting', 'Business Management'],
+        'applied': ['Work Experience', 'Research', 'Capstone', 'Internship']
+    };
+    
+    for (const track of trackOptions) {
+        const strandsForTrack = getStrandOptions(track);
+        for (const strand of strandsForTrack) {
+        // Cycle through subject types
+        const typeIndex = exampleCounter % 3;
+        const types = ['core', 'specialized', 'applied'];
+        const subjectType = types[typeIndex];
+        
+        const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
+        const subjectExampleList = subjectExamples[subjectType];
+        const subjectExample = subjectExampleList[exampleCounter % subjectExampleList.length];
+        const subjectCode = `${strand.substring(0, 3).toUpperCase()}-${String(exampleCounter).padStart(2, '0')}`;
+    
+        templateData.push([
+            subjectCode,
+            subjectExample,
+            gradeLevel,
+            track,
+            strand,
+            subjectType,
+            'Juan Dela Cruz' // Placeholder teacher name
+        ]);
+        exampleCounter++;
+        
+        // Limit to ~10 example rows
+        if (exampleCounter > 12) break;
+        }
+        if (exampleCounter > 12) break;
+    }
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    
+    ws['!cols'] = [
+        { wch: 18 }, // Subject Code
+        { wch: 30 }, // Subject Name
+        { wch: 14 }, // Grade Level
+        { wch: 12 }, // Track
+        { wch: 20 }, // Strand
+        { wch: 16 }, // Subject Type
+        { wch: 25 }  // Teacher Name
+    ];
+    
+    // ✅ Add info sheet showing ACTUAL available tracks and strands
+    const infoData = [
+        ['Available Tracks, Strands, and Subject Types'],
+        [],
+    ];
+    
+    for (const track of trackOptions) {
+        const strandsForTrack = getStrandOptions(track);
+        infoData.push([`${track}:`]);
+        for (const strand of strandsForTrack) {
+        infoData.push([`  • ${strand}`]);
+        }
+        infoData.push([]); // Empty row for spacing
+    }
+    
+    infoData.push(['Subject Types:']);
+    for (const type of ['core', 'specialized', 'applied']) {
+        infoData.push([`  • ${type}`]);
+    }
+    
+    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
+    wsInfo['!cols'] = [{ wch: 30 }];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Subjects Template');
+    XLSX.utils.book_append_sheet(wb, wsInfo, 'Available Data');
+    XLSX.writeFile(wb, `subjects_import_template.xlsx`);
+    };
+    
 
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(templateData);
 
-        ws['!cols'] = [
-            { wch: 18 }, { wch: 30 }, { wch: 14 },
-            { wch: 12 }, { wch: 20 }, { wch: 16 }, { wch: 25 }
-        ];
 
-        XLSX.utils.book_append_sheet(wb, ws, 'Subjects Template');
-        XLSX.writeFile(wb, `subjects_import_template.xlsx`);
+    
+    // ============================================================
+    // ✅ UPDATED FOR SectionManagement.jsx
+    // ============================================================
+    
+    const downloadTemplateSections = () => {
+    // ✅ Build template data dynamically from actual tracks and strands
+    const templateData = [
+        ['Section Name', 'Grade Level', 'Track', 'Strand', 'Max Capacity'],
+    ];
+    
+    // ✅ Add example rows for each track + strand combination
+    let exampleCounter = 1;
+    for (const track of trackOptions) {
+        const strandsForTrack = getStrandOptions(track);
+        for (const strand of strandsForTrack) {
+        const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
+        const sectionLetter = String.fromCharCode(64 + (exampleCounter % 26)); // A, B, C...
+        templateData.push([
+            `${strand}-${sectionLetter}`,
+            gradeLevel,
+            track,
+            strand,
+            '35'
+        ]);
+        exampleCounter++;
+        
+        // Limit to ~10 example rows
+        if (exampleCounter > 12) break;
+        }
+        if (exampleCounter > 12) break;
+    }
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    
+    ws['!cols'] = [
+        { wch: 20 }, // Section Name
+        { wch: 14 }, // Grade Level
+        { wch: 14 }, // Track
+        { wch: 18 }, // Strand
+        { wch: 14 }  // Max Capacity
+    ];
+    
+    // ✅ Add info sheet showing ACTUAL available tracks and strands
+    const infoData = [
+        ['Available Tracks and Strands'],
+        [],
+    ];
+    
+    for (const track of trackOptions) {
+        const strandsForTrack = getStrandOptions(track);
+        infoData.push([`${track}:`]);
+        for (const strand of strandsForTrack) {
+        infoData.push([`  • ${strand}`]);
+        }
+        infoData.push([]); // Empty row for spacing
+    }
+    
+    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
+    wsInfo['!cols'] = [{ wch: 30 }];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Sections Template');
+    XLSX.utils.book_append_sheet(wb, wsInfo, 'Available Strands');
+    XLSX.writeFile(wb, `sections_import_template.xlsx`);
     };
 
+    
     const processExcelFile = async (file) => {
         try {
             setIsProcessingExcel(true);

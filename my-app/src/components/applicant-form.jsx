@@ -37,8 +37,7 @@ const ApplicantForm = () => {
     setAlertType(type);
     setShowAlertModal(true);
   };
-
-
+  
 
   const handleDownloadPDF = async () => {
       setIsDownloading(true);
@@ -223,7 +222,7 @@ const ApplicantForm = () => {
               </div>
               <img src={logo} alt="Logo" style={{ width: '56px', height: '56px' }} />
             </div>
-
+            
             {/* Form Title */}
             <div className="text-center mb-3">
               <div className="fw-bold text-uppercase" style={{ color: '#7f1d1d', letterSpacing: '2px', fontSize: '16px' }}>

@@ -678,14 +678,6 @@ export const searchStudentForSection = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
 export const addStudentToSection = async (req, res) => {
     try {
         const { id } = req.params;
@@ -870,28 +862,6 @@ export const addStudentToSection = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // REMOVE student from section (admin)
 // DELETE /api/sections/:id/remove-student/:studentId
 export const removeStudentFromSection = async (req, res) => {
@@ -958,6 +928,177 @@ export const removeStudentFromSection = async (req, res) => {
         await student.save();
 
         res.status(200).json({ message: "Student unenrolled from section successfully." });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
+
+
+// ✅ BULK CREATE sections
+export const bulkAddSections = async (req, res) => {
+    try {
+        const { sections } = req.body;
+
+        if (!Array.isArray(sections) || sections.length === 0) {
+            return res.status(400).json({ message: "No sections provided." });
+        }
+
+        // 1. Get active school year
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year." });
+        }
+
+        // 2. Validate all sections first
+        const validationErrors = [];
+        for (let i = 0; i < sections.length; i++) {
+            const sec = sections[i];
+            
+            if (!sec.name?.trim()) {
+                validationErrors.push(`Row ${i + 1}: Section name is required`);
+                continue;
+            }
+            
+            if (![11, 12].includes(parseInt(sec.gradeLevel))) {
+                validationErrors.push(`Row ${i + 1}: Grade level must be 11 or 12`);
+            }
+            
+            if (!sec.track?.trim() || !['Academic', 'TVL'].includes(sec.track)) {
+                validationErrors.push(`Row ${i + 1}: Track must be Academic or TVL`);
+            }
+            
+            if (!sec.strand?.trim()) {
+                validationErrors.push(`Row ${i + 1}: Strand is required`);
+            }
+
+            // Check capacity
+            const cap = parseInt(sec.maxCapacity);
+            if (isNaN(cap) || cap < 1 || cap > 100) {
+                validationErrors.push(`Row ${i + 1}: Capacity must be between 1 and 100`);
+            }
+
+            // Check uniqueness
+            const existing = await Section.findOne({
+                name: sec.name.trim().toUpperCase(),
+                gradeLevel: parseInt(sec.gradeLevel),
+                track: sec.track,
+                strand: sec.strand,
+                semester: activeSchoolYear.semester,
+                schoolYear: activeSchoolYear._id
+            });
+
+            if (existing) {
+                validationErrors.push(`Row ${i + 1}: Section "${sec.name}" already exists`);
+            }
+        }
+
+        if (validationErrors.length > 0) {
+            return res.status(400).json({ 
+                message: "Validation failed",
+                errors: validationErrors 
+            });
+        }
+
+        // 3. Create all sections
+        let importedCount = 0;
+        const createdSections = [];
+
+        for (const sec of sections) {
+            try {
+                // ========================================
+                // 🔥 AUTO-COPY STUDENTS FROM PREVIOUS SEM
+                // ========================================
+                let studentsToCopy = [];
+
+                if (activeSchoolYear.semester === 2) {
+                    // ✅ Sem 2 → copy from SAME SY sem 1
+                    const sem1SchoolYear = await SchoolYear.findOne({
+                        schoolYear: activeSchoolYear.schoolYear,
+                        semester: 1
+                    });
+
+                    if (sem1SchoolYear) {
+                        const previousSection = await Section.findOne({
+                            name: sec.name.trim().toUpperCase(),
+                            gradeLevel: parseInt(sec.gradeLevel),
+                            track: sec.track,
+                            strand: sec.strand,
+                            semester: 1,
+                            schoolYear: sem1SchoolYear._id
+                        });
+
+                        if (previousSection && previousSection.students.length > 0) {
+                            studentsToCopy = [...previousSection.students];
+                        }
+                    }
+
+                } else if (activeSchoolYear.semester === 1) {
+                    // ✅ Sem 1 (new SY) → copy from PREVIOUS SY sem 2
+                    // Students promoted from Grade 11 → Grade 12
+                    if (parseInt(sec.gradeLevel) === 12) {
+                        const [startYear] = activeSchoolYear.schoolYear.split('-').map(Number);
+                        const previousSY = `${startYear - 1}-${startYear}`;
+
+                        const previousSem2SY = await SchoolYear.findOne({
+                            schoolYear: previousSY,
+                            semester: 2
+                        });
+
+                        if (previousSem2SY) {
+                            const previousSection = await Section.findOne({
+                                name: sec.name.trim().toUpperCase(),
+                                gradeLevel: 11, // G11 in previous SY
+                                track: sec.track,
+                                strand: sec.strand,
+                                semester: 2,
+                                schoolYear: previousSem2SY._id
+                            });
+
+                            if (previousSection && previousSection.students.length > 0) {
+                                studentsToCopy = [...previousSection.students];
+
+                                // Promote students G11 → G12
+                                await Student.updateMany(
+                                    { _id: { $in: previousSection.students } },
+                                    { $set: { gradeLevel: 12 } }
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // 4. Create new section
+                const newSection = new Section({
+                    schoolYear: activeSchoolYear._id,
+                    name: sec.name.trim().toUpperCase(),
+                    gradeLevel: parseInt(sec.gradeLevel),
+                    track: sec.track,
+                    strand: sec.strand,
+                    semester: activeSchoolYear.semester,
+                    maxCapacity: parseInt(sec.maxCapacity) || 35,
+                    students: studentsToCopy,
+                    isOpenEnrollment: true,
+                    isEnrolled: []
+                });
+
+                await newSection.save();
+                createdSections.push(newSection);
+                importedCount++;
+
+            } catch (sectionError) {
+                validationErrors.push(`Row: Failed to create "${sec.name}": ${sectionError.message}`);
+            }
+        }
+
+        res.status(201).json({ 
+            message: `${importedCount} section(s) created successfully`,
+            imported: importedCount,
+            total: sections.length,
+            sections: createdSections
+        });
 
     } catch (error) {
         res.status(500).json({ message: error.message });
