@@ -68,7 +68,7 @@ const App = () => {
     if(isStudentAuth) return "/student";
   };
 
-
+  
   return (  
     <>
       <Routes>

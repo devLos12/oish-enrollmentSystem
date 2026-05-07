@@ -50,7 +50,7 @@ const GenerateCodeForm = () => {
                                     <i className="fa-solid fa-info-circle small"></i>
                                     <label htmlFor="" className="text-capitalize fw-bold">note: </label>
                                 </div>
-                                <p className="m-0 text-capitalize small fw-semibold">this will generate random code to access registration for staff members.</p>
+                                <p className="m-0 text-capitalize small fw-semibold">this will generate random code to access registration for faculty members.</p>
                               
                             </div>
 

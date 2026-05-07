@@ -244,8 +244,6 @@ const Home = () => {
                 style={{ zIndex: 2, position: 'relative' }}>
                     <div className="col-12 col-md-10 col-lg-10 mx-auto">
                         <div className="d-flex align-items-center flex-column justify-content-center text-center px-3">
-                            
-                            
                             <div className="d-flex align-items-center justify-content-center gap-3 flex-column">
                                 <p className="m-0 text-capitalize fw-light fs-2 w-100 text-white ">
                                    welcome to francisco osorio integrated senior high school

@@ -106,7 +106,7 @@ const SideBar = () => {
             },
             
             { "label": "faculty member",          "icon": "fa-solid fa-users-gear", 
-                link: "/admin/staff_member",    title: "faculty"
+                link: "/admin/faculty_member",    title: "faculty"
             },
             
             { "label": "Announcement",         "icon": "fa-solid fa-bullhorn",

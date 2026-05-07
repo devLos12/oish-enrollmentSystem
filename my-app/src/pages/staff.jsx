@@ -35,8 +35,6 @@ const Staff =  () => {
 
 
 
-
-    
     useEffect(() => {
         // Load count on mount
         fetchPendingApplicantsCount();

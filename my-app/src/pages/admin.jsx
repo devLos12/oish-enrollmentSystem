@@ -79,7 +79,7 @@ const Admin = () => {
         {path: "subject_details",       element: <SubjectDetails/>},
         // {path: "gmail_code",            element: <GmailCodeForm/>},
         {path: "generate_code",         element: <GenerateCodeForm/> },
-        {path: "staff_member",          element: <StaffManagement/> },
+        {path: "faculty_member",          element: <StaffManagement/> },
         {path: "student_management",    element: <StudentManagement/> },
         {path: "section_management",    element: <SectionManagement/>},
         {path: "applicants",            element: <Applicants />},
