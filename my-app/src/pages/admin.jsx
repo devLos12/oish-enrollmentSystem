@@ -114,7 +114,10 @@ const Admin = () => {
         >
             <div className="row ">
                 <div className={`bg-red g-0  d-none d-xl-block`} 
-                style={{width: "250px"}}
+                style={{
+                    width: "250px",
+                    flexShrink: 0
+                }}
                 >
                     <div className="vh-100 px-2 "
                     style={{
@@ -128,6 +131,10 @@ const Admin = () => {
 
 
                 <div className="col bg-light vh-100 g-0 border-left border"
+                style={{ 
+                    flex: 1,
+                    minWidth: 0
+                }}
                 >
                     <div className="col-12 ">
                         <Header/>

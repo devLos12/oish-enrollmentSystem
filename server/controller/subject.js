@@ -552,9 +552,6 @@ export const bulkAddSubjects = async (req, res) => {
     try {
         const { subjects } = req.body;
 
-
-
-
         // Validate request
         if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
             return res.status(400).json({ 
@@ -576,8 +573,10 @@ export const bulkAddSubjects = async (req, res) => {
             return res.status(400).json({ message: "Validation failed", errors: validationErrors });
         }
 
+        // 🔥 Normalize subjectCodes before duplicate check
+        const subjectCodes = subjects.map(s => s.subjectCode.replace(/\s+/g, '').toUpperCase());
+
         // Check for duplicate subject codes in the batch
-        const subjectCodes = subjects.map(s => s.subjectCode.toUpperCase());
         const duplicates = subjectCodes.filter((code, index) => subjectCodes.indexOf(code) !== index);
         if (duplicates.length > 0) {
             return res.status(400).json({ 
@@ -593,15 +592,9 @@ export const bulkAddSubjects = async (req, res) => {
 
         // Check for existing subject codes in database
         const existingSubjects = await Subject.find({ 
-            subjectCode: { 
-                $in: subjectCodes 
-            },
-            schoolYear: {
-                $in: activeSchoolYear._id
-            } 
+            subjectCode: { $in: subjectCodes },
+            schoolYear: { $in: activeSchoolYear._id } 
         });
-
-
 
         if (existingSubjects.length > 0) {
             const existing = existingSubjects.map(s => s.subjectCode).join(', ');
@@ -611,17 +604,19 @@ export const bulkAddSubjects = async (req, res) => {
         // Prepare subjects for insertion
         const subjectsToInsert = subjects.map(subject => ({
             schoolYear: activeSchoolYear._id,
-            subjectCode: subject.subjectCode.toUpperCase(),
-            subjectName: subject.subjectName.trim(),
+            // 🔥 Strip ALL whitespace from code (e.g. "GENMATH - 01" → "GENMATH-01")
+            subjectCode: subject.subjectCode.replace(/\s+/g, '').toUpperCase(),
+            // 🔥 Collapse multiple spaces in name (e.g. "General   Mathematics" → "General Mathematics")
+            subjectName: subject.subjectName.replace(/\s{2,}/g, ' ').trim(),
             gradeLevel: parseInt(subject.gradeLevel),
             semester: activeSchoolYear.semester,  // ✅ source of truth, hindi from frontend
             track: subject.track.trim(),
-            strand: subject.strand.toUpperCase(),
+            strand: subject.strand.trim(),
             subjectType: subject.subjectType.toLowerCase().trim(),
             teacherId: subject.teacherId,
             teacher: subject.teacherName.trim()
         }));
-
+        
         // Bulk insert
         const insertedSubjects = await Subject.insertMany(subjectsToInsert, { ordered: false });
 
@@ -705,15 +700,6 @@ export const bulkAddSubjects = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
 export const createSubject = async (req, res) => {
     try {
         const { 
@@ -757,8 +743,12 @@ export const createSubject = async (req, res) => {
 
         const newSubject = new Subject({
             schoolYear: activeSchoolYear._id,
-            subjectName,
             subjectCode: subjectCode.toUpperCase(),
+
+            subjectCode: subjectCode.replace(/\s+/g, '').toUpperCase(),
+            subjectName: subjectName.replace(/\s{2,}/g, ' ').trim(),
+
+
             gradeLevel: parseInt(gradeLevel),
             strand: strand.toUpperCase() || "",
             // section: section || "",
@@ -862,14 +852,17 @@ export const updateSubject = async (req, res) => {
             // room                // ✅ ADD
         } = req.body;
 
-
-
         const subject = await Subject.findById(id);
         if (!subject) return res.status(404).json({ message: "Subject not found" });
 
+        // 🔥 Normalize incoming code first so duplicate check uses the clean value
+        const normalizedCode = subjectCode
+            ? subjectCode.replace(/\s+/g, '').toUpperCase()
+            : null;
+
         // Check if subject code is changed and exists
-        if (subjectCode && subjectCode.toUpperCase() !== subject.subjectCode) {
-            const existing = await Subject.findOne({ subjectCode: subjectCode.toUpperCase() });
+        if (normalizedCode && normalizedCode !== subject.subjectCode) {
+            const existing = await Subject.findOne({ subjectCode: normalizedCode });
             if (existing) return res.status(400).json({ message: "Subject code already exists" });
         }
 
@@ -881,8 +874,12 @@ export const updateSubject = async (req, res) => {
         // const oldSection = subject.section;
 
         // Update subject fields
-        subject.subjectName = subjectName ?? subject.subjectName;
-        subject.subjectCode = subjectCode ? subjectCode.toUpperCase() : subject.subjectCode;
+        // 🔥 Collapse multiple spaces in name (e.g. "General   Mathematics" → "General Mathematics")
+        subject.subjectName = subjectName
+            ? subjectName.replace(/\s{2,}/g, ' ').trim()
+            : subject.subjectName;
+        // 🔥 Use normalizedCode (already stripped + uppercased)
+        subject.subjectCode = normalizedCode ?? subject.subjectCode;
         subject.gradeLevel = gradeLevel ? parseInt(gradeLevel) : subject.gradeLevel;
         subject.strand = strand ?? subject.strand;
         // subject.section = section ?? subject.section;
@@ -891,7 +888,6 @@ export const updateSubject = async (req, res) => {
         subject.subjectType = subjectType ?? subject.subjectType;
         subject.teacherId = teacherId ?? subject.teacherId;
         subject.teacher = teacherName ?? subject.teacher;
-        
 
         // ✅ UPDATE SCHEDULE FIELDS
         // subject.scheduleDay = scheduleDay ?? subject.scheduleDay;
@@ -904,8 +900,6 @@ export const updateSubject = async (req, res) => {
         let studentsToRemoveFrom = [];
         let studentsWithSubject = [];
         let studentsToAddTo = [];
-
-
 
         const criticalFieldsChanged = 
             oldSemester !== subject.semester || 
@@ -1033,14 +1027,14 @@ export const updateSubject = async (req, res) => {
         });
 
         res.status(200).json({ 
-            message: "Subject updated and synced to students successfully."});
+            message: "Subject updated and synced to students successfully."
+        });
 
     } catch (error) {
         console.error("Error updating subject:", error);
         res.status(500).json({ message: error.message });
     }
 };
-
 
 
 

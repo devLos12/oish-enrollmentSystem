@@ -36,6 +36,8 @@ const GenerateCodeForm = () => {
         }
     }
 
+    
+
     return(
         <div className="container">
             <div className="row justify-content-center">

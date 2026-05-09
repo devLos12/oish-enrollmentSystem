@@ -18,8 +18,7 @@ const GmailCodeForm = () => {
     },[location?.state?.title])
 
 
-
-
+    
     const handleSubmit = async(e) => {
         e.preventDefault();
 

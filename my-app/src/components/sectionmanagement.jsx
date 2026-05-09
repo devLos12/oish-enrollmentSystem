@@ -5,24 +5,14 @@ import { useMemo } from "react";
 import usePrograms from "./hooks/useProgram";
 import * as XLSX from 'xlsx';
 
-
-
-
-
-
-
 const SectionManagement = () => {
   const { setTextHeader, studentList } = useContext(globalContext);
   const location = useLocation();
-
   const navigate = useNavigate();
 
-  
   useLayoutEffect(() => {
     setTextHeader(location?.state?.title || "Section Management");
   }, [location?.state?.title]);
-
-
 
   // state
   const [sections, setSections] = useState([]);
@@ -30,34 +20,25 @@ const SectionManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGrade, setFilterGrade] = useState("");
   const [filterStrand, setFilterStrand] = useState("");
-
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(""); // 'add' | 'edit' | 'delete' | 'view'
+  const [modalType, setModalType] = useState("");
   const [selectedSection, setSelectedSection] = useState(null);
-
-  // Alert Modal states
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
-  const [alertType, setAlertType] = useState('success'); // 'success' or 'error'
-
+  const [alertType, setAlertType] = useState('success');
 
   const { trackOptions, getStrandOptions, allStrands } = usePrograms();
-  
   const gradeOptions = [11, 12];
   const semesterOptions = [1, 2];
 
-
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-
-
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-
   // ✅ Import Modal State
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importStep, setImportStep] = useState('upload'); // 'upload' | 'preview'
+  const [importStep, setImportStep] = useState('upload');
   const [excelFile, setExcelFile] = useState(null);
   const [excelData, setExcelData] = useState([]);
   const [importErrors, setImportErrors] = useState([]);
@@ -66,12 +47,9 @@ const SectionManagement = () => {
   const [manualRows, setManualRows] = useState([]);
 
 
-  
 
 
-
-
-
+  // ✅ BULK IMPORT - Remove whitespaces from all rows
   const handleBulkImport = async () => {
     const allRows = [...excelData, ...manualRows];
     const errorRows = allRows.filter(r => r.hasError);
@@ -89,7 +67,7 @@ const SectionManagement = () => {
     try {
       setIsProcessingExcel(true);
       const sections = allRows.map(row => ({
-        name: row.name.trim().toUpperCase(),
+        name: row.name.replace(/\s+/g, '').toUpperCase(),  // 🔥 REMOVE ALL WHITESPACES
         gradeLevel: parseInt(row.gradeLevel),
         track: row.track,
         strand: row.strand,
@@ -121,17 +99,31 @@ const SectionManagement = () => {
   const errorCount = allRows.filter(r => r.hasError).length;
   const validCount = allRows.filter(r => !r.hasError).length;
 
+  // ✅ Helper: Get all available strands from all tracks
+  const getAllAvailableStrands = () => {
+    const allStrandsSet = new Set();
+    for (const track of trackOptions) {
+      const strandsForTrack = getStrandOptions(track);
+      strandsForTrack.forEach(s => allStrandsSet.add(s));
+    }
+    return Array.from(allStrandsSet);
+  };
 
-
-
-
-
-
-
-
-
-
-
+  // ✅ Validate Track and Strand match available options
+  const validateTrackAndStrand = (track, strand) => {
+    // Check if track exists in trackOptions
+    if (!trackOptions.includes(track)) {
+      return { valid: false, error: `Invalid Track: "${track}". Must be one of: ${trackOptions.join(', ')}` };
+    }
+    
+    // Check if strand exists for this track
+    const strandsForTrack = getStrandOptions(track);
+    if (!strandsForTrack.includes(strand)) {
+      return { valid: false, error: `Invalid Strand: "${strand}" for Track "${track}". Must be one of: ${strandsForTrack.join(', ')}` };
+    }
+    
+    return { valid: true, error: null };
+  };
 
   // ✅ Update Excel row from preview
   const updateExcelRow = (index, fields) => {
@@ -144,6 +136,14 @@ const SectionManagement = () => {
       if (!updatedRow.gradeLevel) rowErrors.push('Grade Level required');
       if (!updatedRow.track?.trim()) rowErrors.push('Track required');
       if (!updatedRow.strand?.trim()) rowErrors.push('Strand required');
+      
+      // 🔥 Validate Track and Strand match available options
+      if (updatedRow.track && updatedRow.strand) {
+        const trackStrandValidation = validateTrackAndStrand(updatedRow.track.trim(), updatedRow.strand.trim());
+        if (!trackStrandValidation.valid) {
+          rowErrors.push(trackStrandValidation.error);
+        }
+      }
       
       const cap = parseInt(updatedRow.maxCapacity);
       if (isNaN(cap) || cap < 1 || cap > 100) {
@@ -194,6 +194,14 @@ const SectionManagement = () => {
       if (!updatedRow.track) rowErrors.push('Track required');
       if (!updatedRow.strand) rowErrors.push('Strand required');
       
+      // 🔥 Validate Track and Strand match available options
+      if (updatedRow.track && updatedRow.strand) {
+        const trackStrandValidation = validateTrackAndStrand(updatedRow.track, updatedRow.strand);
+        if (!trackStrandValidation.valid) {
+          rowErrors.push(trackStrandValidation.error);
+        }
+      }
+      
       const cap = parseInt(updatedRow.maxCapacity);
       if (isNaN(cap) || cap < 1 || cap > 100) {
         rowErrors.push('Capacity 1-100');
@@ -209,11 +217,6 @@ const SectionManagement = () => {
     setManualRows(prev => prev.filter(r => r.id !== id));
   };
 
-
-
-
-
-
   const handleFileUpload = (file) => {
     if (!file) return;
     const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -225,7 +228,7 @@ const SectionManagement = () => {
     processExcelFile(file);
   };
 
-
+  // ✅ PROCESS EXCEL - Validate Track and Strand against available options
   const processExcelFile = async (file) => {
     try {
       setIsProcessingExcel(true);
@@ -265,15 +268,21 @@ const SectionManagement = () => {
         }
         normalizedRow.gradeLevel = gradeLevel;
 
-        // ✅ Normalize track (first letter capital)
+        // ✅ Normalize track (trim, keep original case from options)
         if (normalizedRow.track) {
-          const track = normalizedRow.track.toString().trim();
-          normalizedRow.track = track.charAt(0).toUpperCase() + track.slice(1).toLowerCase();
+          const trackInput = normalizedRow.track.toString().trim();
+          // Find the matching track from trackOptions (case-insensitive match)
+          const matchedTrack = trackOptions.find(t => t.toLowerCase() === trackInput.toLowerCase());
+          normalizedRow.track = matchedTrack || trackInput; // Use matched version or keep original
         }
 
-        // ✅ Normalize strand (ALL CAPS)
+        // ✅ Normalize strand (trim, keep original case from options)
         if (normalizedRow.strand) {
-          normalizedRow.strand = normalizedRow.strand.toString().trim().toUpperCase();
+          const strandInput = normalizedRow.strand.toString().trim();
+          // Find the matching strand from all available strands (case-insensitive match)
+          const allAvailableStrands = getAllAvailableStrands();
+          const matchedStrand = allAvailableStrands.find(s => s.toLowerCase() === strandInput.toLowerCase());
+          normalizedRow.strand = matchedStrand || strandInput; // Use matched version or keep original
         }
 
         // ✅ Parse capacity
@@ -298,17 +307,18 @@ const SectionManagement = () => {
         if (!normalizedRow.strand?.toString().trim()) 
           rowErrors.push('Strand is required');
 
-        // Grade level must be 11 or 12
         if (normalizedRow.gradeLevel && ![11, 12].includes(parseInt(normalizedRow.gradeLevel))) {
           rowErrors.push('Grade Level must be 11 or 12');
         }
 
-        // Track validation
-        if (normalizedRow.track && !trackOptions.includes(normalizedRow.track.toString().trim())) {
-          rowErrors.push(`Invalid Track. Must be: ${trackOptions.join(', ')}`);
+        // 🔥 Validate Track and Strand match available options
+        if (normalizedRow.track && normalizedRow.strand) {
+          const trackStrandValidation = validateTrackAndStrand(normalizedRow.track.toString().trim(), normalizedRow.strand.toString().trim());
+          if (!trackStrandValidation.valid) {
+            rowErrors.push(trackStrandValidation.error);
+          }
         }
 
-        // Capacity validation
         if (normalizedRow.maxCapacity) {
           const cap = parseInt(normalizedRow.maxCapacity);
           if (isNaN(cap) || cap < 1 || cap > 100) {
@@ -322,10 +332,10 @@ const SectionManagement = () => {
 
         return {
           id: `row-${index}-${Date.now()}`,
-          name: normalizedRow.name?.toString().trim().toUpperCase() || '',
+          name: normalizedRow.name?.toString().replace(/\s+/g, '').toUpperCase() || '',  // 🔥 REMOVE ALL WHITESPACES
           gradeLevel: parseInt(normalizedRow.gradeLevel) || 11,
           track: normalizedRow.track?.toString().trim() || '',
-          strand: normalizedRow.strand?.toString().trim().toUpperCase() || '',
+          strand: normalizedRow.strand?.toString().trim() || '', // ✅ Keep original case (not uppercase)
           maxCapacity: normalizedRow.maxCapacity || 35,
           hasError: rowErrors.length > 0,
           errorMessages: rowErrors
@@ -342,29 +352,23 @@ const SectionManagement = () => {
     }
   };
 
-
-
-
-
-
   const downloadTemplate = () => {
-    // ✅ Build template data dynamically from actual tracks and strands
     const templateData = [
       ['Section Name', 'Grade Level', 'Track', 'Strand', 'Max Capacity'],
     ];
   
-    // ✅ Add example rows for each track + strand combination (first 2 strands per track)
     let exampleCounter = 1;
     for (const track of trackOptions) {
       const strandsForTrack = getStrandOptions(track);
-      for (const strand of strandsForTrack.slice(0, 2)) { // Take first 2 strands as examples
+      for (const strand of strandsForTrack.slice(0, 2)) {
         const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
-        const sectionLetter = String.fromCharCode(64 + (exampleCounter % 26)); // A, B, C...
+        const sectionLetter = String.fromCharCode(64 + (exampleCounter % 26));
+        // 🔥 Use the exact formatting from available options (consistent case)
         templateData.push([
           `${strand}-${sectionLetter}`,
           gradeLevel,
-          track,
-          strand,
+          track,  // ✅ Use track as-is from trackOptions
+          strand, // ✅ Use strand as-is from getStrandOptions (not uppercase)
           '35'
         ]);
         exampleCounter++;
@@ -374,69 +378,7 @@ const SectionManagement = () => {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(templateData);
   
-    ws['!cols'] = [
-      { wch: 20 }, // Section Name
-      { wch: 14 }, // Grade Level
-      { wch: 14 }, // Track
-      { wch: 18 }, // Strand
-      { wch: 14 }  // Max Capacity
-    ];
-  
-    // ✅ Add info sheet showing ACTUAL available strands per track
-    const infoData = [
-      ['Available Tracks and Strands'],
-      [],
-    ];
-    
-    for (const track of trackOptions) {
-      const strandsForTrack = getStrandOptions(track);
-      infoData.push([`${track}:`]);
-      for (const strand of strandsForTrack) {
-        infoData.push([`  • ${strand}`]);
-      }
-      infoData.push([]); // Empty row for spacing
-    }
-  
-    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-    wsInfo['!cols'] = [{ wch: 30 }];
-  
-    XLSX.utils.book_append_sheet(wb, ws, 'Sections Template');
-    XLSX.utils.book_append_sheet(wb, wsInfo, 'Available Strands');
-    XLSX.writeFile(wb, `sections_import_template.xlsx`);
-  };
-  
-  
-  // ✅ ALTERNATIVE: If you want JUST the template without the info sheet
-  // Use this simpler version:
-  
-  const downloadTemplateSimple = () => {
-    const templateData = [
-      ['Section Name', 'Grade Level', 'Track', 'Strand', 'Max Capacity'],
-    ];
-  
-    // Build example data from actual tracks and strands
-    let exampleCounter = 1;
-    for (const track of trackOptions) {
-      const strandsForTrack = getStrandOptions(track);
-      for (const strand of strandsForTrack) {
-        const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
-        const sectionLetter = String.fromCharCode(64 + (exampleCounter % 10)); // A-J
-        templateData.push([
-          `${strand}-${sectionLetter}`,
-          gradeLevel,
-          track,
-          strand,
-          '35'
-        ]);
-        exampleCounter++;
-        if (exampleCounter > 10) break; // Limit to 10 example rows
-      }
-      if (exampleCounter > 10) break;
-    }
-  
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(templateData);
-  
+    // ✅ Set column widths
     ws['!cols'] = [
       { wch: 20 },
       { wch: 14 },
@@ -445,11 +387,13 @@ const SectionManagement = () => {
       { wch: 14 }
     ];
   
+    // ✅ Header styling - freeze first row
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  
+    // ✅ Only one sheet - no info sheet
     XLSX.utils.book_append_sheet(wb, ws, 'Sections Template');
     XLSX.writeFile(wb, `sections_import_template.xlsx`);
   };
-
-
 
   const handleOpenImportModal = () => {
     resetImportState();
@@ -469,10 +413,6 @@ const SectionManagement = () => {
     setEditingRows({});
     setImportStep('upload');
   };
-
-
-
-
 
   // Alert function
   const showAlert = (message, type = 'success') => {
@@ -504,7 +444,7 @@ const SectionManagement = () => {
       setLoading(false);
     }
   };
-
+  
   // filtered list for table
   const filtered = sections
     .filter((s) =>
@@ -514,17 +454,14 @@ const SectionManagement = () => {
     .filter((s) => (filterGrade ? s.gradeLevel === parseInt(filterGrade) : true))
     .filter((s) => (filterStrand ? s.strand === filterStrand : true));
   
-
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentSections = filtered.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
-
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterGrade, filterStrand]);
-
 
   // modal handlers
   const handleAddSection = () => {
@@ -541,21 +478,12 @@ const SectionManagement = () => {
     setShowModal(true);
   };
 
-
-
   const handleViewSection = (section) => {
-
     navigate(`/admin/student-section-list`, { state: { 
       sectionId: section._id,
       sectionName: section.name,
       title: "Section Management"
     } });
-
-
-
-    // setSelectedSection(section);
-    // setModalType("view");
-    // setShowModal(true);
   };
 
   const handleEditSection = (section) => {
@@ -570,11 +498,9 @@ const SectionManagement = () => {
     setShowModal(true);
   };
 
-
-  // submit (create / update)
+  // 🔥 SUBMIT - Remove whitespaces from section name
   const handleSubmitSection = async () => {
 
-    // basic validation
     if (
       !selectedSection.name.trim() ||
       !selectedSection.track.trim() ||
@@ -589,7 +515,7 @@ const SectionManagement = () => {
       setSubmitting(true);
 
       const payload = {
-        name: selectedSection.name,
+        name: selectedSection.name.replace(/\s+/g, '').toUpperCase(),  // 🔥 REMOVE ALL WHITESPACES
         gradeLevel: parseInt(selectedSection.gradeLevel),
         track: selectedSection.track,
         strand: selectedSection.strand,
@@ -622,7 +548,6 @@ const SectionManagement = () => {
     }
   };
 
-
   // delete
   const confirmDelete = async () => {
       try {
@@ -644,7 +569,6 @@ const SectionManagement = () => {
         setDeleting(false);
       }
   }; 
-
 
   // update enrollment status
   const handleEnrollmentStatusChange = async (sectionId, isOpen) => {
@@ -670,7 +594,6 @@ const SectionManagement = () => {
   const getStudentCount = (sec) => (Array.isArray(sec.students) ? sec.students.length : sec.studentsCount || 0);
   const isFull = (sec) => getStudentCount(sec) >= (sec.maxCapacity || 35);
 
-  
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
@@ -721,7 +644,6 @@ const SectionManagement = () => {
 
     return pages;
   };
-
 
   return (
     <>
@@ -831,7 +753,6 @@ const SectionManagement = () => {
                           <tr key={sec._id || sec.id}>
                             <td className="align-middle">{indexOfFirstItem + idx + 1}</td>
                             <td className="align-middle fw-semibold">
-                              
                               <span className="badge bg-danger">
                                 {sec.name}
                               </span>
@@ -985,7 +906,11 @@ const SectionManagement = () => {
                           className="form-control"
                           placeholder="e.g. STEM-A"
                           value={selectedSection?.name || ""}
-                          onChange={(e) => setSelectedSection({ ...selectedSection, name: e.target.value })}
+                          onChange={(e) => {
+                            // 🔥 Remove spaces as user types
+                            const cleanedName = e.target.value.replace(/\s+/g, '').toUpperCase();
+                            setSelectedSection({ ...selectedSection, name: cleanedName });
+                          }}
                         />
                       </div>
 
@@ -1013,23 +938,6 @@ const SectionManagement = () => {
                           ))}
                         </select>
                       </div>
-
-                      {/* Semester is auto-set from active school year — no need for UI input
-                      <div className="col-6">
-                        <label className="form-label text-capitalize fw-bold">Semester</label>
-                        <select
-                          className="form-select"
-                          value={selectedSection?.semester || 1}
-                          onChange={(e) => setSelectedSection({ ...selectedSection, semester: parseInt(e.target.value) })}
-                          disabled
-                        >
-                          {semesterOptions.map((s) => (
-                            <option key={s} value={s}>
-                              {s === 1 ? "First" : "Second"}
-                            </option>
-                          ))}
-                        </select>
-                      </div> */}
                     </div>
                   </div>
 
@@ -1112,7 +1020,10 @@ const SectionManagement = () => {
 
       {/* Alert Modal */}
       {showAlertModal && (
-        <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+        <div className="modal fade show d-block" style={{
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          zIndex: 1060
+          }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow-lg">
               <div className="modal-body text-center p-4">
@@ -1133,7 +1044,6 @@ const SectionManagement = () => {
           </div>
         </div>
       )}
-
 
       {/* ============================================================
     ✅ Import Excel Modal
@@ -1318,7 +1228,7 @@ const SectionManagement = () => {
                                   {isEditing ? (
                                     <input type="text" className="form-control form-control-sm"
                                       value={row.name}
-                                      onChange={(e) => updateExcelRow(idx, { name: e.target.value })} />
+                                      onChange={(e) => updateExcelRow(idx, { name: e.target.value.replace(/\s+/g, '').toUpperCase() })} />
                                   ) : (
                                     <span>{row.name || <span className="text-danger fst-italic">missing</span>}</span>
                                   )}
@@ -1407,7 +1317,7 @@ const SectionManagement = () => {
                               <td>
                                 <input type="text" className="form-control form-control-sm"
                                   value={row.name} placeholder="Section Name"
-                                  onChange={(e) => updateManualRow(row.id, { name: e.target.value })} />
+                                  onChange={(e) => updateManualRow(row.id, { name: e.target.value.replace(/\s+/g, '').toUpperCase() })} />
                               </td>
                               <td>
                                 <select className="form-select form-select-sm" value={row.gradeLevel}

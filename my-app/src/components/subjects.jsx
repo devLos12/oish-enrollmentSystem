@@ -5,11 +5,6 @@ import * as XLSX from 'xlsx';
 import usePrograms from "./hooks/useProgram";
 
 
-
-
-
-
-
 const SubjectManagement = () => {
     const { setTextHeader } = useContext(globalContext);
     const [subjectList, setSubjectList] = useState([]);
@@ -53,9 +48,8 @@ const SubjectManagement = () => {
     const [availableSections, setAvailableSections] = useState([]);
     const [loadingSections, setLoadingSections] = useState(false);
 
-    // ✅ Redesigned import state — matches SubjectDetails flow
     const [showImportModal, setShowImportModal] = useState(false);
-    const [importStep, setImportStep] = useState('upload'); // 'upload' | 'preview'
+    const [importStep, setImportStep] = useState('upload');
     const [excelFile, setExcelFile] = useState(null);
     const [excelData, setExcelData] = useState([]);
     const [importErrors, setImportErrors] = useState([]);
@@ -98,10 +92,6 @@ const SubjectManagement = () => {
             fetchSections(selectedSubject.gradeLevel, selectedSubject.track, selectedSubject.strand, selectedSubject.semester);
         }
     }, [selectedSubject?.gradeLevel, selectedSubject?.strand, selectedSubject?.track, selectedSubject?.semester]);
-
-
-
-
 
 
     const fetchSections = async (gradeLevel, track, strand, semester) => {
@@ -216,8 +206,9 @@ const SubjectManagement = () => {
                 method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    subjectName: selectedSubject.subjectName,
-                    subjectCode: selectedSubject.subjectCode,
+                    // 🔥 Strip all whitespace from code, trim name
+                    subjectName: selectedSubject.subjectName.trim(),
+                    subjectCode: selectedSubject.subjectCode.replace(/\s+/g, '').toUpperCase(),
                     gradeLevel: parseInt(selectedSubject.gradeLevel),
                     subjectType: selectedSubject.subjectType,
                     track: selectedSubject.track,
@@ -318,166 +309,87 @@ const SubjectManagement = () => {
     };
 
     // ============================================================
-    // ✅ EXCEL IMPORT — Matches SubjectDetails style
+    // ✅ EXCEL IMPORT - WITH TRACK & STRAND VALIDATION
     // ============================================================
 
+    // ✅ Helper: Get all available strands from all tracks
+    const getAllAvailableStrands = () => {
+        const allStrandsSet = new Set();
+        for (const track of trackOptions) {
+            const strandsForTrack = getStrandOptions(track);
+            strandsForTrack.forEach(s => allStrandsSet.add(s));
+        }
+        return Array.from(allStrandsSet);
+    };
+
+    // ✅ Validate Track and Strand match available options
+    const validateTrackAndStrand = (track, strand) => {
+        if (!trackOptions.includes(track)) {
+            return { valid: false, error: `Invalid Track: "${track}". Must be one of: ${trackOptions.join(', ')}` };
+        }
+        
+        const strandsForTrack = getStrandOptions(track);
+        if (!strandsForTrack.includes(strand)) {
+            return { valid: false, error: `Invalid Strand: "${strand}" for Track "${track}". Must be one of: ${strandsForTrack.join(', ')}` };
+        }
+        
+        return { valid: true, error: null };
+    };
 
     const downloadTemplate = () => {
-    // ✅ Build template data dynamically from actual tracks and strands
-    const templateData = [
-        ['Subject Code', 'Subject Name', 'Grade Level', 'Track', 'Strand', 'Subject Type', 'Teacher Name'],
-    ];
-    
-    // ✅ Add example rows for each track + strand combination
-    let exampleCounter = 1;
-    const subjectExamples = {
-        'core': ['Mathematics', 'English', 'Science', 'Social Studies', 'Filipino'],
-        'specialized': ['Technical Drawing', 'ICT', 'Accounting', 'Business Management'],
-        'applied': ['Work Experience', 'Research', 'Capstone', 'Internship']
-    };
-    
-    for (const track of trackOptions) {
-        const strandsForTrack = getStrandOptions(track);
-        for (const strand of strandsForTrack) {
-        // Cycle through subject types
-        const typeIndex = exampleCounter % 3;
-        const types = ['core', 'specialized', 'applied'];
-        const subjectType = types[typeIndex];
+        const templateData = [
+            ['Subject Code', 'Subject Name', 'Grade Level', 'Track', 'Strand', 'Subject Type', 'Teacher Name'],
+        ];
         
-        const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
-        const subjectExampleList = subjectExamples[subjectType];
-        const subjectExample = subjectExampleList[exampleCounter % subjectExampleList.length];
-        const subjectCode = `${strand.substring(0, 3).toUpperCase()}-${String(exampleCounter).padStart(2, '0')}`;
-    
-        templateData.push([
-            subjectCode,
-            subjectExample,
-            gradeLevel,
-            track,
-            strand,
-            subjectType,
-            'Juan Dela Cruz' // Placeholder teacher name
-        ]);
-        exampleCounter++;
+        let exampleCounter = 1;
+        const subjectExamples = {
+            'core': ['Mathematics', 'English', 'Science', 'Social Studies', 'Filipino'],
+            'specialized': ['Technical Drawing', 'ICT', 'Accounting', 'Business Management'],
+            'applied': ['Work Experience', 'Research', 'Capstone', 'Internship']
+        };
         
-        // Limit to ~10 example rows
-        if (exampleCounter > 12) break;
+        for (const track of trackOptions) {
+            const strandsForTrack = getStrandOptions(track);
+            for (const strand of strandsForTrack) {
+                const typeIndex = exampleCounter % 3;
+                const types = ['core', 'specialized', 'applied'];
+                const subjectType = types[typeIndex];
+                const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
+                const subjectExampleList = subjectExamples[subjectType];
+                const subjectExample = subjectExampleList[exampleCounter % subjectExampleList.length];
+                const subjectCode = `${strand.substring(0, 3).toUpperCase()}-${String(exampleCounter).padStart(2, '0')}`;
+                // 🔥 Use exact formatting from available options (consistent case)
+                templateData.push([subjectCode, subjectExample, gradeLevel, track, strand, subjectType, 'Juan Dela Cruz']);
+                exampleCounter++;
+                if (exampleCounter > 12) break;
+            }
+            if (exampleCounter > 12) break;
         }
-        if (exampleCounter > 12) break;
-    }
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(templateData);
-    
-    ws['!cols'] = [
-        { wch: 18 }, // Subject Code
-        { wch: 30 }, // Subject Name
-        { wch: 14 }, // Grade Level
-        { wch: 12 }, // Track
-        { wch: 20 }, // Strand
-        { wch: 16 }, // Subject Type
-        { wch: 25 }  // Teacher Name
-    ];
-    
-    // ✅ Add info sheet showing ACTUAL available tracks and strands
-    const infoData = [
-        ['Available Tracks, Strands, and Subject Types'],
-        [],
-    ];
-    
-    for (const track of trackOptions) {
-        const strandsForTrack = getStrandOptions(track);
-        infoData.push([`${track}:`]);
-        for (const strand of strandsForTrack) {
-        infoData.push([`  • ${strand}`]);
-        }
-        infoData.push([]); // Empty row for spacing
-    }
-    
-    infoData.push(['Subject Types:']);
-    for (const type of ['core', 'specialized', 'applied']) {
-        infoData.push([`  • ${type}`]);
-    }
-    
-    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-    wsInfo['!cols'] = [{ wch: 30 }];
-    
-    XLSX.utils.book_append_sheet(wb, ws, 'Subjects Template');
-    XLSX.utils.book_append_sheet(wb, wsInfo, 'Available Data');
-    XLSX.writeFile(wb, `subjects_import_template.xlsx`);
-    };
-    
-
-
-
-    
-    // ============================================================
-    // ✅ UPDATED FOR SectionManagement.jsx
-    // ============================================================
-    
-    const downloadTemplateSections = () => {
-    // ✅ Build template data dynamically from actual tracks and strands
-    const templateData = [
-        ['Section Name', 'Grade Level', 'Track', 'Strand', 'Max Capacity'],
-    ];
-    
-    // ✅ Add example rows for each track + strand combination
-    let exampleCounter = 1;
-    for (const track of trackOptions) {
-        const strandsForTrack = getStrandOptions(track);
-        for (const strand of strandsForTrack) {
-        const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
-        const sectionLetter = String.fromCharCode(64 + (exampleCounter % 26)); // A, B, C...
-        templateData.push([
-            `${strand}-${sectionLetter}`,
-            gradeLevel,
-            track,
-            strand,
-            '35'
-        ]);
-        exampleCounter++;
         
-        // Limit to ~10 example rows
-        if (exampleCounter > 12) break;
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        ws['!cols'] = [
+            { wch: 18 }, { wch: 30 }, { wch: 14 },
+            { wch: 12 }, { wch: 20 }, { wch: 16 }, { wch: 25 }
+        ];
+        
+        const infoData = [['Available Tracks, Strands, and Subject Types'], []];
+        for (const track of trackOptions) {
+            const strandsForTrack = getStrandOptions(track);
+            infoData.push([`${track}:`]);
+            for (const strand of strandsForTrack) infoData.push([`  • ${strand}`]);
+            infoData.push([]);
         }
-        if (exampleCounter > 12) break;
-    }
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(templateData);
-    
-    ws['!cols'] = [
-        { wch: 20 }, // Section Name
-        { wch: 14 }, // Grade Level
-        { wch: 14 }, // Track
-        { wch: 18 }, // Strand
-        { wch: 14 }  // Max Capacity
-    ];
-    
-    // ✅ Add info sheet showing ACTUAL available tracks and strands
-    const infoData = [
-        ['Available Tracks and Strands'],
-        [],
-    ];
-    
-    for (const track of trackOptions) {
-        const strandsForTrack = getStrandOptions(track);
-        infoData.push([`${track}:`]);
-        for (const strand of strandsForTrack) {
-        infoData.push([`  • ${strand}`]);
-        }
-        infoData.push([]); // Empty row for spacing
-    }
-    
-    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-    wsInfo['!cols'] = [{ wch: 30 }];
-    
-    XLSX.utils.book_append_sheet(wb, ws, 'Sections Template');
-    XLSX.utils.book_append_sheet(wb, wsInfo, 'Available Strands');
-    XLSX.writeFile(wb, `sections_import_template.xlsx`);
+        infoData.push(['Subject Types:']);
+        for (const type of ['core', 'specialized', 'applied']) infoData.push([`  • ${type}`]);
+        
+        const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
+        wsInfo['!cols'] = [{ wch: 30 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Subjects Template');
+        XLSX.utils.book_append_sheet(wb, wsInfo, 'Available Data');
+        XLSX.writeFile(wb, `subjects_import_template.xlsx`);
     };
 
-    
     const processExcelFile = async (file) => {
         try {
             setIsProcessingExcel(true);
@@ -514,13 +426,19 @@ const SubjectManagement = () => {
                 if (typeof gradeLevel === 'string') gradeLevel = parseInt(gradeLevel.replace(/\D/g, ''));
                 normalizedRow.gradeLevel = gradeLevel;
 
+                // 🔥 Normalize track (trim, keep original case from options)
                 if (normalizedRow.track) {
-                    const track = normalizedRow.track.toString().trim();
-                    normalizedRow.track = track.charAt(0).toUpperCase() + track.slice(1).toLowerCase();
+                    const trackInput = normalizedRow.track.toString().trim();
+                    const matchedTrack = trackOptions.find(t => t.toLowerCase() === trackInput.toLowerCase());
+                    normalizedRow.track = matchedTrack || trackInput;
                 }
 
+                // 🔥 Normalize strand (trim, keep original case from options)
                 if (normalizedRow.strand) {
-                    normalizedRow.strand = normalizedRow.strand.toString().trim().toUpperCase();
+                    const strandInput = normalizedRow.strand.toString().trim();
+                    const allAvailableStrands = getAllAvailableStrands();
+                    const matchedStrand = allAvailableStrands.find(s => s.toLowerCase() === strandInput.toLowerCase());
+                    normalizedRow.strand = matchedStrand || strandInput;
                 }
 
                 const rowErrors = [];
@@ -535,14 +453,18 @@ const SubjectManagement = () => {
                 if (normalizedRow.gradeLevel && ![11, 12].includes(parseInt(normalizedRow.gradeLevel)))
                     rowErrors.push('Grade Level must be 11 or 12');
 
-                if (normalizedRow.track && !trackOptions.includes(normalizedRow.track.toString().trim()))
-                    rowErrors.push(`Invalid Track (must be: ${validTracks.join(', ')})`);
+                // 🔥 Validate Track and Strand match available options
+                if (normalizedRow.track && normalizedRow.strand) {
+                    const trackStrandValidation = validateTrackAndStrand(normalizedRow.track.toString().trim(), normalizedRow.strand.toString().trim());
+                    if (!trackStrandValidation.valid) {
+                        rowErrors.push(trackStrandValidation.error);
+                    }
+                }
 
                 const subjectType = normalizedRow.subjectType?.toString().toLowerCase().trim();
                 if (subjectType && !subjectTypeOptions.includes(subjectType))
                     rowErrors.push('Invalid Subject Type (must be core, specialized, or applied)');
 
-                // Teacher matching
                 const teacher = normalizedRow.teacherName
                     ? teachersList.find(t =>
                         t.fullName.toLowerCase() === normalizedRow.teacherName.toString().trim().toLowerCase()
@@ -559,11 +481,12 @@ const SubjectManagement = () => {
 
                 return {
                     id: `row-${index}-${Date.now()}`,
-                    subjectCode: normalizedRow.subjectCode?.toString().trim().toUpperCase() || '',
-                    subjectName: normalizedRow.subjectName?.toString().trim().replace(/\b\w/g, c => c.toUpperCase()) || '',
+                    // 🔥 Strip all whitespace from code, collapse spaces in name
+                    subjectCode: normalizedRow.subjectCode?.toString().replace(/\s+/g, '').toUpperCase() || '',
+                    subjectName: normalizedRow.subjectName?.toString().replace(/\s{2,}/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase()) || '',
                     gradeLevel: parseInt(normalizedRow.gradeLevel) || 11,
                     track: normalizedRow.track?.toString().trim() || '',
-                    strand: normalizedRow.strand?.toString().trim().toUpperCase() || '',
+                    strand: normalizedRow.strand?.toString().trim() || '', // ✅ Keep original case (not uppercase)
                     subjectType: subjectType || 'core',
                     teacherName: normalizedRow.teacherName?.toString().trim() || '',
                     teacherId: teacher?._id || '',
@@ -593,7 +516,6 @@ const SubjectManagement = () => {
         processExcelFile(file);
     };
 
-    // ✅ Re-validate a row after inline edit
     const updateExcelRow = (index, fields) => {
         setExcelData(prev => {
             const updated = [...prev];
@@ -606,8 +528,18 @@ const SubjectManagement = () => {
             if (!updatedRow.track?.trim()) rowErrors.push('Track is required');
             if (!updatedRow.strand?.trim()) rowErrors.push('Strand is required');
             if (!updatedRow.subjectType?.trim()) rowErrors.push('Subject Type is required');
-            if (!updatedRow.teacherName?.trim()) rowErrors.push('Teacher is required');
-            else {
+            
+            // 🔥 Validate Track and Strand match available options
+            if (updatedRow.track && updatedRow.strand) {
+                const trackStrandValidation = validateTrackAndStrand(updatedRow.track.trim(), updatedRow.strand.trim());
+                if (!trackStrandValidation.valid) {
+                    rowErrors.push(trackStrandValidation.error);
+                }
+            }
+            
+            if (!updatedRow.teacherName?.trim()) {
+                rowErrors.push('Teacher is required');
+            } else {
                 const teacher = teachersList.find(t =>
                     t.fullName.toLowerCase() === updatedRow.teacherName.toLowerCase()
                 );
@@ -652,7 +584,6 @@ const SubjectManagement = () => {
         resetImportState();
     };
 
-    // ✅ Manual rows
     const createEmptyRow = () => ({
         id: `manual-${Date.now()}-${Math.random()}`,
         subjectCode: '',
@@ -670,7 +601,6 @@ const SubjectManagement = () => {
 
     const handleAddManualRow = () => {
         setManualRows(prev => [...prev, createEmptyRow()]);
-        // Auto-switch to preview if still on upload
         if (importStep === 'upload') setImportStep('preview');
     };
 
@@ -685,11 +615,21 @@ const SubjectManagement = () => {
             if (!updatedRow.track) rowErrors.push('Track required');
             if (!updatedRow.strand) rowErrors.push('Strand required');
             if (!updatedRow.subjectType) rowErrors.push('Type required');
+            
+            // 🔥 Validate Track and Strand match available options
+            if (updatedRow.track && updatedRow.strand) {
+                const trackStrandValidation = validateTrackAndStrand(updatedRow.track, updatedRow.strand);
+                if (!trackStrandValidation.valid) {
+                    rowErrors.push(trackStrandValidation.error);
+                }
+            }
+            
             if (!updatedRow.teacherName) {
                 rowErrors.push('Teacher required');
             } else {
                 const teacher = teachersList.find(t => t.fullName === updatedRow.teacherName);
                 if (teacher) updatedRow.teacherId = teacher._id;
+                else rowErrors.push(`Teacher "${updatedRow.teacherName}" not found`);
             }
 
             updatedRow.hasError = rowErrors.length > 0;
@@ -716,7 +656,8 @@ const SubjectManagement = () => {
         try {
             setIsProcessingExcel(true);
             const subjects = allRows.map(row => ({
-                subjectCode: row.subjectCode.trim().toUpperCase(),
+                // 🔥 Final safety: strip whitespace from code, trim name
+                subjectCode: row.subjectCode.replace(/\s+/g, '').toUpperCase(),
                 subjectName: row.subjectName.trim(),
                 gradeLevel: parseInt(row.gradeLevel),
                 track: row.track,
@@ -787,12 +728,6 @@ const SubjectManagement = () => {
                             {gradeOptions.map(grade => <option key={grade} value={grade}>Grade {grade}</option>)}
                         </select>
                     </div>
-                    {/* <div className="col-6 col-md-2 mt-2 mt-md-0">
-                        <select className="form-select" value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)}>
-                            <option value="">All Semesters</option>
-                            {semesterOptions.map(sem => <option key={sem} value={sem}>{sem === 1 ? "First" : "Second"}</option>)}
-                        </select>
-                    </div> */}
                     <div className="col-6 col-md-4 mt-2 mt-md-0">
                         <select className="form-select" value={filterStrand} onChange={(e) => setFilterStrand(e.target.value)}>
                             <option value="">All Strands</option>
@@ -839,11 +774,11 @@ const SubjectManagement = () => {
                                                     {currentSubjects.map((subject, index) => (
                                                         <tr key={subject._id}>
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
-                                                            <td className="align-middle"><span className="badge bg-info text-dark font-monospace ">{subject.subjectCode}</span></td>
+                                                            <td className="align-middle"><span className="badge bg-info text-dark font-monospace">{subject.subjectCode}</span></td>
                                                             <td className="align-middle fw-semibold text-capitalize">{subject.subjectName}</td>
                                                             <td className="align-middle">Grade {subject.gradeLevel}</td>
                                                             <td className="align-middle">
-                                                                <p className="m-0 text-muted fw-semibold ">{subject.strand}</p>
+                                                                <p className="m-0 text-muted fw-semibold">{subject.strand}</p>
                                                             </td>
                                                             <td className="align-middle small">{subject.semester === 1 ? "First" : "Second"}</td>
                                                             <td className="align-middle"><span className={`badge ${getSubjectTypeBadge(subject.subjectType)} text-capitalize`}>{subject.subjectType}</span></td>
@@ -916,17 +851,31 @@ const SubjectManagement = () => {
                                         <div className="row mb-3">
                                             <div className="col-6">
                                                 <label className="form-label fw-bold">Subject Code</label>
-                                                <input type="text" className="form-control font-monospace"
+                                                <input
+                                                    type="text"
+                                                    className="form-control font-monospace"
                                                     value={selectedSubject?.subjectCode || ''}
-                                                    onChange={(e) => setSelectedSubject({ ...selectedSubject, subjectCode: e.target.value.toUpperCase() })}
-                                                    placeholder="e.g. GENMATH-01" />
+                                                    onChange={(e) => {
+                                                        // 🔥 Remove ALL whitespace + uppercase (e.g. "GENMATH - 01" → "GENMATH-01")
+                                                        const cleaned = e.target.value.replace(/\s+/g, '').toUpperCase();
+                                                        setSelectedSubject({ ...selectedSubject, subjectCode: cleaned });
+                                                    }}
+                                                    placeholder="e.g. GENMATH-01"
+                                                />
                                             </div>
                                             <div className="col-6">
                                                 <label className="form-label fw-bold">Subject Name</label>
-                                                <input type="text" className="form-control text-capitalize"
+                                                <input
+                                                    type="text"
+                                                    className="form-control text-capitalize"
                                                     value={selectedSubject?.subjectName || ''}
-                                                    onChange={(e) => setSelectedSubject({ ...selectedSubject, subjectName: e.target.value })}
-                                                    placeholder="e.g. General Mathematics" />
+                                                    onChange={(e) => {
+                                                        // 🔥 Collapse multiple spaces to one (keep single spaces between words)
+                                                        const cleaned = e.target.value.replace(/\s{2,}/g, ' ');
+                                                        setSelectedSubject({ ...selectedSubject, subjectName: cleaned });
+                                                    }}
+                                                    placeholder="e.g. General Mathematics"
+                                                />
                                             </div>
                                         </div>
 
@@ -1018,7 +967,7 @@ const SubjectManagement = () => {
             )}
 
             {/* ============================================================
-                ✅ Import Excel Modal — Redesigned to match SubjectDetails
+                ✅ Import Excel Modal
             ============================================================ */}
             {showImportModal && (
                 <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
@@ -1037,7 +986,6 @@ const SubjectManagement = () => {
                                 {/* ---- STEP: UPLOAD ---- */}
                                 {importStep === 'upload' && (
                                     <div>
-                                        {/* Info Banner */}
                                         <div className="alert alert-info d-flex align-items-start gap-2 mb-4">
                                             <i className="fa fa-info-circle mt-1"></i>
                                             <div>
@@ -1050,7 +998,6 @@ const SubjectManagement = () => {
                                             </div>
                                         </div>
 
-                                        {/* Download Template */}
                                         <div className="d-flex justify-content-between align-items-center mb-3">
                                             <p className="text-muted mb-0 small">
                                                 <i className="fa fa-lightbulb-o me-1 text-warning"></i>
@@ -1061,7 +1008,6 @@ const SubjectManagement = () => {
                                             </button>
                                         </div>
 
-                                        {/* Column Guide */}
                                         <div className="table-responsive mb-4">
                                             <table className="table table-sm table-bordered text-center mb-0" style={{ fontSize: '0.85rem' }}>
                                                 <thead className="table-light">
@@ -1089,7 +1035,6 @@ const SubjectManagement = () => {
                                             </table>
                                         </div>
 
-                                        {/* Drag & Drop Upload Area */}
                                         <div
                                             className="border border-2 border-dashed rounded-3 text-center p-5"
                                             style={{ borderColor: '#dee2e6', background: '#f8f9fa', cursor: 'pointer' }}
@@ -1122,7 +1067,6 @@ const SubjectManagement = () => {
                                             />
                                         </div>
 
-                                        {/* Or add manually */}
                                         <div className="text-center mt-3">
                                             <span className="text-muted small">— or —</span>
                                             <div className="mt-2">
@@ -1137,7 +1081,6 @@ const SubjectManagement = () => {
                                 {/* ---- STEP: PREVIEW ---- */}
                                 {importStep === 'preview' && (
                                     <div>
-                                        {/* Summary Bar */}
                                         <div className="d-flex align-items-center gap-3 mb-3 flex-wrap">
                                             <span className="badge bg-primary fs-6 px-3 py-2">
                                                 <i className="fa fa-table me-1"></i>{allRows.length} row(s)
@@ -1161,7 +1104,6 @@ const SubjectManagement = () => {
                                             </button>
                                         </div>
 
-                                        {/* Error Summary */}
                                         {importErrors.length > 0 && (
                                             <div className="alert alert-warning mb-3" style={{ fontSize: '0.85rem' }}>
                                                 <strong><i className="fa fa-exclamation-triangle me-1"></i>Fix errors before importing:</strong>
@@ -1171,7 +1113,6 @@ const SubjectManagement = () => {
                                             </div>
                                         )}
 
-                                        {/* Preview Table */}
                                         <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                             <table className="table table-sm table-bordered align-middle">
                                                 <thead className="table-light sticky-top">
@@ -1206,7 +1147,10 @@ const SubjectManagement = () => {
                                                                     {isEditing ? (
                                                                         <input type="text" className="form-control form-control-sm font-monospace"
                                                                             value={row.subjectCode}
-                                                                            onChange={(e) => updateExcelRow(idx, { subjectCode: e.target.value.toUpperCase() })} />
+                                                                            onChange={(e) => updateExcelRow(idx, {
+                                                                                // 🔥 Strip whitespace from code inline
+                                                                                subjectCode: e.target.value.replace(/\s+/g, '').toUpperCase()
+                                                                            })} />
                                                                     ) : (
                                                                         <span className="font-monospace">{row.subjectCode || <span className="text-danger fst-italic">missing</span>}</span>
                                                                     )}
@@ -1217,7 +1161,10 @@ const SubjectManagement = () => {
                                                                     {isEditing ? (
                                                                         <input type="text" className="form-control form-control-sm text-capitalize"
                                                                             value={row.subjectName}
-                                                                            onChange={(e) => updateExcelRow(idx, { subjectName: e.target.value })} />
+                                                                            onChange={(e) => updateExcelRow(idx, {
+                                                                                // 🔥 Collapse multiple spaces in name inline
+                                                                                subjectName: e.target.value.replace(/\s{2,}/g, ' ')
+                                                                            })} />
                                                                     ) : row.subjectName || <span className="text-danger fst-italic">missing</span>}
                                                                 </td>
 
@@ -1321,12 +1268,18 @@ const SubjectManagement = () => {
                                                             <td>
                                                                 <input type="text" className="form-control form-control-sm font-monospace"
                                                                     value={row.subjectCode} placeholder="CODE"
-                                                                    onChange={(e) => updateManualRow(row.id, { subjectCode: e.target.value.toUpperCase() })} />
+                                                                    onChange={(e) => updateManualRow(row.id, {
+                                                                        // 🔥 Strip whitespace from code
+                                                                        subjectCode: e.target.value.replace(/\s+/g, '').toUpperCase()
+                                                                    })} />
                                                             </td>
                                                             <td>
                                                                 <input type="text" className="form-control form-control-sm"
                                                                     value={row.subjectName} placeholder="Subject Name"
-                                                                    onChange={(e) => updateManualRow(row.id, { subjectName: e.target.value })} />
+                                                                    onChange={(e) => updateManualRow(row.id, {
+                                                                        // 🔥 Collapse multiple spaces in name
+                                                                        subjectName: e.target.value.replace(/\s{2,}/g, ' ')
+                                                                    })} />
                                                             </td>
                                                             <td>
                                                                 <select className="form-select form-select-sm" value={row.gradeLevel}
@@ -1347,7 +1300,7 @@ const SubjectManagement = () => {
                                                                     onChange={(e) => updateManualRow(row.id, { strand: e.target.value })}
                                                                     disabled={!row.track}>
                                                                     <option value="">Select</option>
-                                                                    {row.track && getStrandOptionsForTrack(row.track).map(s => <option key={s} value={s}>{s}</option>)}
+                                                                    {row.track && getStrandOptions(row.track).map(s => <option key={s} value={s}>{s}</option>)}
                                                                 </select>
                                                             </td>
                                                             <td>
@@ -1376,7 +1329,6 @@ const SubjectManagement = () => {
                                             </table>
                                         </div>
 
-                                        {/* Add manual row button */}
                                         <div className="p-3 border-top d-flex align-items-center gap-3">
                                             <button className="btn btn-sm btn-outline-success" onClick={handleAddManualRow}>
                                                 <i className="fa fa-plus me-1"></i>Add Row Manually

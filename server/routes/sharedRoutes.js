@@ -78,7 +78,7 @@ SharedRouter.patch('/markAsGraduated/:id', markAsGraduated);
 
 SharedRouter.get('/sections', getSections);
 SharedRouter.post('/addSection', createSection);
-SharedRouter.post('/bulkAddSections', bulkAddSections);
+SharedRouter.post('/bulkAddSections', verifyAuth, bulkAddSections);
 SharedRouter.patch('/updateSection/:id', updateSection);
 SharedRouter.delete('/deleteSection/:id', deleteSection);
 SharedRouter.get("/announcements", getAnnouncements);
