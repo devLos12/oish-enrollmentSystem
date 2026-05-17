@@ -23,6 +23,7 @@ import ClassRoom from "../components/teacher/classroom.jsx";
 import Students from "../components/teacher/students.jsx";
 import TeacherScheduleTable from "../components/teacher/schedule.jsx";
 import { io } from "socket.io-client";
+import ApplicantForm from "../components/applicant-form.jsx";
 
 
 
@@ -87,13 +88,14 @@ const Staff =  () => {
         // {path: "/",                             element: <Dashboard/> },
         {path: "/",                             element: <Dashboard/> },
         {path: "applicants",                    element: <Applicants/>},
+        {path: 'applicant_form',                element: <ApplicantForm/>},
 
         // {path: "applicant_form/step1",          element: <Step1 />},
         // {path: "applicant_form/step2",          element: <Step2 />},
         // {path: "applicant_form/step3",          element: <Step3 />},
         // {path: "subjects",                      element: <Subjects/>},
         // {path: "student_management",            element: <StudentManagement/> },
-        {path: "registration_form",             element: <RegistrationViewForm/>},
+        // {path: "registration_form",             element: <RegistrationViewForm/>},
         // {path: "section_management",            element: <SectionManagement/> },
         // {path: "announcement",                  element: <Announcement/> },
         // {path: "logs",                          element: <Logs/> },

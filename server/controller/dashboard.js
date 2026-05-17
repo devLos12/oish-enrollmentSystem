@@ -1,4 +1,5 @@
 import Enrollment from "../model/enrollment.js";
+import Program from "../model/program.js";
 
 // Dashboard stats: total, studentType, gender, PWD, Indigenous, 4Ps (with date range support)
 export const getEnrollmentStats = async (req, res) => {
@@ -171,11 +172,26 @@ export const getEnrollmentStatsByTrack = async (req, res) => {
 
 
 
-// Stats by seniorHigh.strand (with date range support)
+// Stats by seniorHigh.strand (dynamically fetched from Program collection, with date range support)
 export const getEnrollmentStatsByStrand = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    const allStrands = ["STEM", "ABM", "HUMSS", "GAS", "ICT", "Home Economics", "Industrial Arts"];
+
+    // ✅ Fetch active strands dynamically from Program collection
+    const activePrograms = await Program.find({ isActive: true });
+    const allStrands = [];
+    activePrograms.forEach(program => {
+      program.strands.forEach(strand => {
+        if (strand.isActive) {
+          allStrands.push(strand.strandName);
+        }
+      });
+    });
+
+    // If no active programs/strands, return empty array
+    if (allStrands.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
 
     let matchStage = {
       "seniorHigh.strand": { $exists: true, $ne: null }
@@ -197,8 +213,9 @@ export const getEnrollmentStatsByStrand = async (req, res) => {
     const statsMap = {};
     stats.forEach(item => { if(item._id) statsMap[item._id] = item.count; });
 
+    // Only include active strands in result
     const result = allStrands.map(strand => ({ name: strand, count: statsMap[strand] || 0 }));
-    result.sort((a,b) => b.count - a.count);
+    result.sort((a, b) => b.count - a.count);
 
     res.status(200).json({ success: true, data: result });
   } catch (error) {
