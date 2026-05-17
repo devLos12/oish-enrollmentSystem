@@ -167,7 +167,6 @@ const StaffRegistration = () => {
                                                     value={middleName}
                                                     onChange={(e) => setMiddleName(e.target.value)}
                                                     className="form-control shadow-sm"
-                                                    required
                                                     disabled={loading}
                                                 />
                                             </div>

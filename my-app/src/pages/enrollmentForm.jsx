@@ -696,7 +696,6 @@ export const Step1 = () => {
             sessionStorage.setItem("step1Saved", data.step1);
 
 
-
             window.scrollTo({ top: 0, behavior: "auto"});
 
             navigate("/enrollment/step2", { 
@@ -2265,7 +2264,6 @@ const FormSection = ({ title, fields, values, onChange, disabled, parentType }) 
         </div>
     </div>
 );
-
 
 
 
