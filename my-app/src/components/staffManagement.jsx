@@ -685,7 +685,6 @@ const StaffManagement = () => {
                                                     value={newStaff.middleName}
                                                     onChange={(e) => setNewStaff({...newStaff, middleName: e.target.value})}
                                                     className="form-control shadow-sm"
-                                                    required
                                                     disabled={submitLoading}
                                                 />
                                             </div>

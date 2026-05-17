@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
+import usePrograms from "./hooks/useProgram";
 
 const EditStudent = () => {
     const { setTextHeader } = useContext(globalContext);
@@ -32,12 +33,7 @@ const EditStudent = () => {
     const gradeOptions = [11, 12];
     const statusOptions = ['pending', 'enrolled', 'unenrolled', 'graduated'];
 
-    const trackStrandMapping = {
-        'Academic': ['STEM', 'ABM', 'HUMSS', 'GAS'],
-        'TVL': ['Home Economics', 'ICT', 'Industrial Arts'],
-    };
-
-    const trackOptions = Object.keys(trackStrandMapping);
+    const { trackOptions, getStrandOptions } = usePrograms();
 
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
@@ -358,10 +354,12 @@ const EditStudent = () => {
                                             className="form-select"
                                             value={selectedStudent?.strand || ''}
                                             onChange={(e) => setSelectedStudent({ ...selectedStudent, strand: e.target.value })}
-                                            disabled={!isAcademicFieldsEditable}
+                                            disabled={!isAcademicFieldsEditable || !selectedStudent?.track}
                                         >
-                                            <option value="">Select Strand</option>
-                                            {selectedStudent?.track && trackStrandMapping[selectedStudent.track]?.map(strand => (
+                                            <option value="">
+                                                {!selectedStudent?.track ? 'Select Track First' : 'Select Strand'}
+                                            </option>
+                                            {selectedStudent?.track && getStrandOptions(selectedStudent.track)?.map(strand => (
                                                 <option key={strand} value={strand}>{strand}</option>
                                             ))}
                                         </select>

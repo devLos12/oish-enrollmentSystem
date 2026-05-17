@@ -15,10 +15,6 @@ import crypto from "crypto";
 
 
 
-
-
-
-
 const uploadToCloudinary = (fileBuffer, originalname, folder) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -35,6 +31,7 @@ const uploadToCloudinary = (fileBuffer, originalname, folder) => {
     uploadStream.end(fileBuffer);
   });
 };
+
 
 
 
@@ -373,11 +370,13 @@ export const rejectApplicant = async (req, res) => {
       }, 
       { new: true }
     );
+    
 
 
     // ✅ Get student full name
     const studentName = `${applicant.learnerInfo.firstName} ${applicant.learnerInfo.lastName}`;
     const updateLink = `${req.headers['origin']}/enrollment/update?token=${updateToken}`;
+
 
 
 
@@ -401,13 +400,6 @@ export const rejectApplicant = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
-
-
-
-
-
 
 
 
@@ -458,12 +450,6 @@ export const GetAllEnrollments = async(req, res) => {
 
 
 
-
-
-
-
-
-
 // Multer storage configuration
 const storage = multer.memoryStorage();
 
@@ -480,7 +466,6 @@ const fileFilter = (req, file, cb) => {
     cb(new Error('Only images (JPEG, JPG, PNG) and PDF files are allowed!'));
   }
 };
-
 
 
 export const uploadDocuments = multer({ 
@@ -517,7 +502,6 @@ const normalizeParent = (parent) => {
         middleName: normalizeName(parent.middleName),
     };
 };
-
 
 
 
