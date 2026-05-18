@@ -438,7 +438,6 @@ const StudentManagement = () => {
     const handleAddSubmit = async (e) => {
         e.preventDefault();
         if (addFormData.lrn.length !== 12) { showAlert("LRN must be exactly 12 digits", 'error'); return; }
-        if (addFormData.contactNumber.replace(/\s/g, '').length !== 11) { showAlert("Contact Number must be exactly 11 digits", 'error'); return; }
         if (!addFormData.password || addFormData.password.length < 6) { showAlert("Password must be at least 6 characters", 'error'); return; }
         if (addFormData.password !== addFormData.confirmPassword) { showAlert("Passwords do not match", 'error'); return; }
         try {
@@ -1140,13 +1139,15 @@ const StudentManagement = () => {
                                     <div className="row mb-3">
                                         <div className="col-md-6">
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-venus-mars text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">sex: <span className="text-danger">*</span></label></div>
-                                            <select className="form-select shadow-sm" name="sex" value={addFormData.sex} onChange={handleAddFormChange} required>
+                                            <select className="form-select shadow-sm" name="sex" value={addFormData.sex} 
+                                            onChange={handleAddFormChange} required>
                                                 <option value="">Select sex</option><option value="Male">Male</option><option value="Female">Female</option>
                                             </select>
                                         </div>
                                         <div className="col-md-6">
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-phone text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">contact number: <span className="text-muted fw-normal">(optional)</span></label></div>
-                                            <input type="text" placeholder="09XX XXX XXXX" className="form-control shadow-sm" name="contactNumber" value={addFormData.contactNumber} onChange={handleAddFormChange} maxLength="13" />
+                                            <input type="text" placeholder="09XX XXX XXXX" className="form-control shadow-sm" name="contactNumber" value={addFormData.contactNumber} 
+                                            onChange={handleAddFormChange} maxLength="13" />
                                             <small className="text-muted">Format: 0XXX XXX XXXX</small>
                                         </div>
                                     </div>
@@ -1157,30 +1158,28 @@ const StudentManagement = () => {
                                         </div>
                                     </div>
                                     <p className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-3">Academic Information</p>
-                                    <div className="row mb-3">
-                                        <div className="col-md-6">
+                                    <div className="row mb-3 ">
+                                        <div className="col-md-6 mt-3">
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-graduation-cap text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">student type: <span className="text-danger">*</span></label></div>
                                             <select className="form-select shadow-sm" name="studentType" value={addFormData.studentType} onChange={handleAddFormChange} required>
                                                 <option value="regular">Regular</option><option value="repeater">Repeater</option>
                                             </select>
                                         </div>
-                                        <div className="col-md-6">
+                                        <div className="col-md-6 mt-3">
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-layer-group text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">grade level: <span className="text-danger">*</span></label></div>
                                             <select className="form-select shadow-sm" name="gradeLevel" value={addFormData.gradeLevel} onChange={handleAddFormChange} required>
                                                 <option value="">Select grade</option><option value="11">Grade 11</option><option value="12">Grade 12</option>
                                             </select>
                                         </div>
-                                    </div>
-                                    <div className="row mb-3">
-                                        <div className="col-md-6">
+                                        
+                                        <div className="col-md-6 mt-3">
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-road text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">track: <span className="text-danger">*</span></label></div>
                                             <select className="form-select shadow-sm" name="track" value={addFormData.track} onChange={handleAddFormChange} required>
                                                 {trackOptions.map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
                                         </div>
-                                    </div>
-                                    <div className="row mb-4">
-                                        <div className="col-md-6">
+
+                                        <div className="col-md-6 mt-3">
                                             <div className="d-flex align-items-center gap-1 mb-2"><i className="fa fa-book text-muted"></i><label className="m-0 text-capitalize fw-bold text-muted small">strand: <span className="text-danger">*</span></label></div>
                                             <select className="form-select shadow-sm" name="strand" value={addFormData.strand} onChange={handleAddFormChange} disabled={!addFormData.track} required>
                                                 <option value="">{!addFormData.track ? 'Select track first' : 'Select strand'}</option>
@@ -1190,6 +1189,7 @@ const StudentManagement = () => {
                                             </select>
                                         </div>
                                     </div>
+
 
                                     <p className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-3">Password & Security</p>
                                     <div className="row mb-3">

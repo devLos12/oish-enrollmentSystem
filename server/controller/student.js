@@ -41,48 +41,40 @@ export const createStudent = async (req, res) => {
             gradeLevel,
             track,
             strand,
-            semester,
             studentType,
             password,
             confirmPassword
         } = req.body;
+        
 
+        
+
+
+        // 🔑 DO NOT use semester from request — always from SchoolYear
+ 
         // ✅ 1. VALIDATE PASSWORD MATCH
         if (password !== confirmPassword) {
             return res.status(400).json({ message: "Passwords do not match." });
         }
-
+ 
         // ✅ 2. VALIDATE PASSWORD LENGTH
         if (!password || password.length < 6) {
             return res.status(400).json({ message: "Password must be at least 6 characters." });
         }
-
+ 
         // ✅ 3. CHECK DUPLICATE LRN
         const existingLRN = await Student.findOne({ lrn });
         if (existingLRN) {
             return res.status(409).json({ message: "LRN already exists." });
         }
-
+ 
         // ✅ 4. CHECK DUPLICATE EMAIL (across ALL models)
         const [existingStudent, existingAdmin, existingStaff] = await Promise.all([
             Student.findOne({ email }),
             Admin.findOne({ email }),
             Staff.findOne({ email })
         ]);
-
-
-        
-        
-        // const validExtensions = ['', 'N/A', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
-
-
-        // if (extensionName && !validExtensions.includes(extensionName.trim())) {
-        //     return res.status(400).json({ 
-        //         message: "Invalid extension name. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA" 
-        //     });
-        // }
-
-
+ 
         if (existingStudent) {
             return res.status(409).json({ message: "Email already exists in Student records." });
         }
@@ -92,34 +84,42 @@ export const createStudent = async (req, res) => {
         if (existingStaff) {
             return res.status(409).json({ message: "Email already exists in Staff records." });
         }
-
-        // ✅ 5. GENERATE STUDENT NUMBER (Sequential)
+ 
+        // ✅ 5. VALIDATE EXTENSION NAME
+        const validExtensions = ['', 'jr.', 'sr.', 'N/A', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+        if (extensionName && !validExtensions.includes(extensionName.trim())) {
+            return res.status(400).json({ 
+                message: "Invalid extension name. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA" 
+            });
+        }
+ 
+        // ✅ 6. GET CURRENT SCHOOL YEAR (isCurrent - source of truth for semester)
+        const currentSchoolYear = await SchoolYear.findOne({ isCurrent: true });
+        if (!currentSchoolYear) {
+            return res.status(400).json({ message: "No current school year." });
+        }
+ 
+        // ✅ 7. GENERATE STUDENT NUMBER (Sequential)
         const year = new Date().getFullYear();
         const studentCount = await Student.countDocuments({});
         const nextNumber = studentCount + 1;
         const studentNumber = `${year}-${String(nextNumber).padStart(4, "0")}`;
-
-        // ✅ 6. CHECK DUPLICATE STUDENT NUMBER (safety check)
+ 
+        // ✅ 8. CHECK DUPLICATE STUDENT NUMBER (safety check)
         const existingStudentNumber = await Student.findOne({ studentNumber });
         if (existingStudentNumber) {
             return res.status(409).json({
                 message: "Student Number conflict. Please try again."
             });
         }
-
-        // ✅ 7. HASH PASSWORD
+ 
+        // ✅ 9. HASH PASSWORD
         const salt = await bcrypt.genSalt(10);
         const hashedPass = await bcrypt.hash(password, salt);
-
-
-        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
-        if (!activeSchoolYear) {
-            return res.status(400).json({ message: "No active school year." });
-        }
-        
-        // ✅ 8. CREATE STUDENT
+ 
+        // ✅ 10. CREATE STUDENT
         const newStudent = await Student.create({
-            schoolYear: activeSchoolYear._id,
+            schoolYear: currentSchoolYear._id,
             studentNumber,
             lrn,
             firstName,
@@ -133,14 +133,14 @@ export const createStudent = async (req, res) => {
             gradeLevel: parseInt(gradeLevel),
             track,
             strand,
-            semester: parseInt(semester),
+            semester: currentSchoolYear.semester,  
             studentType: studentType || 'regular',
             password: hashedPass,
             enrollmentYear: year,
-            status: 'pending' // or 'pending' depende sa requirement
+            status: 'pending'
         });
-
-        // ✅ 9. RETURN SUCCESS RESPONSE
+ 
+        // ✅ 11. RETURN SUCCESS RESPONSE
         res.status(201).json({ 
             message: "Student created successfully!",
             student: {
@@ -149,12 +149,15 @@ export const createStudent = async (req, res) => {
                 email: newStudent.email
             }
         });
-
+ 
     } catch (error) {
         console.error("Create Student Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
+
+
+
 
 
 
@@ -816,7 +819,6 @@ export const deleteStudent = async(req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
-
 
 
 export const getAssignSections = async (req, res) => {

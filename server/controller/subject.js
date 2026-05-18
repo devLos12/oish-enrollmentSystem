@@ -547,7 +547,6 @@ export const getAllTeachers = async (req, res) => {
 
 
 
-
 export const bulkAddSubjects = async (req, res) => {
     try {
         const { subjects } = req.body;
@@ -573,45 +572,104 @@ export const bulkAddSubjects = async (req, res) => {
             return res.status(400).json({ message: "Validation failed", errors: validationErrors });
         }
 
-        // 🔥 Normalize subjectCodes before duplicate check
-        const subjectCodes = subjects.map(s => s.subjectCode.replace(/\s+/g, '').toUpperCase());
-
-        // Check for duplicate subject codes in the batch
-        const duplicates = subjectCodes.filter((code, index) => subjectCodes.indexOf(code) !== index);
-        if (duplicates.length > 0) {
-            return res.status(400).json({ 
-                message: `Duplicate subject codes found in batch: ${[...new Set(duplicates)].join(', ')}` 
-            });
-        }
-
         // Get active school year — source of truth
         const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
         if (!activeSchoolYear) {
             return res.status(400).json({ message: "No active school year." });
         }
 
-        // Check for existing subject codes in database
-        const existingSubjects = await Subject.find({ 
-            subjectCode: { $in: subjectCodes },
-            schoolYear: { $in: activeSchoolYear._id } 
+        // 🔥 Normalize all inputs for consistency
+        const normalizedSubjects = subjects.map(s => ({
+            ...s,
+            subjectCode: s.subjectCode.replace(/\s+/g, '').toUpperCase(),
+            subjectName: s.subjectName.replace(/\s{2,}/g, ' ').trim(),
+            strand: s.strand.trim(),
+            gradeLevel: parseInt(s.gradeLevel)
+        }));
+
+        // CHECK 1: Duplicate codes in the batch (same strand + grade + semester)
+        const codeMap = new Map();
+        const codeDuplicates = [];
+        
+        normalizedSubjects.forEach((subject, index) => {
+            const key = `${subject.subjectCode}|${subject.strand}|${subject.gradeLevel}|${activeSchoolYear.semester}`;
+            if (codeMap.has(key)) {
+                codeDuplicates.push(`Subject ${index + 1}: Code "${subject.subjectCode}" already in batch for ${subject.strand} strand`);
+            } else {
+                codeMap.set(key, index);
+            }
         });
 
-        if (existingSubjects.length > 0) {
-            const existing = existingSubjects.map(s => s.subjectCode).join(', ');
-            return res.status(400).json({ message: `Subject codes already exist: ${existing}` });
+        if (codeDuplicates.length > 0) {
+            return res.status(400).json({ 
+                message: "Duplicate subject codes found in batch", 
+                errors: codeDuplicates 
+            });
         }
- 
+
+        // CHECK 2: Duplicate names in the batch (same strand + grade + semester)
+        const nameMap = new Map();
+        const nameDuplicates = [];
+        
+        normalizedSubjects.forEach((subject, index) => {
+            const key = `${subject.subjectName}|${subject.strand}|${subject.gradeLevel}|${activeSchoolYear.semester}`;
+            if (nameMap.has(key)) {
+                nameDuplicates.push(`Subject ${index + 1}: "${subject.subjectName}" already in batch for ${subject.strand} strand`);
+            } else {
+                nameMap.set(key, index);
+            }
+        });
+
+        if (nameDuplicates.length > 0) {
+            return res.status(400).json({ 
+                message: "Duplicate subject names found in batch", 
+                errors: nameDuplicates 
+            });
+        }
+
+        // CHECK 3: Existing codes in database (per strand + grade + semester)
+        const existingCodes = await Subject.find({
+            $or: normalizedSubjects.map(s => ({
+                subjectCode: s.subjectCode,
+                strand: s.strand,
+                gradeLevel: s.gradeLevel,
+                semester: activeSchoolYear.semester
+            }))
+        });
+
+        if (existingCodes.length > 0) {
+            const conflicts = existingCodes.map(s => `"${s.subjectCode}" for ${s.strand}`).join(', ');
+            return res.status(400).json({ 
+                message: `Subject codes already exist in database: ${conflicts}` 
+            });
+        }
+
+        // CHECK 4: Existing names in database (per strand + grade + semester)
+        const existingNames = await Subject.find({
+            $or: normalizedSubjects.map(s => ({
+                subjectName: s.subjectName,
+                strand: s.strand,
+                gradeLevel: s.gradeLevel,
+                semester: activeSchoolYear.semester
+            }))
+        });
+
+        if (existingNames.length > 0) {
+            const conflicts = existingNames.map(s => `"${s.subjectName}" for ${s.strand}`).join(', ');
+            return res.status(400).json({ 
+                message: `Subject names already exist in database: ${conflicts}` 
+            });
+        }
+
         // Prepare subjects for insertion
-        const subjectsToInsert = subjects.map(subject => ({
+        const subjectsToInsert = normalizedSubjects.map(subject => ({
             schoolYear: activeSchoolYear._id,
-            // 🔥 Strip ALL whitespace from code (e.g. "GENMATH - 01" → "GENMATH-01")
-            subjectCode: subject.subjectCode.replace(/\s+/g, '').toUpperCase(),
-            // 🔥 Collapse multiple spaces in name (e.g. "General   Mathematics" → "General Mathematics")
-            subjectName: subject.subjectName.replace(/\s{2,}/g, ' ').trim(),
-            gradeLevel: parseInt(subject.gradeLevel),
-            semester: activeSchoolYear.semester,  // ✅ source of truth, hindi from frontend
+            subjectCode: subject.subjectCode,
+            subjectName: subject.subjectName,
+            gradeLevel: subject.gradeLevel,
+            semester: activeSchoolYear.semester,
             track: subject.track.trim(),
-            strand: subject.strand.trim(),
+            strand: subject.strand,
             subjectType: subject.subjectType.toLowerCase().trim(),
             teacherId: subject.teacherId,
             teacher: subject.teacherName.trim()
@@ -623,14 +681,13 @@ export const bulkAddSubjects = async (req, res) => {
         // 🔹 Auto-assign to enrolled students
         for (const savedSubject of insertedSubjects) {
 
-            // ✅ Scoped to active school year + semester via registrationHistory
             const enrolledStudents = await Student.find({
                 gradeLevel: savedSubject.gradeLevel,
                 strand: savedSubject.strand,
                 registrationHistory: {
                     $elemMatch: {
-                        schoolYear: activeSchoolYear.schoolYear,  // "2026-2027"
-                        semester: activeSchoolYear.semester        // 1 or 2
+                        schoolYear: activeSchoolYear.schoolYear,
+                        semester: activeSchoolYear.semester
                     }
                 }
             });
@@ -654,7 +711,6 @@ export const bulkAddSubjects = async (req, res) => {
                         };
                     }
 
-                    // ✅ Find exact history entry ng current active sem
                     const historyIndex = student.registrationHistory.findIndex(h =>
                         h.schoolYear === activeSchoolYear.schoolYear &&
                         h.semester === activeSchoolYear.semester
@@ -691,13 +747,11 @@ export const bulkAddSubjects = async (req, res) => {
     } catch (error) {
         console.error("Bulk add subjects error:", error);
         if (error.code === 11000) {
-            return res.status(400).json({ message: "Some subject codes already exist in the database" });
+            return res.status(400).json({ message: "Some subject codes or names already exist in the database" });
         }
         res.status(500).json({ message: "Failed to import subjects", error: error.message });
     }
 };
-
-
 
 
 export const createSubject = async (req, res) => {
@@ -707,81 +761,80 @@ export const createSubject = async (req, res) => {
             subjectCode, 
             gradeLevel, 
             strand, 
-            // section,
             track, 
             semester, 
             subjectType, 
             teacherId,
             teacherName,
-            // scheduleDay,        // ✅ ADD
-            // scheduleStartTime,  // ✅ ADD
-            // scheduleEndTime,    // ✅ ADD
-            // room                // ✅ ADD
         } = req.body;
-
-        
-        // Check if subject code already exists for the SAME strand
-        // const existingSubject = await Subject.findOne({ 
-        //     subjectCode: subjectCode.toUpperCase(),
-        //     strand: strand.toUpperCase(),
-        //     section: section
-        // });
-        
-        // if (existingSubject) {
-        //     return res.status(400).json({ 
-        //         message: `Subject code "${subjectCode.toUpperCase()}" already exists for ${strand.toUpperCase()} strand` 
-        //     });
-        // }
-
-
 
         const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
         if (!activeSchoolYear) {
             return res.status(400).json({ message: "No active school year." });
-        }   
+        }
 
+        // Normalize inputs
+        const normalizedCode = subjectCode.replace(/\s+/g, '').toUpperCase();
+        const normalizedName = subjectName.replace(/\s{2,}/g, ' ').trim();
 
+        // CHECK 1: Code + Strand must be unique
+        const codeExists = await Subject.findOne({ 
+            subjectCode: normalizedCode,
+            strand: strand,
+            gradeLevel: parseInt(gradeLevel),
+            semester: activeSchoolYear.semester
+        });
+        
+        if (codeExists) {
+            return res.status(400).json({ 
+                message: `Subject code "${normalizedCode}" already exists for ${strand} strand in Grade ${gradeLevel}.` 
+            });
+        }
+
+        // CHECK 2: Subject Name + Strand must be unique (prevent same subject with different codes)
+        const nameExists = await Subject.findOne({ 
+            subjectName: normalizedName,
+            strand: strand,
+            gradeLevel: parseInt(gradeLevel),
+            semester: activeSchoolYear.semester
+        });
+        
+        if (nameExists) {
+            return res.status(400).json({ 
+                message: `Subject Name already exists for ${strand} strand in Grade ${gradeLevel}. Cannot create duplicate subject.` 
+            });
+        }
+
+        // Create subject
         const newSubject = new Subject({
             schoolYear: activeSchoolYear._id,
-            subjectCode: subjectCode.toUpperCase(),
-
-            subjectCode: subjectCode.replace(/\s+/g, '').toUpperCase(),
-            subjectName: subjectName.replace(/\s{2,}/g, ' ').trim(),
-
-
+            subjectCode: normalizedCode,
+            subjectName: normalizedName,
             gradeLevel: parseInt(gradeLevel),
-            strand: strand.toUpperCase() || "",
-            // section: section || "",
+            strand: strand,
             track: track || "",
             semester: activeSchoolYear.semester,
             subjectType: subjectType || 'core',
             teacherId: teacherId,
             teacher: teacherName,
-            // scheduleDay: scheduleDay || "",           // ✅ ADD
-            // scheduleStartTime: scheduleStartTime || "", // ✅ ADD
-            // scheduleEndTime: scheduleEndTime || "",     // ✅ ADD
-            // room: room || ""                           // ✅ ADD
         });
         
         const savedSubject = await newSubject.save();
 
-        // 🔹 Find all enrolled students matching this subject
+        // Find and add to matching students
         const enrolledStudents = await Student.find({
             gradeLevel: savedSubject.gradeLevel,
             strand: savedSubject.strand,
             registrationHistory: {
                 $elemMatch: {
-                    schoolYear: activeSchoolYear.schoolYear,  // "2026-2027"
-                    semester: activeSchoolYear.semester        // 1 or 2
+                    schoolYear: activeSchoolYear.schoolYear,
+                    semester: activeSchoolYear.semester
                 }
             }
         });
 
-
         if (enrolledStudents.length > 0) {
-
             const updateOps = enrolledStudents.map(student => {
-                
                 const alreadyHas = student.subjects.some(
                     s => s.subjectId.toString() === savedSubject._id.toString()
                 );
@@ -802,7 +855,9 @@ export const createSubject = async (req, res) => {
                 const lastIndex = student.registrationHistory.length - 1;
                 if (lastIndex >= 0) {
                     if (!update.$push) update.$push = {};
-                    if (!update.$push[`registrationHistory.${lastIndex}.subjects`]) update.$push[`registrationHistory.${lastIndex}.subjects`] = [];
+                    if (!update.$push[`registrationHistory.${lastIndex}.subjects`]) {
+                        update.$push[`registrationHistory.${lastIndex}.subjects`] = [];
+                    }
                     update.$push[`registrationHistory.${lastIndex}.subjects`].push({
                         subjectId: savedSubject._id,
                         subjectName: savedSubject.subjectName,
@@ -831,7 +886,6 @@ export const createSubject = async (req, res) => {
 
 
 
-
 export const updateSubject = async (req, res) => {
     try {
         const { id } = req.params;
@@ -840,87 +894,104 @@ export const updateSubject = async (req, res) => {
             subjectCode, 
             gradeLevel, 
             strand,
-            // section,
             track, 
             semester, 
             subjectType,
             teacherId,
             teacherName,
-            // scheduleDay,        // ✅ ADD
-            // scheduleStartTime,  // ✅ ADD
-            // scheduleEndTime,    // ✅ ADD
-            // room                // ✅ ADD
         } = req.body;
 
         const subject = await Subject.findById(id);
         if (!subject) return res.status(404).json({ message: "Subject not found" });
 
-        // 🔥 Normalize incoming code first so duplicate check uses the clean value
+        // Normalize inputs
         const normalizedCode = subjectCode
             ? subjectCode.replace(/\s+/g, '').toUpperCase()
             : null;
+        const normalizedName = subjectName
+            ? subjectName.replace(/\s{2,}/g, ' ').trim()
+            : null;
 
-        // Check if subject code is changed and exists
-        if (normalizedCode && normalizedCode !== subject.subjectCode) {
-            const existing = await Subject.findOne({ subjectCode: normalizedCode });
-            if (existing) return res.status(400).json({ message: "Subject code already exists" });
+        // Get the new values (or keep old if not changing)
+        const newCode = normalizedCode ?? subject.subjectCode;
+        const newName = normalizedName ?? subject.subjectName;
+        const newGrade = gradeLevel ? parseInt(gradeLevel) : subject.gradeLevel;
+        const newStrand = strand ?? subject.strand;
+        const newSemester = semester ? parseInt(semester) : subject.semester;
+
+        // CHECK 1: Code + Strand + Grade must be unique (only if changing code, strand, or grade)
+        if (newCode !== subject.subjectCode || newStrand !== subject.strand || newGrade !== subject.gradeLevel) {
+            const codeExists = await Subject.findOne({ 
+                _id: { $ne: subject._id },
+                subjectCode: newCode,
+                strand: newStrand,
+                gradeLevel: newGrade,
+                semester: newSemester
+            });
+            
+            if (codeExists) {
+                return res.status(400).json({ 
+                    message: `Subject code "${newCode}" already exists for ${newStrand} strand in Grade ${newGrade}.` 
+                });
+            }
         }
 
-        // Store old values
+        // CHECK 2: Subject Name + Strand + Grade must be unique (only if changing name, strand, or grade)
+        if (newName !== subject.subjectName || newStrand !== subject.strand || newGrade !== subject.gradeLevel) {
+            const nameExists = await Subject.findOne({ 
+                _id: { $ne: subject._id },
+                subjectName: newName,
+                strand: newStrand,
+                gradeLevel: newGrade,
+                semester: newSemester
+            });
+            
+            if (nameExists) {
+                return res.status(400).json({ 
+                    message: `Subject Name already exists for ${newStrand} strand in Grade ${newGrade}. Cannot create duplicate subject.` 
+                });
+            }
+        }
+
+        // Store old values for comparison
         const oldSemester = subject.semester;
         const oldGradeLevel = subject.gradeLevel;
         const oldStrand = subject.strand;
         const oldTrack = subject.track;
-        // const oldSection = subject.section;
 
-        // Update subject fields
-        // 🔥 Collapse multiple spaces in name (e.g. "General   Mathematics" → "General Mathematics")
-        subject.subjectName = subjectName
-            ? subjectName.replace(/\s{2,}/g, ' ').trim()
-            : subject.subjectName;
-        // 🔥 Use normalizedCode (already stripped + uppercased)
+        // Update fields
+        subject.subjectName = normalizedName ?? subject.subjectName;
         subject.subjectCode = normalizedCode ?? subject.subjectCode;
         subject.gradeLevel = gradeLevel ? parseInt(gradeLevel) : subject.gradeLevel;
         subject.strand = strand ?? subject.strand;
-        // subject.section = section ?? subject.section;
         subject.track = track ?? subject.track;
         subject.semester = semester ? parseInt(semester) : subject.semester;
         subject.subjectType = subjectType ?? subject.subjectType;
         subject.teacherId = teacherId ?? subject.teacherId;
         subject.teacher = teacherName ?? subject.teacher;
 
-        // ✅ UPDATE SCHEDULE FIELDS
-        // subject.scheduleDay = scheduleDay ?? subject.scheduleDay;
-        // subject.scheduleStartTime = scheduleStartTime ?? subject.scheduleStartTime;
-        // subject.scheduleEndTime = scheduleEndTime ?? subject.scheduleEndTime;
-        // subject.room = room ?? subject.room;
-
         await subject.save();
 
-        let studentsToRemoveFrom = [];
-        let studentsWithSubject = [];
-        let studentsToAddTo = [];
-
+        // Check if critical fields changed
         const criticalFieldsChanged = 
             oldSemester !== subject.semester || 
             oldGradeLevel !== subject.gradeLevel ||
             oldStrand !== subject.strand ||
-            // oldSection !== subject.section ||
             oldTrack !== subject.track;
 
         if (criticalFieldsChanged) {
-            studentsToRemoveFrom = await Student.find({
+            // Remove from students who no longer match
+            const studentsToRemove = await Student.find({
                 "subjects.subjectId": subject._id,
                 $or: [
                     { gradeLevel: { $ne: subject.gradeLevel } },
                     { semester: { $ne: subject.semester } },
                     { strand: { $ne: subject.strand } },
-                    // { section: { $ne: subject.section } },
                     { track: { $ne: subject.track } }
                 ]
             });
 
-            const removeOps = studentsToRemoveFrom.map(async (student) => {
+            const removeOps = studentsToRemove.map(async (student) => {
                 student.subjects = student.subjects.filter(
                     s => s.subjectId.toString() !== subject._id.toString()
                 );
@@ -941,18 +1012,18 @@ export const updateSubject = async (req, res) => {
             await Subject.findByIdAndUpdate(subject._id, {
                 $pull: { 
                     students: { 
-                        $in: studentsToRemoveFrom.map(s => s._id) 
+                        $in: studentsToRemove.map(s => s._id) 
                     } 
                 }
             });
         }
 
-        studentsWithSubject = await Student.find({
+        // Update existing students with subject
+        const studentsWithSubject = await Student.find({
             "subjects.subjectId": subject._id,
             gradeLevel: subject.gradeLevel,
             semester: subject.semester,
             strand: subject.strand,
-            // section: subject.section,
             track: subject.track
         });
 
@@ -985,7 +1056,8 @@ export const updateSubject = async (req, res) => {
 
         await Promise.all(updateExistingOps);
 
-        studentsToAddTo = await Student.find({
+        // Add to new matching students
+        const studentsToAdd = await Student.find({
             gradeLevel: subject.gradeLevel,
             semester: subject.semester,
             strand: subject.strand,
@@ -993,7 +1065,7 @@ export const updateSubject = async (req, res) => {
             "subjects.subjectId": { $ne: subject._id }
         });
 
-        const addOps = studentsToAddTo.map(async (student) => {
+        const addOps = studentsToAdd.map(async (student) => {
             student.subjects.push({
                 subjectId: subject._id,
                 subjectName: subject.subjectName,
@@ -1022,7 +1094,7 @@ export const updateSubject = async (req, res) => {
 
         await Subject.findByIdAndUpdate(subject._id, {
             $addToSet: { 
-                students: { $each: studentsToAddTo.map(s => s._id) } 
+                students: { $each: studentsToAdd.map(s => s._id) } 
             }
         });
 
@@ -1035,8 +1107,6 @@ export const updateSubject = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
-
 
 
 export const deleteSubject = async (req, res) => {
