@@ -82,11 +82,15 @@ const SubjectManagement = () => {
         if (filterSemester) filtered = filtered.filter(subject => subject.semester === parseInt(filterSemester));
         if (filterStrand) filtered = filtered.filter(subject => subject.strand === filterStrand);
         setFilteredSubjects(filtered);
-        setCurrentPage(1);
     }, [searchTerm, filterGrade, filterSemester, filterStrand, subjectList]);
 
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterGrade, filterSemester, filterStrand]);
 
+
+    
     useEffect(() => {
         if (selectedSubject?.gradeLevel && selectedSubject?.strand && selectedSubject?.track && selectedSubject?.semester) {
             fetchSections(selectedSubject.gradeLevel, selectedSubject.track, selectedSubject.strand, selectedSubject.semester);

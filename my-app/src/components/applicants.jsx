@@ -166,9 +166,16 @@ const Applicants = () => {
             return matchesSearch && matchesStatus;
         });
         setFilteredApplicants(filtered);
-        setCurrentPage(1);
     }, [searchTerm, statusFilter, applicants]);
+
+
     
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+    
+
 
     const getAllApplicants = async() => {
         try {

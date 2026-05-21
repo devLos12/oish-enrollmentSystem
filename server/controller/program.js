@@ -13,17 +13,30 @@ export const getAllPrograms = async (req, res) => {
 };
 
 
+
+
 // ─────────────────────────────────────────
 // GET active programs only (for dropdowns)
 // ─────────────────────────────────────────
 export const getActivePrograms = async (req, res) => {
     try {
-        const programs = await Program.find({ isActive: true }).sort({ trackName: 1 });
+        const allPrograms = await Program.find({ isActive: true }).sort({ trackName: 1 });
+
+
+        const programs = allPrograms.map(program => {
+            const p = program.toObject();
+            p.strands = p.strands.filter(s => s.isActive !== false );
+            return p; 
+        })
+        
         res.status(200).json(programs);
     } catch (error) {
         res.status(500).json({ message: "Failed to fetch active programs: " + error.message });
     }
 };
+
+
+
 
 // ─────────────────────────────────────────
 // CREATE track
@@ -62,7 +75,16 @@ export const updateTrack = async (req, res) => {
         if (!program) return res.status(404).json({ message: "Track not found" });
 
         if (trackName !== undefined) program.trackName = trackName.trim();
-        if (isActive !== undefined) program.isActive = isActive;
+        if (isActive !== undefined) {
+            program.isActive = isActive;
+
+            // If track is set to inactive, set all strands to inactive too
+            if (isActive === false) {
+                program.strands.forEach(strand => {
+                    strand.isActive = false;
+                });
+            }
+        }
 
         await program.save();
         res.status(200).json({ message: "Track updated successfully", program });

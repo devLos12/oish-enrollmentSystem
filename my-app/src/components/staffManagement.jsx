@@ -527,6 +527,7 @@ const StaffManagement = () => {
                                                 <div className="d-flex align-items-center gap-1 mb-2">
                                                     <i className="fa fa-user text-muted"></i>
                                                     <label className="m-0 text-capitalize fw-bold text-muted small">middle name:</label>
+                                                    <span className="small text-muted ms-1">(optional)</span>
                                                 </div>
                                                 <input
                                                     type="text"
@@ -534,7 +535,6 @@ const StaffManagement = () => {
                                                     className="form-control shadow-sm"
                                                     value={selectedStaff?.middleName || ''}
                                                     onChange={(e) => setSelectedStaff({...selectedStaff, middleName: e.target.value})}
-                                                    required
                                                 />
                                             </div>
                                         </div>

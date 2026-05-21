@@ -171,7 +171,6 @@ export const getEnrollmentStatsByTrack = async (req, res) => {
 };
 
 
-
 // Stats by seniorHigh.strand (dynamically fetched from Program collection, with date range support)
 export const getEnrollmentStatsByStrand = async (req, res) => {
   try {
