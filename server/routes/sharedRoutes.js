@@ -6,7 +6,7 @@ import { createSubject, bulkAddSubjects,
 deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection,
 getSubjectDetails, addSubjectSection, bulkAddSubjectSections, updateSubjectSection, deleteSubjectSection  
 } from "../controller/subject.js";
-import { ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant, revertToPending } from "../controller/enrollment.js";
+import { Add_Applicants, ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant, revertToPending } from "../controller/enrollment.js";
 import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent, 
 markAsGraduated } from "../controller/student.js";
 import { addStudentToSection, createSection, deleteSection, getSectionById, getSections, 
@@ -23,6 +23,11 @@ import { changePassword } from "../controller/profile.js";
 import { getLogs, } from "../controller/logs.js";
 import { deleteEmailHistory, getAllEmails, getAllStudents, scheduleRequirements } from "../controller/schedule.js";
 import { activateSchoolYear, createSchoolYear, getSchoolYears, toggleEnrollmentStatus, getAllSchoolYears, setCurrentSchoolYear, getActiveSchoolYear, deleteSchoolYear, } from "../controller/schoolYear-semester.js";
+
+import { enrollmentUpload } from "../controller/enrollment.js";
+
+
+
 
 // Import sa taas:
 import {
@@ -149,6 +154,7 @@ SharedRouter.patch('/updateStrand/:trackId/:strandId', verifyAuth, updateStrand)
 SharedRouter.delete('/deleteStrand/:trackId/:strandId', verifyAuth, deleteStrand);
 
 
+SharedRouter.post('/add-applicant', verifyAuth, enrollmentUpload, Add_Applicants);
 
 
 

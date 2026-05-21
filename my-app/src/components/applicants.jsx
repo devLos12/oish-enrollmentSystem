@@ -3,7 +3,7 @@ import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client"; 
 import html2pdf from "html2pdf.js";
-
+import Add_Applicants from "./add-applicants-form";
 
 
 
@@ -57,6 +57,10 @@ const Applicants = () => {
     const [isOthersSelected, setIsOthersSelected] = useState(false);
 
 
+
+    const [showAddApplicantModal, setShowAddApplicantModal] = useState(false);
+
+
     useEffect(() => {
         // Connect to Socket.IO server
         const socket = io(import.meta.env.VITE_API_URL, {
@@ -74,6 +78,20 @@ const Applicants = () => {
             socket.disconnect();
         };
     }, []);
+
+
+
+
+    const handleOpenAddApplicantModal = () => {
+        setShowAddApplicantModal(true);
+    };
+
+    const handleCloseAddApplicantModal = () => {
+        setShowAddApplicantModal(false);
+    };
+
+
+
 
 
     // ✅ NEW - Revert to Pending handler
@@ -675,7 +693,20 @@ const Applicants = () => {
                                     </>
                                 )}
                             </button>
-                            )}
+                            )}|
+
+                            
+                            
+                            <button
+                                className="btn btn-sm btn-primary fw-semibold"
+                                onClick={handleOpenAddApplicantModal}
+                                title="Add New Applicant"
+                            >
+                                <i className="fa fa-plus me-2"></i>
+                                Add Applicant
+                            </button>
+
+
                             
                             
 
@@ -1314,6 +1345,20 @@ const Applicants = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+
+            {/* Add Applicants Modal */}
+            {showAddApplicantModal && (
+                
+                <Add_Applicants 
+                    isOpen={showAddApplicantModal}
+                    onClose={handleCloseAddApplicantModal}
+                    onSuccess={() => {
+                        getAllApplicants();
+                        fetchPendingApplicantsCount();
+                    }}
+                />
             )}
         </>
     );

@@ -1395,7 +1395,7 @@ export const Step1 = () => {
 
 
 
-const FORM_FIELDS = {
+export const FORM_FIELDS = {
     parentInfo: [
         { label: 'Last Name', name: 'lastName', type: 'text' }, 
         { label: 'First Name', name: 'firstName', type: 'text' },
@@ -1455,7 +1455,7 @@ const DEFAULT_FORM_STRUCTURE = {
 };
 
 // ZIP Code mapping for major cities/municipalities
-const ZIP_CODE_MAP = {
+export const ZIP_CODE_MAP = {
 
 
     // BATANGAS - Complete List
@@ -1597,7 +1597,7 @@ const ZIP_CODE_MAP = {
 
 
 // Helper function to get ZIP code from map
-const getZipCode = (municipalityName) => {
+export const getZipCode = (municipalityName) => {
     if (!municipalityName) return '';
     
     // Try exact match
@@ -1636,7 +1636,7 @@ const mergeWithDefaults = (savedData) => {
 };
 
 // Address Dropdowns Component with API
-const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
+export const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
     const [regions, setRegions] = useState([]);
     const [provinces, setProvinces] = useState([]);
     const [municipalities, setMunicipalities] = useState([]);
@@ -2111,7 +2111,7 @@ const AddressDropdowns = ({ addressType, values, onChange, disabled }) => {
 };
 
 
-const FormField = ({ label, name, type, value, onChange, disabled, required = false }) => {
+export const FormField = ({ label, name, type, value, onChange, disabled, required = false }) => {
     
     
     // ✅ Special handling for Zip Code (numbers only)
@@ -2211,9 +2211,8 @@ const FormField = ({ label, name, type, value, onChange, disabled, required = fa
 
 
 
-
 // Reusable Section Component
-const FormSection = ({ title, fields, values, onChange, disabled, parentType }) => (
+export const FormSection = ({ title, fields, values, onChange, disabled, parentType }) => (
     <div className="mb-4">
         {title && <h3 className="h6 fw-semibold mb-3">{title}</h3>}
 

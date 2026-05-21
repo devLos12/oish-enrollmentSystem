@@ -66,7 +66,7 @@ const ApplicantForm = () => {
           filename: `Enrollment-Form-${enrollmentData?.learnerInfo?.lastName || 'Unknown'}-${enrollmentData?.schoolYear || ''}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: {
-            scale: 5,           // ✅ scale: 1 lang — scale: 2 nagdodoble ng height kaya malaki ang page
+            scale: 3,           // ✅ scale: 1 lang — scale: 2 nagdodoble ng height kaya malaki ang page
             useCORS: true,
             allowTaint: true,
             logging: false,
@@ -75,6 +75,7 @@ const ApplicantForm = () => {
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
+        
 
         await html2pdf().set(opt).from(element).save();
       } catch (error) {
@@ -106,7 +107,7 @@ const ApplicantForm = () => {
   );
 
   const WebField = ({ label, value, col = 'col-12 col-sm-6 col-md-3' }) => (
-    <div className={`${col} mb-2`}>
+    <div className={`${col} mb-2 text-capitalize`}>
       <div style={{ fontSize: '10px', letterSpacing: '0.6px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', marginBottom: '3px' }}>
         {label}
       </div>
@@ -390,7 +391,7 @@ const ApplicantForm = () => {
                 <WebField label="Semester" value={enrollmentData.seniorHigh?.semester === 1 ? 'First Semester' : enrollmentData.seniorHigh?.semester === 2 ? 'Second Semester' : '—'} col="col-6 col-sm-4 col-md-3" />
                 <WebField label="Track" value={enrollmentData.seniorHigh?.track} col="col-12 col-sm-4 col-md-3" />
                 <WebField label="Strand" value={enrollmentData.seniorHigh?.strand} col="col-12 col-sm-4 col-md-2" />
-                <WebField label="Student Type" value={enrollmentData.studentType} col="col-12 col-sm-4 col-md-2" />
+                <WebField label="Student Type" value={enrollmentData.studentType} col="col-12 col-sm-4 col-md-2"/>
               </div>
             </SectionBody>
 

@@ -505,8 +505,6 @@ const normalizeParent = (parent) => {
 
 
 
-
-
 export const EnrollmentRegistration = async (req, res) => {
   try {
     const { step, enrollmentId } = req.body; // step: "step1" | "step2" | "step3"
@@ -1236,6 +1234,432 @@ export const EnrollmentRegistration = async (req, res) => {
 
 
 
+
+
+
+
+export const Add_Applicants = async (req, res) => {
+  try {
+    // ==========================================
+    // PARSE ALL PAYLOADS
+    // ==========================================
+    const learnerInfo       = JSON.parse(req.body.learnerInfo       || '{}');
+    const address           = JSON.parse(req.body.address           || '{}');
+    const parentGuardianInfo= JSON.parse(req.body.parentGuardianInfo|| '{}');
+    const schoolHistory     = JSON.parse(req.body.schoolHistory     || '{}');
+    const seniorHigh        = JSON.parse(req.body.seniorHigh        || '{}');
+    const psaNo             = req.body.psaNo?.trim() || '';
+    const gradeLevelToEnroll= req.body.gradeLevelToEnroll;
+    const studentType       = req.body.studentType || 'regular';
+    const isReturning       = req.body.isReturning;
+
+    // ==========================================
+    // VALIDATIONS — STEP 1 (Learner Info)
+    // ==========================================
+
+    // Required top-level
+    if (!isReturning) {
+      return res.status(400).json({ message: 'Please answer "Returning (Balik-Aral)?" question' });
+    }
+
+    // Required learner fields
+    const learnerRequiredFields = [
+      { field: 'email',       message: 'Email is required' },
+      { field: 'lrn',         message: 'LRN is required' },
+      { field: 'lastName',    message: 'Last Name is required' },
+      { field: 'firstName',   message: 'First Name is required' },
+      { field: 'birthDate',   message: 'Birth Date is required' },
+      { field: 'age',         message: 'Age is required' },
+      { field: 'sex',         message: 'Sex is required' },
+      { field: 'placeOfBirth',message: 'Place of Birth is required' },
+      { field: 'motherTongue',message: 'Mother Tongue is required' },
+    ];
+    for (const { field, message } of learnerRequiredFields) {
+      if (!learnerInfo[field] || learnerInfo[field].toString().trim() === '') {
+        return res.status(400).json({ message });
+      }
+    }
+
+    // LRN — exactly 12 digits
+    if (learnerInfo.lrn && learnerInfo.lrn !== 'N/A') {
+      if (!/^\d{12}$/.test(learnerInfo.lrn)) {
+        return res.status(400).json({ message: 'LRN must be exactly 12 digits' });
+      }
+    }
+
+    // Extension Name
+    const validExtensionNames = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+    const extensionNameInput = learnerInfo.extensionName?.trim() || '';
+    if (extensionNameInput && extensionNameInput !== 'N/A' && !validExtensionNames.includes(extensionNameInput)) {
+      return res.status(400).json({
+        message: 'Invalid extension name. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA'
+      });
+    }
+
+    // Email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(learnerInfo.email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    // Disability
+    if (!learnerInfo.learnerWithDisability?.isDisabled ||
+        learnerInfo.learnerWithDisability.isDisabled.trim() === '') {
+      return res.status(400).json({ message: 'Please answer if learner has disability' });
+    }
+    if (learnerInfo.learnerWithDisability?.isDisabled === 'Yes') {
+      if (!learnerInfo.learnerWithDisability?.disabilityType ||
+          learnerInfo.learnerWithDisability.disabilityType.length === 0) {
+        return res.status(400).json({ message: 'Please select at least one disability type' });
+      }
+    }
+
+    // Indigenous Community
+    if (learnerInfo.indigenousCommunity?.isMember === 'Yes') {
+      if (!learnerInfo.indigenousCommunity?.name ||
+          learnerInfo.indigenousCommunity.name.trim() === '') {
+        return res.status(400).json({ message: 'Indigenous Community name is required' });
+      }
+    }
+
+    // 4Ps
+    if (learnerInfo.fourPs?.isBeneficiary === 'Yes') {
+      if (!learnerInfo.fourPs?.householdId || learnerInfo.fourPs.householdId.trim() === '') {
+        return res.status(400).json({ message: '4Ps Household ID is required' });
+      }
+      if (!/^\d{12}$/.test(learnerInfo.fourPs.householdId)) {
+        return res.status(400).json({ message: '4Ps Household ID must be exactly 12 digits' });
+      }
+    }
+
+    // Duplicate email check
+    const [existingEmailEnrollment, existingEmailStudent, existingEmailStaff] = await Promise.all([
+      Enrollment.findOne({ "learnerInfo.email": learnerInfo.email }),
+      Student.findOne({ email: learnerInfo.email }),
+      Staff.findOne({ email: learnerInfo.email }),
+    ]);
+    if (existingEmailEnrollment || existingEmailStudent || existingEmailStaff) {
+      return res.status(409).json({ message: "Email already exists." });
+    }
+
+    // Duplicate LRN check
+    if (learnerInfo.lrn && learnerInfo.lrn !== 'N/A') {
+      const existingLRN = await Enrollment.findOne({ "learnerInfo.lrn": learnerInfo.lrn });
+      if (existingLRN) {
+        return res.status(409).json({ message: "LRN is already registered" });
+      }
+    }
+
+    // ==========================================
+    // VALIDATIONS — STEP 2 (Address & Parents)
+    // ==========================================
+
+    // Current address required fields
+    const requiredCurrentFields = [
+      { field: 'street',        message: 'Current Address: Street is required' },
+      { field: 'region',        message: 'Current Address: Region is required' },
+      { field: 'barangay',      message: 'Current Address: Barangay is required' },
+      { field: 'municipality',  message: 'Current Address: Municipality is required' },
+      { field: 'province',      message: 'Current Address: Province is required' },
+      { field: 'country',       message: 'Current Address: Country is required' },
+      { field: 'zipCode',       message: 'Current Address: Zip Code is required' },
+      { field: 'contactNumber', message: 'Current Address: Contact Number is required' },
+    ];
+    for (const { field, message } of requiredCurrentFields) {
+      if (!address.current?.[field] || address.current[field].trim() === '') {
+        return res.status(400).json({ message });
+      }
+    }
+
+    // Contact number format
+    const cleanedContactNumber = address.current.contactNumber.replace(/\s/g, '');
+    if (!/^\d{11}$/.test(cleanedContactNumber)) {
+      return res.status(400).json({ message: 'Current Address: Contact Number must be exactly 11 digits' });
+    }
+    if (!cleanedContactNumber.startsWith('09')) {
+      return res.status(400).json({ message: 'Current Address: Contact Number must start with 09' });
+    }
+
+    // Permanent address (if not same as current)
+    if (!address.permanent?.sameAsCurrent) {
+      const requiredPermFields = [
+        { field: 'street',       message: 'Permanent Address: Street is required' },
+        { field: 'region',       message: 'Permanent Address: Region is required' },
+        { field: 'barangay',     message: 'Permanent Address: Barangay is required' },
+        { field: 'municipality', message: 'Permanent Address: Municipality is required' },
+        { field: 'province',     message: 'Permanent Address: Province is required' },
+        { field: 'country',      message: 'Permanent Address: Country is required' },
+        { field: 'zipCode',      message: 'Permanent Address: Zip Code is required' },
+      ];
+      for (const { field, message } of requiredPermFields) {
+        if (!address.permanent?.[field] || address.permanent[field].trim() === '') {
+          return res.status(400).json({ message });
+        }
+      }
+    }
+
+    // Guardian required
+    const requiredGuardianFields = [
+      { field: 'lastName',  message: 'Guardian Last Name is required' },
+      { field: 'firstName', message: 'Guardian First Name is required' },
+    ];
+    for (const { field, message } of requiredGuardianFields) {
+      if (!parentGuardianInfo.guardian?.[field] || parentGuardianInfo.guardian[field].trim() === '') {
+        return res.status(400).json({ message });
+      }
+    }
+
+    // Parent/Guardian contact numbers format (if provided)
+    for (const parentType of ['father', 'mother', 'guardian']) {
+      const contactNumber = parentGuardianInfo[parentType]?.contactNumber;
+      if (!contactNumber || contactNumber.trim() === '' || contactNumber.trim() === 'N/A') continue;
+      const cleaned = contactNumber.replace(/\s/g, '');
+      if (!/^\d{11}$/.test(cleaned)) {
+        return res.status(400).json({
+          message: `${parentType.charAt(0).toUpperCase() + parentType.slice(1)}: Contact Number must be exactly 11 digits`
+        });
+      }
+      if (!cleaned.startsWith('09')) {
+        return res.status(400).json({
+          message: `${parentType.charAt(0).toUpperCase() + parentType.slice(1)}: Contact Number must start with 09`
+        });
+      }
+    }
+
+    // School history (if returning learner)
+    if (schoolHistory.returningLearner) {
+      if (!studentType || (studentType !== 'transferee' && studentType !== 'returnee')) {
+        return res.status(400).json({ message: 'Please select either Transferee or Returning Learner' });
+      }
+      const requiredSchoolFields = [
+        { field: 'lastGradeLevelCompleted', message: 'Last Grade Level Completed is required' },
+        { field: 'lastSchoolYearCompleted', message: 'Last School Year Completed is required' },
+        { field: 'lastSchoolAttended',      message: 'Last School Attended is required' },
+        { field: 'schoolId',                message: 'School ID is required' },
+      ];
+      for (const { field, message } of requiredSchoolFields) {
+        if (!schoolHistory[field] || schoolHistory[field].trim() === '') {
+          return res.status(400).json({ message });
+        }
+      }
+    }
+
+    // Grade level, track, strand
+    if (!gradeLevelToEnroll || !['Grade 11', 'Grade 12'].includes(gradeLevelToEnroll)) {
+      return res.status(400).json({ message: 'Grade Level to Enroll is required' });
+    }
+    if (!seniorHigh.track || seniorHigh.track.trim() === '') {
+      return res.status(400).json({ message: 'Track is required' });
+    }
+    if (!seniorHigh.strand || seniorHigh.strand.trim() === '') {
+      return res.status(400).json({ message: 'Strand is required' });
+    }
+    const programExists = await Program.findOne({
+      trackName: seniorHigh.track,
+      isActive: true,
+      strands: { $elemMatch: { strandName: seniorHigh.strand, isActive: true } }
+    });
+    if (!programExists) {
+      return res.status(400).json({ message: 'Invalid track or strand selected.' });
+    }
+
+    // ==========================================
+    // VALIDATIONS — STEP 3 (Documents)
+    // ==========================================
+
+    // PSA No. format (optional)
+    if (psaNo && psaNo !== 'N/A') {
+      if (!/^[a-zA-Z0-9\-]{1,13}$/.test(psaNo)) {
+        return res.status(400).json({
+          message: 'PSA Certificate No. must not exceed 13 characters. Only letters, numbers, and hyphens allowed.'
+        });
+      }
+    }
+
+    // File type validation
+    if (req.files) {
+      for (const fieldName of ['psaBirthCertFile', 'reportCardFile', 'idPictureFile', 'goodMoralFile']) {
+        const file = req.files[fieldName]?.[0];
+        if (file) {
+          const ext = path.extname(file.originalname).toLowerCase();
+          if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.mimetype) ||
+              !['.jpg', '.jpeg', '.png'].includes(ext)) {
+            return res.status(400).json({ message: `${fieldName}: Only JPG and PNG files are allowed!` });
+          }
+        }
+      }
+    }
+
+    // ==========================================
+    // ACTIVE SCHOOL YEAR CHECK
+    // ==========================================
+    const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
+    if (!activeSchoolYear) {
+      return res.status(400).json({ message: "No active school year." });
+    }
+
+    // ==========================================
+    // NORMALIZE & SET N/A DEFAULTS
+    // ==========================================
+    const extensionName = learnerInfo.extensionName?.trim() || 'N/A';
+    const lrn           = learnerInfo.lrn?.trim()           || 'N/A';
+
+    if (!address.current.houseNo || address.current.houseNo.trim() === '') {
+      address.current.houseNo = 'N/A';
+    }
+    if (!address.permanent?.sameAsCurrent) {
+      if (!address.permanent?.houseNo || address.permanent.houseNo.trim() === '') {
+        address.permanent.houseNo = 'N/A';
+      }
+    }
+
+    for (const parentType of ['father', 'mother']) {
+      if (!parentGuardianInfo[parentType]) parentGuardianInfo[parentType] = {};
+      for (const field of ['lastName', 'firstName', 'middleName', 'contactNumber']) {
+        if (!parentGuardianInfo[parentType][field] || parentGuardianInfo[parentType][field].trim() === '') {
+          parentGuardianInfo[parentType][field] = 'N/A';
+        }
+      }
+    }
+    for (const field of ['middleName', 'contactNumber']) {
+      if (!parentGuardianInfo.guardian[field] || parentGuardianInfo.guardian[field].trim() === '') {
+        parentGuardianInfo.guardian[field] = 'N/A';
+      }
+    }
+
+    // ==========================================
+    // UPLOAD DOCUMENTS TO CLOUDINARY
+    // ==========================================
+    const requiredDocuments = {};
+
+    if (req.files['psaBirthCertFile']?.[0]) {
+      const result = await uploadToCloudinary(
+        req.files['psaBirthCertFile'][0].buffer,
+        req.files['psaBirthCertFile'][0].originalname,
+        'enrollments/documents'
+      );
+      requiredDocuments.psaBirthCert = { filePath: result.secure_url, publicId: result.public_id, uploadedAt: new Date() };
+    }
+    if (req.files['reportCardFile']?.[0]) {
+      const result = await uploadToCloudinary(
+        req.files['reportCardFile'][0].buffer,
+        req.files['reportCardFile'][0].originalname,
+        'enrollments/documents'
+      );
+      requiredDocuments.reportCard = { filePath: result.secure_url, publicId: result.public_id, uploadedAt: new Date() };
+    }
+    if (req.files['goodMoralFile']?.[0]) {
+      const result = await uploadToCloudinary(
+        req.files['goodMoralFile'][0].buffer,
+        req.files['goodMoralFile'][0].originalname,
+        'enrollments/documents'
+      );
+      requiredDocuments.goodMoral = { filePath: result.secure_url, publicId: result.public_id, uploadedAt: new Date() };
+    }
+    if (req.files['idPictureFile']?.[0]) {
+      const result = await uploadToCloudinary(
+        req.files['idPictureFile'][0].buffer,
+        req.files['idPictureFile'][0].originalname,
+        'enrollments/documents'
+      );
+      requiredDocuments.idPicture = { filePath: result.secure_url, publicId: result.public_id, uploadedAt: new Date() };
+    }
+
+    // Check required docs
+    const missingDocs = [];
+    if (!requiredDocuments.psaBirthCert?.filePath) missingDocs.push('PSA Birth Certificate');
+    if (!requiredDocuments.reportCard?.filePath)   missingDocs.push('Report Card');
+    if (!requiredDocuments.idPicture?.filePath)    missingDocs.push('ID Picture');
+
+    if (missingDocs.length > 0) {
+      // Cleanup uploaded files
+      for (const doc of Object.values(requiredDocuments)) {
+        if (doc?.publicId) await deleteFromCloudinary(doc.publicId);
+      }
+      return res.status(400).json({ message: `Missing required documents: ${missingDocs.join(', ')}` });
+    }
+
+    // ==========================================
+    // CREATE ENROLLMENT — SINGLE INSERT
+    // ==========================================
+    const enrollment = await Enrollment.create({
+      schoolYear:        activeSchoolYear.schoolYear,
+      schoolYearId:      activeSchoolYear._id,
+      isReturning:       isReturning === 'Yes',
+      gradeLevelToEnroll,
+      studentType,
+
+      learnerInfo: {
+        email:       learnerInfo.email,
+        lrn,
+        lastName:    normalizeName(learnerInfo.lastName),
+        firstName:   normalizeName(learnerInfo.firstName),
+        middleName:  normalizeName(learnerInfo.middleName?.trim() || 'N/A'),
+        extensionName,
+        birthDate:   learnerInfo.birthDate,
+        age:         learnerInfo.age,
+        sex:         learnerInfo.sex,
+        placeOfBirth: normalizeName(learnerInfo.placeOfBirth),
+        motherTongue: normalizeName(learnerInfo.motherTongue),
+        learnerWithDisability: {
+          isDisabled:     learnerInfo.learnerWithDisability?.isDisabled === 'Yes',
+          disabilityType: learnerInfo.learnerWithDisability?.disabilityType || []
+        },
+        indigenousCommunity: {
+          isMember: learnerInfo.indigenousCommunity?.isMember === 'Yes',
+          name:     learnerInfo.indigenousCommunity?.name || ''
+        },
+        fourPs: {
+          isBeneficiary: learnerInfo.fourPs?.isBeneficiary === 'Yes',
+          householdId:   learnerInfo.fourPs?.householdId || ''
+        },
+      },
+
+      address: {
+        current:   address.current,
+        permanent: address.permanent
+      },
+
+      parentGuardianInfo: {
+        father:   normalizeParent(parentGuardianInfo.father),
+        mother:   normalizeParent(parentGuardianInfo.mother),
+        guardian: normalizeParent(parentGuardianInfo.guardian)
+      },
+
+      schoolHistory: {
+        returningLearner:        schoolHistory.returningLearner,
+        lastGradeLevelCompleted: schoolHistory.lastGradeLevelCompleted,
+        lastSchoolYearCompleted: schoolHistory.lastSchoolYearCompleted,
+        lastSchoolAttended:      normalizeName(schoolHistory.lastSchoolAttended),
+        schoolId:                schoolHistory.schoolId
+      },
+
+      seniorHigh: {
+        semester: activeSchoolYear.semester,
+        track:    seniorHigh.track,
+        strand:   seniorHigh.strand
+      },
+
+      requiredDocuments,
+      psaNo: psaNo || null,
+
+      signature: { dateSigned: new Date() },
+      status:               'pending',
+      statusRegistration:   'complete',
+    });
+
+    io.emit("new-enrollment", { message: "" });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Applicant added successfully.'
+    });
+
+  } catch (error) {
+    console.error('Add_Applicants error:', error);
+    return res.status(500).json({ success: false, message: error.message || "Internal Server Error" });
+  }
+};
 
 
 

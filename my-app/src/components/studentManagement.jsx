@@ -647,7 +647,7 @@ const StudentManagement = () => {
                     <div className="col-12 col-md-6 mt-2 mt-md-0 d-flex justify-content-start justify-content-md-end gap-2">
                         {!isSelectionMode ? (
                             <>
-                                <button type="button" className="btn btn-success btn-sm" onClick={handleAddStudent}><i className="fa fa-plus me-2"></i>Add Student</button>
+                                {/* <button type="button" className="btn btn-success btn-sm" onClick={handleAddStudent}><i className="fa fa-plus me-2"></i>Add Student</button> */}
                                 <button type="button" className="btn btn-danger btn-sm" onClick={() => setIsSelectionMode(true)}><i className="fa fa-check-square me-2"></i>Select for Email</button>
                                 <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleRefreshAll} disabled={loading || loadingHistory}>
                                     {(loading || loadingHistory) ? <span className="spinner-border spinner-border-sm"></span> : <i className="fa fa-refresh"></i>}
