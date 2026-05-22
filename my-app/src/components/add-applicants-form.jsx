@@ -60,6 +60,7 @@ const AddApplicantStep1 = ({
     emailValid, setEmailValid,
     lrnError,   setLrnError,
     fourPsError, setFourPsError,
+    currentApplicantId, 
 }) => {
 
     // ── Static data ────────────────────────────────────────────────────────────
@@ -192,7 +193,10 @@ const AddApplicantStep1 = ({
 
             if (fieldName === 'email') {
                 const v2 = value.toLowerCase().trim();
-                const dup = emailVerify.some(e => e.learnerInfo?.email.toLowerCase() === v2);
+                const dup = emailVerify.some(e => 
+                    e.learnerInfo?.email.toLowerCase() === v2 && 
+                    e._id !== currentApplicantId
+                );
                 setEmailError(dup ? 'Email already exists' : '');
                 setEmailValid(!dup && v2.length > 0);
                 setFormData(prev => ({ ...prev, learnerInfo: { ...prev.learnerInfo, email: value } }));
@@ -1413,10 +1417,22 @@ const AddApplicantStep3 = ({
 
 // ═══════════════════════════════════════════════════════════════
 // WRAPPER — Add_Applicants (manages step, formData, enrollmentId)
-// ═══════════════════════════════════════════════════════════════
-const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
+// 
+
+const Add_Applicants = ({ isOpen, onClose, onSuccess, applicant = null, mode = 'add' }) => {
+
     const { role } = useContext(globalContext);
     const fileRef  = useRef({});
+
+
+
+
+
+
+
+
+
+
 
     const initialFormData = {
         isReturning: '',
@@ -1451,10 +1467,89 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
     };
 
 
-    // ── Wrapper state ──────────────────────────────────────────────────────────
+
+    
+    const boolToYesNo = (val) => {
+        if (val === true)  return 'Yes';
+        if (val === false) return 'No';
+        return '';
+    };
+
+    const buildInitialFormData = (applicant) => {
+        if (!applicant) return { ...initialFormData };
+
+        return {
+            isReturning:        boolToYesNo(applicant.isReturning),
+            gradeLevelToEnroll: applicant.gradeLevelToEnroll || '',
+            studentType:        applicant.studentType || 'regular',
+            learnerInfo: {
+                email:         applicant.learnerInfo?.email         || '',
+                lrn:           applicant.learnerInfo?.lrn           || '',
+                firstName:     applicant.learnerInfo?.firstName     || '',
+                middleName:    applicant.learnerInfo?.middleName    || '',
+                lastName:      applicant.learnerInfo?.lastName      || '',
+                extensionName: applicant.learnerInfo?.extensionName || '',
+                birthDate:     applicant.learnerInfo?.birthDate
+                                ? applicant.learnerInfo.birthDate.split('T')[0]  // "2006-08-09T..." → "2006-08-09"
+                                : '',
+                age:           applicant.learnerInfo?.age?.toString() || '',
+                sex:           applicant.learnerInfo?.sex           || '',
+                placeOfBirth:  applicant.learnerInfo?.placeOfBirth  || '',
+                motherTongue:  applicant.learnerInfo?.motherTongue  || '',
+                learnerWithDisability: {
+                    isDisabled:     boolToYesNo(applicant.learnerInfo?.learnerWithDisability?.isDisabled),
+                    disabilityType: applicant.learnerInfo?.learnerWithDisability?.disabilityType || [],
+                },
+                indigenousCommunity: {
+                    isMember: boolToYesNo(applicant.learnerInfo?.indigenousCommunity?.isMember),
+                    name:     applicant.learnerInfo?.indigenousCommunity?.name || '',
+                },
+                fourPs: {
+                    isBeneficiary: boolToYesNo(applicant.learnerInfo?.fourPs?.isBeneficiary),
+                    householdId:   applicant.learnerInfo?.fourPs?.householdId || '',
+                },
+            },
+            address: {
+                current:   applicant.address?.current   || { houseNo: '', street: '', region: '', province: '', municipality: '', barangay: '', country: 'Philippines', zipCode: '', contactNumber: '' },
+                permanent: applicant.address?.permanent || { sameAsCurrent: false, houseNo: '', street: '', region: '', province: '', municipality: '', barangay: '', country: 'Philippines', zipCode: '' },
+            },
+            parentGuardianInfo: {
+                father:   applicant.parentGuardianInfo?.father   || { lastName: '', firstName: '', middleName: '', contactNumber: '' },
+                mother:   applicant.parentGuardianInfo?.mother   || { lastName: '', firstName: '', middleName: '', contactNumber: '' },
+                guardian: applicant.parentGuardianInfo?.guardian || { lastName: '', firstName: '', middleName: '', contactNumber: '', relationship: '' },
+            },
+            schoolHistory: applicant.schoolHistory || { returningLearner: false, lastGradeLevelCompleted: '', lastSchoolYearCompleted: '', lastSchoolAttended: '', schoolId: '' },
+            seniorHigh:    applicant.seniorHigh    || { semester: '', track: '', strand: '' },
+            certification: {
+                psaBirthCertFile:    null,
+                psaBirthCertFileName: '',
+                psaBirthCertPreview: applicant.requiredDocuments?.psaBirthCert?.filePath || null,  // ← dito ang fix
+                reportCardFile:      null,
+                reportCardFileName:  '',
+                reportCardPreview:   applicant.requiredDocuments?.reportCard?.filePath   || null,
+                goodMoralFile:       null,
+                goodMoralFileName:   '',
+                goodMoralPreview:    applicant.requiredDocuments?.goodMoral?.filePath    || null,
+                idPictureFile:       null,
+                idPictureFileName:   '',
+                idPicturePreview:    applicant.requiredDocuments?.idPicture?.filePath    || null,
+                psaNo:               applicant.psaNo || '',
+            }
+        };
+    };
+
+
+
+
+
+
+        
+
+
+    // ── Wrapper state 
+    const [formData, setFormData] = useState(() => buildInitialFormData(applicant));
     const [currentStep,    setCurrentStep]    = useState(1);
     const [enrollmentId,   setEnrollmentId]   = useState(null);
-    const [formData,       setFormData]       = useState(initialFormData);
     const [isLoading,      setIsLoading]      = useState(false);
     const [errorMessage,   setErrorMessage]   = useState('');
     const [showErrorModal, setShowErrorModal] = useState(false);
@@ -1474,6 +1569,20 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
     const [loadingPrograms,  setLoadingPrograms]  = useState(false);
 
 
+
+
+
+
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(buildInitialFormData(applicant));
+            setCurrentStep(1);
+            setEmailError('');
+            setEmailValid(mode === 'edit'); // edit mode = existing email, valid na agad
+            setLrnError('');
+            setHasAutoFilled(false);
+        }
+    }, [isOpen, applicant]);
 
 
     // ── Fetch programs + emails on open ────────────────────────────────────────
@@ -1528,7 +1637,6 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
 
 
 
-
     const handleNext = () => {
        if (currentStep === 1) {
            setCurrentStep(2);
@@ -1549,16 +1657,15 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
     const handleClose = () => {
         setCurrentStep(1);
         setEnrollmentId(null);
-        setEmailError('');    
+        setEmailError('');
         setEmailValid(false);
-        setLrnError('');      
-        setPsaError('');      
+        setLrnError('');
+        setPsaError('');
         setFourPsError('');
-        setHasAutoFilled(false); // ← add
-        setFormData(initialFormData);
+        setHasAutoFilled(false);
+        setFormData(buildInitialFormData(null)); // ← consistent, laging blank
         onClose();
     };
-
     
 
 
@@ -1578,8 +1685,6 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
         setIsLoading(true);
         try {
             const submitData = new FormData();
-
-            // ── Learner Info & top-level fields ──
             submitData.append('isReturning', formData.isReturning);
             submitData.append('gradeLevelToEnroll', formData.gradeLevelToEnroll);
             submitData.append('studentType', formData.studentType || 'regular');
@@ -1589,7 +1694,6 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
             submitData.append('schoolHistory', JSON.stringify(formData.schoolHistory));
             submitData.append('seniorHigh', JSON.stringify(formData.seniorHigh));
 
-            // ── Files ──
             ['psaBirthCert', 'reportCard', 'idPicture', 'goodMoral'].forEach(fieldName => {
                 const file = formData.certification?.[`${fieldName}File`];
                 if (file instanceof File) {
@@ -1597,26 +1701,26 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
                 }
             });
 
-            // ── PSA No. ──
             if (formData.certification?.psaNo) {
                 submitData.append('psaNo', formData.certification.psaNo.trim());
             }
 
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/add-applicant`, {
-                method: "POST",
-                credentials: "include",
-                body: submitData
-            });
+            // ← DITO ang pagbabago
+            const isEdit = mode === 'edit' && applicant?._id;
+            const url    = isEdit
+                ? `${import.meta.env.VITE_API_URL}/api/update-applicant/${applicant._id}`
+                : `${import.meta.env.VITE_API_URL}/api/add-applicant`;
+            const method = isEdit ? 'PUT' : 'POST';
 
+            const res  = await fetch(url, { method, credentials: 'include', body: submitData });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
 
             if (data.success) {
-                setFormData(initialFormData);
+                setFormData(buildInitialFormData(null));
                 setCurrentStep(1);
                 setSuccessModal(true);
             }
-
         } catch (error) {
             setErrorMessage(error.message);
             setShowErrorModal(true);
@@ -1624,7 +1728,6 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
             setIsLoading(false);
         }
     };
-
 
 
 
@@ -1646,7 +1749,8 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
                         {/* Header */}
                         <div className="modal-header bg-danger text-white">
                             <h5 className="modal-title fw-bold">
-                                <i className="fa fa-user-plus me-2"></i>Add New Applicant
+                                <i className={`fa ${mode === 'edit' ? 'fa-user-edit' : 'fa-user-plus'} me-2`}></i>
+                                {mode === 'edit' ? 'Edit Applicant' : 'Add New Applicant'}
                             </h5>
                             <button type="button" className="btn-close btn-close-white" onClick={handleClose} disabled={isLoading}></button>
                         </div>
@@ -1661,6 +1765,7 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
                                     formData={formData}
                                     setFormData={setFormData}
                                     emailVerify={emailVerify}
+                                    currentApplicantId={applicant?._id} 
                                     emailError={emailError}   setEmailError={setEmailError}
                                     emailValid={emailValid}   setEmailValid={setEmailValid}
                                     lrnError={lrnError}       setLrnError={setLrnError}
@@ -1717,7 +1822,10 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
                             >
                                 {isLoading
                                     ? <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...</>
-                                    : currentStep === 3 ? 'Submit' : 'Next'
+
+                                    : currentStep === 3 
+                                        ? (mode === 'edit' ? 'Save Changes' : 'Submit') 
+                                        : 'Next'
                                 }
                             </button>
 
@@ -1738,10 +1846,17 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess }) => {
                                 <div className="mb-4">
                                     <i className="fa-solid fa-circle-check text-success" style={{ fontSize: '5rem' }}></i>
                                 </div>
-                                <h4 className="fw-bold mb-3">Application Submitted!</h4>
+
+                                <h4 className="fw-bold mb-3">
+                                    {mode === 'edit' ? 'Changes Saved!' : 'Application Submitted!'}
+                                </h4>
                                 <p className="text-muted mb-4">
-                                    Your enrollment application has been successfully submitted. Please wait for admin approval.
+                                    {mode === 'edit'
+                                        ? 'The applicant information has been successfully updated.'
+                                        : 'Your enrollment application has been successfully submitted. Please wait for admin approval.'
+                                    }
                                 </p>
+
                                 <button 
                                     type="button" 
                                     className="btn btn-success px-5"

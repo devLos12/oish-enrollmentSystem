@@ -107,7 +107,7 @@ const ApplicantForm = () => {
   );
 
   const WebField = ({ label, value, col = 'col-12 col-sm-6 col-md-3' }) => (
-    <div className={`${col} mb-2 text-capitalize`}>
+    <div className={`${col} mb-2  ${label === 'Email Address' ? "text-normal" : "text-capitalize"}`}>
       <div style={{ fontSize: '10px', letterSpacing: '0.6px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', marginBottom: '3px' }}>
         {label}
       </div>

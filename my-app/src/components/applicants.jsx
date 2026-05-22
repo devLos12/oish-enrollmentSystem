@@ -60,6 +60,17 @@ const Applicants = () => {
 
     const [showAddApplicantModal, setShowAddApplicantModal] = useState(false);
 
+    const [showEditModal, setShowEditModal] = useState(false);
+    
+    const [openDropdown, setOpenDropdown] = useState(null);
+
+
+
+
+
+
+
+
 
     useEffect(() => {
         // Connect to Socket.IO server
@@ -81,6 +92,28 @@ const Applicants = () => {
 
 
 
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.action-dropdown')) setOpenDropdown(null);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+
+
+    const handleEditApplicant = (applicant) => {
+    setSelectedApplicant(applicant);
+    setShowEditModal(true);
+    };
+
+    const handleCloseEditModal = () => {
+        setSelectedApplicant(null);
+        setShowEditModal(false);
+    };
+
+
+
 
     const handleOpenAddApplicantModal = () => {
         setShowAddApplicantModal(true);
@@ -89,6 +122,13 @@ const Applicants = () => {
     const handleCloseAddApplicantModal = () => {
         setShowAddApplicantModal(false);
     };
+
+
+
+
+
+
+
 
 
 
@@ -663,12 +703,10 @@ const Applicants = () => {
                     <div className="col-12 mt-2 mt-md-0 ">
 
                         {/* ✅ Enrollment Status Toggle Button */}
-                        
                         <div className="d-flex justify-content-md-end gap-2">
 
 
                             {role === "admin" && (
-
                             <button
                                 className={`btn btn-sm fw-semibold ${
                                     activeSchoolYear?.enrollmentStatus === 'open'
@@ -703,19 +741,16 @@ const Applicants = () => {
                             )}|
 
                             
-                            
-                            <button
-                                className="btn btn-sm btn-primary fw-semibold"
-                                onClick={handleOpenAddApplicantModal}
-                                title="Add New Applicant"
-                            >
-                                <i className="fa fa-plus me-2"></i>
-                                Add Applicant
-                            </button>
-
-
-                            
-                            
+                            {role === 'admin' && (
+                                <button
+                                    className="btn btn-sm btn-primary fw-semibold"
+                                    onClick={handleOpenAddApplicantModal}
+                                    title="Add New Applicant"
+                                >
+                                    <i className="fa fa-plus me-2"></i>
+                                    Add Applicant
+                                </button>
+                            )}
 
                             <button 
                                 className="btn btn-outline-secondary btn-sm"
@@ -844,68 +879,58 @@ const Applicants = () => {
                                                             <td className="align-middle text-muted small">
                                                                 {formatDate(applicant.createdAt)}
                                                             </td>
-                                                            <td className="align-middle">
-                                                                {/* PENDING - Original buttons */}
-                                                                {applicant.status === 'pending' && (
-                                                                    <div className="d-flex gap-2 justify-content-center">
-                                                                        <button 
-                                                                            className="btn btn-sm btn-outline-primary"
-                                                                            onClick={() => handleViewApplicant(applicant)}
-                                                                            title="View Details"
+
+                                                            <td className="align-middle text-center">
+                                                                <div className="position-relative action-dropdown">
+                                                                    <button
+                                                                        className="btn btn-sm btn-light border-0"
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setOpenDropdown(openDropdown === applicant._id ? null : applicant._id);
+                                                                        }}
+                                                                    >
+                                                                        <i className="fa fa-ellipsis"></i>
+                                                                    </button>
+
+                                                                    {openDropdown === applicant._id && (
+                                                                        <div
+                                                                            className="position-absolute bg-white border rounded shadow-sm py-2"
+                                                                            style={{ minWidth: '180px', zIndex: 1050, right: '0', top: '100%', marginTop: '5px' }}
                                                                         >
-                                                                            view
-                                                                        </button>
-                                                                        <button 
-                                                                            className="btn btn-sm btn-outline-success"
-                                                                            onClick={() => handleApproveApplicant(applicant)}
-                                                                            title="Approve"
-                                                                        >
-                                                                            <i className="fa fa-check"></i>
-                                                                        </button>
-                                                                        <button 
-                                                                            className="btn btn-sm btn-outline-danger"
-                                                                            onClick={() => handleRejectApplicant(applicant)}
-                                                                            title="Reject"
-                                                                        >
-                                                                            <i className="fa fa-times"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* APPROVED/REJECTED - Eye and Trash only */}
-                                                                {(applicant.status === 'approved' || applicant.status === 'rejected') && (
-                                                                    <div className="d-flex gap-2 justify-content-center">
-                                                                        <button 
-                                                                            className="btn btn-sm btn-outline-primary"
-                                                                            onClick={() => handleViewApplicant(applicant)}
-                                                                            title="View Details"
-                                                                        >
-                                                                            view
-                                                                        </button>
-
-
-
-                                                                        {/* ✅ NEW - Revert to Pending button */}
-                                                                        <button 
-                                                                            className="btn btn-sm btn-outline-warning"
-                                                                            onClick={() => handleRevertToPending(applicant)}
-                                                                            title="Revert to Pending"
-                                                                        >
-                                                                            <i className="fa fa-rotate-left"></i>
-                                                                        </button>
-
-
-
-                                                                        <button 
-                                                                            className="btn btn-sm btn-outline-danger"
-                                                                            onClick={() => handleRemoveApplicant(applicant)}
-                                                                            title="Remove"
-                                                                        >
-                                                                            <i className="fa fa-trash"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                )}
+                                                                            {applicant.status === 'pending' && (
+                                                                                <>
+                                                                                    <DropdownItem icon="eye" text="View Details" color="primary"
+                                                                                        onClick={() => { setOpenDropdown(null); handleViewApplicant(applicant); }} />
+                                                                                    {role === 'admin' && (
+                                                                                        <DropdownItem icon="edit" text="Edit Applicant" color="warning"
+                                                                                            onClick={() => { setOpenDropdown(null); handleEditApplicant(applicant); }} />
+                                                                                    )}
+                                                                                    <DropdownItem icon="check" text="Approve" color="success"
+                                                                                        onClick={() => { setOpenDropdown(null); handleApproveApplicant(applicant); }} />
+                                                                                    <DropdownItem icon="times" text="Reject" color="danger"
+                                                                                        onClick={() => { setOpenDropdown(null); handleRejectApplicant(applicant); }} danger />
+                                                                                </>
+                                                                            )}
+                                                                            {(applicant.status === 'approved' || applicant.status === 'rejected') && (
+                                                                                <>
+                                                                                    <DropdownItem icon="eye" text="View Details" color="primary"
+                                                                                        onClick={() => { setOpenDropdown(null); handleViewApplicant(applicant); }} />
+                                                                                    {role === 'admin' && (
+                                                                                        <DropdownItem icon="edit" text="Edit Applicant" color="warning"
+                                                                                            onClick={() => { setOpenDropdown(null); handleEditApplicant(applicant); }} />
+                                                                                    )}
+                                                                                    <DropdownItem icon="rotate-left" text="Revert to Pending" color="warning"
+                                                                                        onClick={() => { setOpenDropdown(null); handleRevertToPending(applicant); }} />
+                                                                                    <DropdownItem icon="trash" text="Remove" color="danger"
+                                                                                        onClick={() => { setOpenDropdown(null); handleRemoveApplicant(applicant); }} danger />
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </td>
+                                                      
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -1367,8 +1392,35 @@ const Applicants = () => {
                     }}
                 />
             )}
+
+            {showEditModal && selectedApplicant && (
+                <Add_Applicants
+                    isOpen={showEditModal}
+                    onClose={handleCloseEditModal}
+                    onSuccess={() => {
+                        getAllApplicants();
+                        fetchPendingApplicantsCount();
+                    }}
+                    applicant={selectedApplicant}
+                    mode="edit"
+                />
+            )}
         </>
     );
 };
 
 export default Applicants;
+
+
+const DropdownItem = ({ icon, text, color, onClick, danger = false }) => (
+    <button
+        className={`dropdown-item d-flex align-items-center px-3 py-2 border-0 bg-transparent w-100 text-start ${danger ? 'text-danger' : ''}`}
+        onClick={onClick}
+        style={{ cursor: 'pointer' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+    >
+        <i className={`fa fa-${icon} text-${color} me-2`} style={{ width: '20px' }}></i>
+        <span>{text}</span>
+    </button>
+);

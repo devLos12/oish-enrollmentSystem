@@ -24,8 +24,7 @@ import { getLogs, } from "../controller/logs.js";
 import { deleteEmailHistory, getAllEmails, getAllStudents, scheduleRequirements } from "../controller/schedule.js";
 import { activateSchoolYear, createSchoolYear, getSchoolYears, toggleEnrollmentStatus, getAllSchoolYears, setCurrentSchoolYear, getActiveSchoolYear, deleteSchoolYear, } from "../controller/schoolYear-semester.js";
 
-import { enrollmentUpload } from "../controller/enrollment.js";
-
+import { enrollmentUpload, Update_Applicant } from "../controller/enrollment.js";
 
 
 
@@ -155,8 +154,7 @@ SharedRouter.delete('/deleteStrand/:trackId/:strandId', verifyAuth, deleteStrand
 
 
 SharedRouter.post('/add-applicant', verifyAuth, enrollmentUpload, Add_Applicants);
-
-
+SharedRouter.put('/update-applicant/:id', enrollmentUpload, Update_Applicant);
 
 SharedRouter.get("/Logout", verifyAuth, Logout);
 
