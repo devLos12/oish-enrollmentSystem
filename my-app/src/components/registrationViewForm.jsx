@@ -27,16 +27,11 @@ const RegistrationViewForm = () => {
     const displaySemester   = student?.displaySemester    || student?.semester       || "";
     const displaySchoolYear = student?.displaySchoolYear  || student?.enrollmentYear || "________";
 
-
-    // ✅ Subjects — currentSemSubjects (derived from backend), 
+    // ✅ Subjects — currentSemSubjects (derived from backend),
     //    fallback sa currentSemHistory.subjects para safety
     const displaySubjects = student?.currentSemSubjects?.length > 0
         ? student.currentSemSubjects
         : student?.currentSemHistory?.subjects || [];
-
-
-    
-
 
     useEffect(() => {
         if (!location?.state) {
@@ -79,15 +74,19 @@ const RegistrationViewForm = () => {
         await Promise.all(imagePromises);
     };
 
+    // ✅ FIX: windowWidth + width na nakatakda sa 794px (A4 sa 96dpi)
+    //         para hindi lumagpas sa isang page ang content
     const getPdfOptions = () => ({
-        margin: [10, 10, 10, 10],
+        margin: [8, 8, 8, 8],
         filename: `Registration-Form-${student?.studentNumber}-Sem${displaySemester}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
             scale: 2,
             useCORS: true,
             allowTaint: true,
-            logging: false
+            logging: false,
+            windowWidth: 794,
+            width: 794,
         },
         jsPDF: {
             unit: 'mm',
@@ -96,20 +95,45 @@ const RegistrationViewForm = () => {
         }
     });
 
+    // ✅ FIX helper — temporarily lock element width to A4, restore after
+    const withA4Width = async (element, fn) => {
+        const prev = {
+            width:    element.style.width,
+            maxWidth: element.style.maxWidth,
+            fontSize: element.style.fontSize,
+            padding:  element.style.padding,
+        };
+        element.style.width    = '794px';
+        element.style.maxWidth = '794px';
+        element.style.fontSize = '12px';
+        element.style.padding  = '20px';
+        try {
+            await fn();
+        } finally {
+            element.style.width    = prev.width;
+            element.style.maxWidth = prev.maxWidth;
+            element.style.fontSize = prev.fontSize;
+            element.style.padding  = prev.padding;
+        }
+    };
+
     const handleAutoDownloadPDF = async () => {
         const element = formRef.current;
-        await convertImagesToBase64(element);
-        html2pdf().set(getPdfOptions()).from(element).save().then(() => {
-            navigate("/student/registration_form");
+        await withA4Width(element, async () => {
+            await convertImagesToBase64(element);
+            await html2pdf().set(getPdfOptions()).from(element).save();
         });
+        navigate("/student/registration_form");
     };
 
     const handleManualDownloadPDF = async () => {
         setIsDownloading(true);
         try {
             const element = formRef.current;
-            await convertImagesToBase64(element);
-            await html2pdf().set(getPdfOptions()).from(element).save();
+            await withA4Width(element, async () => {
+                await convertImagesToBase64(element);
+                await html2pdf().set(getPdfOptions()).from(element).save();
+            });
         } catch (error) {
             console.error('Error downloading PDF:', error);
             alert('Failed to download PDF. Please try again.');
@@ -149,8 +173,16 @@ const RegistrationViewForm = () => {
                             <i className="fa fa-arrow-left me-2" />Back
                         </button>
 
-                        {/* Form Content */}
-                        <div ref={formRef}>
+                        {/* ✅ FIX: Ang ref ay nakalagay sa inner wrapper na may max-width,
+                                   hindi sa buong Bootstrap container, para mas tumpak ang
+                                   html2canvas capture at hindi magsama ng labas na elements. */}
+                        <div
+                            ref={formRef}
+                            style={{
+                                maxWidth: '100%',
+                                boxSizing: 'border-box',
+                            }}
+                        >
                             {/* Header */}
                             <div className="text-center mb-3 mb-md-4">
                                 <img src={deped} alt="DepEd Logo" style={{ width: '120px', height: '120px' }} crossOrigin="anonymous" className="mb-2 mb-md-3 me-4" />

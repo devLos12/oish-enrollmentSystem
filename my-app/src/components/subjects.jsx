@@ -37,7 +37,7 @@ const SubjectManagement = () => {
     const [alertType, setAlertType] = useState('success');
     const [modalLoading, setModalLoading] = useState(false);
 
-    const [currentPage, setCurrentPage] = useState(1);
+    const [currentPage, setCurrentPage] = useState(location?.state?.fromPage || 1);
     const [itemsPerPage] = useState(10);
 
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -85,9 +85,6 @@ const SubjectManagement = () => {
     }, [searchTerm, filterGrade, filterSemester, filterStrand, subjectList]);
 
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, filterGrade, filterSemester, filterStrand]);
 
 
     
@@ -271,8 +268,14 @@ const SubjectManagement = () => {
         return badges[type] || 'bg-secondary';
     };
 
-    const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
+    const handlePageChange = (pageNumber) => {
+        setCurrentPage(pageNumber);
+        navigate('/admin/subjects', {
+            state: { fromPage: pageNumber }
+        })
+    };
 
+    
     const renderPagination = () => {
         const pages = [];
         const maxVisiblePages = 5;
@@ -577,7 +580,7 @@ const SubjectManagement = () => {
         setEditingRows({});
         setImportStep('upload');
     };
-
+    
     const handleOpenImportModal = () => {
         resetImportState();
         setShowImportModal(true);
