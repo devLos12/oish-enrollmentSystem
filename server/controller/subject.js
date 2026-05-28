@@ -56,7 +56,7 @@ export const deleteSubjectSection = async(req, res) => {
 export const updateSubjectSection = async(req, res) => {
     try {
         const { id, sectionId } = req.params;
-        const { sectionName, scheduleDay, scheduleStartTime, scheduleEndTime, room, gradeLevel } = req.body;
+        const { sectionName, scheduleDays, scheduleStartTime, scheduleEndTime, room, gradeLevel } = req.body;
 
         // Find the subject
         const subject = await Subject.findOne({
@@ -87,7 +87,7 @@ export const updateSubjectSection = async(req, res) => {
         subject.sections[sectionIndex] = {
             ...subject.sections[sectionIndex].toObject(),
             sectionName,
-            scheduleDay,
+            scheduleDays,
             scheduleStartTime,
             scheduleEndTime,
             room
@@ -114,10 +114,10 @@ export const updateSubjectSection = async(req, res) => {
 export const addSubjectSection = async(req, res) => {
     try {
         const { id } = req.params;
-        const { sectionName, scheduleStartTime, scheduleEndTime, room, gradeLevel } = req.body;
+        const { sectionName, scheduleDays, scheduleStartTime, scheduleEndTime, room, gradeLevel } = req.body;
 
         // Validation
-        if (!sectionName || !scheduleStartTime || !scheduleEndTime || !room) {
+        if (!sectionName || !scheduleDays?.length || !scheduleStartTime || !scheduleEndTime || !room) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required"
@@ -165,10 +165,13 @@ export const addSubjectSection = async(req, res) => {
         subject.sections.push({
             sectionId: secId,
             sectionName,
+            scheduleDays,          
             scheduleStartTime,
             scheduleEndTime,
             room,
         });
+
+
         await subject.save();
 
         // ✅ FIX 3 — studentsToUpdate scoped sa active school year + semester
@@ -258,13 +261,14 @@ export const bulkAddSubjectSections = async (req, res) => {
         const toAdd = [];
 
         for (let i = 0; i < sections.length; i++) {
-            const { sectionName, scheduleStartTime, scheduleEndTime, room } = sections[i];
+            const { sectionName, scheduleDays, scheduleStartTime, scheduleEndTime, room } = sections[i];
             const rowNum = i + 1;
 
             if (!sectionName?.trim()) { errors.push(`Row ${rowNum}: Section Name is required`); continue; }
             if (!scheduleStartTime) { errors.push(`Row ${rowNum}: Start Time is required`); continue; }
             if (!scheduleEndTime) { errors.push(`Row ${rowNum}: End Time is required`); continue; }
             if (!room?.trim()) { errors.push(`Row ${rowNum}: Room is required`); continue; }
+            if (!scheduleDays?.length) { errors.push(`Row ${rowNum}: Days is required`); continue; }
 
             const alreadyExists = subject.sections.some(s => s.sectionName === sectionName.trim());
             if (alreadyExists) { errors.push(`Row ${rowNum}: Section "${sectionName}" already exists in this subject`); continue; }
@@ -281,6 +285,7 @@ export const bulkAddSubjectSections = async (req, res) => {
             toAdd.push({
                 sectionId: studentSec?._id ?? null,
                 sectionName: sectionName.trim(),
+                scheduleDays,
                 scheduleStartTime,
                 scheduleEndTime,
                 room: room.trim()

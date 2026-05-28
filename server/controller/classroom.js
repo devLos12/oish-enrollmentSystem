@@ -87,7 +87,7 @@ export const getClassrooms = async (req, res) => {
         section,
         teacher:           sub.teacher,
         // ✅ Schedule — subject.sections[] first, fallback sa historySubject
-        scheduleDay:       matchedSection?.scheduleDay       || historySubject?.scheduleDay       || '',
+        scheduleDays:      matchedSection?.scheduleDays      || historySubject?.scheduleDays      || [],
         scheduleStartTime: matchedSection?.scheduleStartTime || historySubject?.scheduleStartTime || '',
         scheduleEndTime:   matchedSection?.scheduleEndTime   || historySubject?.scheduleEndTime   || '',
         room:              matchedSection?.room              || historySubject?.room              || '',

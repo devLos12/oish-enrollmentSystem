@@ -104,8 +104,8 @@ export const Step1 = () => {
     const [emailValid, setEmailValid] = useState(false);
 
 
-    
 
+    
 
 
     useEffect(() => {

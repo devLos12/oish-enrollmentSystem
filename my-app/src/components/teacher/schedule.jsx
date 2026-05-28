@@ -78,6 +78,7 @@ const TeacherScheduleTable = () => {
         })
         .then((data) => {
             if(data.success){
+
                 setTeacherSubjects(data.data || []);
 
                 if(data.data && data.data.length > 0) {
@@ -88,7 +89,7 @@ const TeacherScheduleTable = () => {
                     });
                 }
 
-                console.log(data);
+            
             }
         })
         .catch((error) => {
@@ -125,7 +126,7 @@ const TeacherScheduleTable = () => {
         
         teacherSubjects.forEach(subject => {
             if (subject.scheduleStartTime && subject.scheduleEndTime) {
-                const key = `${subject.scheduleStartTime}-${subject.scheduleEndTime}`;
+                const key = `${subject.scheduleStartTime}|${subject.scheduleEndTime}`;
                 timePairs.add(key);
             }
         });
@@ -133,7 +134,7 @@ const TeacherScheduleTable = () => {
         // Convert to array and sort by start time
         const sortedSlots = Array.from(timePairs)
             .map(pair => {
-                const [start, end] = pair.split('-');
+                const [start, end] = pair.split('|');
                 return { start, end, startMinutes: timeToMinutes(start) };
             })
             .sort((a, b) => a.startMinutes - b.startMinutes);
@@ -144,13 +145,18 @@ const TeacherScheduleTable = () => {
     const timeSlots = generateDynamicTimeSlots();
 
     // ✅ Get subject for exact time slot
-    const getSubjectForSlot = (startTime, endTime) => {
-        return teacherSubjects.find(subject => 
+
+    const getSubjectForSlot = (startTime, endTime, day) => {
+        const matchingSubjects = teacherSubjects.filter(subject => 
             subject.scheduleStartTime === startTime && 
             subject.scheduleEndTime === endTime
         );
+        return matchingSubjects.find(subject =>
+            subject.scheduleDays?.some(d => d.toLowerCase() === day.toLowerCase())
+        );
     };
 
+    
     const downloadPDF = async () => {
         setDownloadingPdf(true);
         try {
@@ -278,8 +284,6 @@ const TeacherScheduleTable = () => {
                                             </thead>
                                             <tbody>
                                                 {timeSlots.map((slot, idx) => {
-                                                    const subject = getSubjectForSlot(slot.start, slot.end);
-
                                                     return (
                                                         <tr key={idx}>
                                                             {/* ✅ TIME COLUMN - Exact times from data */}
@@ -287,41 +291,25 @@ const TeacherScheduleTable = () => {
                                                                 {formatTo12Hour(slot.start)} - {formatTo12Hour(slot.end)}
                                                             </td>
 
-                                                            {/* ✅ Render across ALL days (Mon-Fri) */}
-                                                            {subject ? (
-                                                                days.map(day => (
-                                                                    <td
-                                                                        key={day}
-                                                                        className="align-top"
-                                                                        style={{ 
-                                                                            padding: '12px',
-                                                                            backgroundColor: subject.subjectName?.toLowerCase().includes('reading') ? '#FFE5E5' :
-                                                                                           subject.subjectName?.toLowerCase().includes('immersion') ? '#E5FFE5' :
-                                                                                           subject.subjectName?.toLowerCase().includes('homeroom') ? '#FFFFFF' :
-                                                                                           '#F5F5F5'
-                                                                        }}
-                                                                    >
-                                                                        <div className="fw-bold mb-1 small text-capitalize">
-                                                                            {subject.subjectName}
-                                                                        </div>
-                                                                        <div className="text-muted small text-capitalize">
-                                                                            {subject.gradeLevel} {subject.sectionName || subject.section}
-                                                                        </div>
-                                                                        {subject.room && (
-                                                                            <div className="text-muted small">
-                                                                                {subject.room}
-                                                                            </div>
-                                                                        )}
+                                                            {days.map(day => {
+                                                                const cellSubject = getSubjectForSlot(slot.start, slot.end, day);
+                                                                return cellSubject ? (
+                                                                    <td key={day} className="align-top" style={{ 
+                                                                        padding: '12px',
+                                                                        backgroundColor: cellSubject.subjectName?.toLowerCase().includes('reading') ? '#FFE5E5' :
+                                                                                        cellSubject.subjectName?.toLowerCase().includes('immersion') ? '#E5FFE5' :
+                                                                                        cellSubject.subjectName?.toLowerCase().includes('homeroom') ? '#FFFFFF' :
+                                                                                        '#F5F5F5'
+                                                                    }}>
+                                                                        <div className="fw-bold mb-1 small text-capitalize">{cellSubject.subjectName}</div>
+                                                                        <div className="text-muted small text-capitalize">{cellSubject.gradeLevel} {cellSubject.sectionName || cellSubject.section}</div>
+                                                                        {cellSubject.room && <div className="text-muted small text-capitalize">{cellSubject.room}</div>}
                                                                     </td>
-                                                                ))
-                                                            ) : (
-                                                                // Empty cells if no subject at this time
-                                                                days.map(day => (
-                                                                    <td key={day} style={{ minWidth: '120px', height: '60px' }}>
-                                                                        &nbsp;
-                                                                    </td>
-                                                                ))
-                                                            )}
+                                                                ) : (
+                                                                    <td key={day} style={{ minWidth: '120px', height: '60px' }}>&nbsp;</td>
+                                                                );
+                                                            })}
+
                                                         </tr>
                                                     );
                                                 })}

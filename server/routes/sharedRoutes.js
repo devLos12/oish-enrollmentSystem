@@ -39,6 +39,7 @@ import {
     updateStrand,
     deleteStrand,
 } from "../controller/program.js";
+import { deleteQRCode, generateQRCode, getQRCodes, updateQRCode } from "../controller/generate-qr-code.js";
  
 
 
@@ -155,6 +156,13 @@ SharedRouter.delete('/deleteStrand/:trackId/:strandId', verifyAuth, deleteStrand
 
 SharedRouter.post('/add-applicant', verifyAuth, enrollmentUpload, Add_Applicants);
 SharedRouter.put('/update-applicant/:id', enrollmentUpload, Update_Applicant);
+
+
+SharedRouter.post("/generate-qr-code", verifyAuth, generateQRCode);
+SharedRouter.get("/qr-codes", verifyAuth, getQRCodes);
+SharedRouter.patch('/qr-codes/:id', verifyAuth, updateQRCode);
+SharedRouter.delete('/qr-codes/:id', verifyAuth, deleteQRCode);
+
 
 SharedRouter.get("/Logout", verifyAuth, Logout);
 

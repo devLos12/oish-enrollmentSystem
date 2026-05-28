@@ -28,6 +28,7 @@ const SubjectSchema = new mongoose.Schema({
   sections: [{
     sectionId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Section"},
     sectionName: { type: String, required: true },
+    scheduleDays: [{ type: String }],
     // scheduleDay: { type: String },
     scheduleStartTime: { type: String },
     scheduleEndTime: { type: String },

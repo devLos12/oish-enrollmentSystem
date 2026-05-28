@@ -80,12 +80,14 @@ export const getTeacherSubjectSchedule = async(req, res) => {
                     section: populatedSection.name,
                     scheduleStartTime: section.scheduleStartTime,
                     scheduleEndTime: section.scheduleEndTime,
+                    scheduleDays: section.scheduleDays || [],
                     room: section.room,
                     
                     studentCount: studentsInSection.length,
                     schoolYear: targetSchoolYear.schoolYear,
                     schoolYearId: targetSchoolYear._id,
                     semester: subject.semester,
+
                 });
             }
         }

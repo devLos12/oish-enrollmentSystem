@@ -92,79 +92,6 @@ export const getTeacherStudents = async(req, res) => {
 
 
 
-// export const getTeacherSubject = async (req, res) => {
-//     try {
-//         const teacherId = req.account.id;
-
-//         // ✅ Kunin lahat ng subjects ng teacher — grouped by schoolYear
-//         // Hindi na nag-eexpect ng isActive — yung subjects mismo ang source of truth
-//         const subjects = await Subject.find({ teacherId: teacherId })
-//             .populate('schoolYear', 'schoolYear semester label isActive');
-
-//         if (!subjects || subjects.length === 0) {
-//             return res.status(200).json({ 
-//                 success: true,
-//                 data: [],
-//                 message: "No subjects found for this teacher" 
-//             });
-//         }
-
-//         // ✅ I-group by schoolYear — teacher makikita lahat ng sem niya
-//         // Frontend na mag-filter kung anong sem ang gusto ipakita
-//         const sectionsWithSubjectInfo = [];
-        
-//         subjects.forEach(subject => {
-//             subject.sections.forEach(section => {
-//                 sectionsWithSubjectInfo.push({
-//                     sectionId: section.sectionId,
-//                     sectionName: section.sectionName,
-//                     scheduleDay: section.scheduleDay,
-//                     scheduleStartTime: section.scheduleStartTime,
-//                     scheduleEndTime: section.scheduleEndTime,
-//                     room: section.room,
-//                     students: section.students,
-                    
-//                     subjectId: subject._id,
-//                     subjectName: subject.subjectName,
-//                     subjectCode: subject.subjectCode,
-//                     strand: subject.strand,
-//                     gradeLevel: subject.gradeLevel,
-//                     semester: subject.semester,
-//                     teacher: subject.teacher,
-
-//                     // ✅ Isama yung schoolYear info para sa frontend filtering
-//                     schoolYearId: subject.schoolYear?._id,
-//                     schoolYearLabel: subject.schoolYear?.label,
-//                     schoolYear: subject.schoolYear?.schoolYear,
-//                     isActiveSchoolYear: subject.schoolYear?.isActive,
-//                 });
-//             });
-//         });
-
-
-//          console.log("Sections with Subject Info:", sectionsWithSubjectInfo);
-
-
-//         // ✅ Return ALL subjects — frontend handles filtering by selected schoolYear
-//         // Backend no longer filters by isActive — subjects are immutable and tied to their schoolYear
-//         return res.status(200).json({ 
-//             success: true,
-//             data: sectionsWithSubjectInfo
-//         });
-
-//     } catch (error) {
-//         return res.status(500).json({ 
-//             success: false,
-//             message: error.message 
-//         });
-//     }
-// }
-
-
-
-
-
-
 
 
 
@@ -211,7 +138,7 @@ export const getTeacherSubjectBySchoolYear = async (req, res) => {
                 sectionsWithSubjectInfo.push({
                     sectionId: populatedSection._id,
                     sectionName: populatedSection.name,
-                    scheduleDay: section.scheduleDay,
+                    scheduleDays: section.scheduleDays || [],
                     scheduleStartTime: section.scheduleStartTime,
                     scheduleEndTime: section.scheduleEndTime,
                     room: section.room,

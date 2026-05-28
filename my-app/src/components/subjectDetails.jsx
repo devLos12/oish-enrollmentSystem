@@ -3,6 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { globalContext } from "../context/global.jsx";
 import * as XLSX from "xlsx";
 
+
+const dayOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+
 const SubjectDetails = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -34,6 +38,13 @@ const SubjectDetails = () => {
     const [importErrors, setImportErrors] = useState([]);
     const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
     const [editingRows, setEditingRows] = useState({});
+    const [manualRows, setManualRows] = useState([]);
+
+
+
+
+
+
 
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
@@ -102,17 +113,28 @@ const SubjectDetails = () => {
         }
     };
 
+
+
+
+
+
     const handleAddSection = () => {
-        setSelectedSection({ sectionName: '', scheduleStartTime: '', scheduleEndTime: '', room: '', gradeLevel: '' });
+        setSelectedSection({ sectionName: '', scheduleDays: [], scheduleStartTime: '', scheduleEndTime: '', room: '', gradeLevel: '' });
         setModalType('add');
         setShowSectionModal(true);
     };
 
     const handleEditSection = (section) => {
-        setSelectedSection({ ...section });
+        setSelectedSection({ scheduleDays: [], ...section }); // fallback kung walang scheduleDays sa existing data
         setModalType('edit');
         setShowSectionModal(true);
     };
+
+
+
+
+
+
 
     const handleDeleteSection = (section) => {
         setSelectedSection(section);
@@ -120,11 +142,35 @@ const SubjectDetails = () => {
         setShowSectionModal(true);
     };
 
+
+
+    const toggleDay = (day) => {
+        const current = selectedSection?.scheduleDays || [];
+        const updated = current.includes(day)
+            ? current.filter(d => d !== day)
+            : [...current, day];
+        setSelectedSection({ ...selectedSection, scheduleDays: updated });
+    };
+
+
+
     const handleSubmitSection = async () => {
-        if (!selectedSection.sectionName?.trim() || !selectedSection.scheduleStartTime || !selectedSection.scheduleEndTime || !selectedSection.room?.trim()) {
+
+
+
+        if (
+            !selectedSection.sectionName?.trim() ||
+            !selectedSection.scheduleDays?.length ||      // ✅ dagdag
+            !selectedSection.scheduleStartTime ||
+            !selectedSection.scheduleEndTime ||
+            !selectedSection.room?.trim()
+        ) {
             showAlert("All fields are required!", 'error');
             return;
         }
+
+
+
         setIsSubmitting(true);
         try {
             const url = modalType === 'add'
@@ -136,6 +182,7 @@ const SubjectDetails = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     sectionName: selectedSection.sectionName,
+                    scheduleDays: selectedSection.scheduleDays, 
                     scheduleStartTime: selectedSection.scheduleStartTime,
                     scheduleEndTime: selectedSection.scheduleEndTime,
                     room: selectedSection.room,
@@ -226,18 +273,20 @@ const SubjectDetails = () => {
         const sampleSections = availableSections.slice(0, 3).map(s => s.name);
         while (sampleSections.length < 3) sampleSections.push(`${strand}-${String.fromCharCode(65 + sampleSections.length)}`);
 
+ 
+
         const templateData = [
-            ['Section Name', 'Start Time', 'End Time', 'Room'],
-            [sampleSections[0], '7:00 AM', '8:00 AM', 'Room 101'],
-            [sampleSections[1], '8:00 AM', '9:00 AM', 'Room 102'],
-            [sampleSections[2], '9:00 AM', '10:00 AM', 'Room 103'],
+            ['Section Name', 'Start Time', 'End Time', 'Room', 'Days'],
+            [sampleSections[0], '7:00 AM', '8:00 AM', 'Room 101', 'Monday,Wednesday,Friday'],
+            [sampleSections[1], '8:00 AM', '9:00 AM', 'Room 102', 'Tuesday,Thursday'],
+            [sampleSections[2], '9:00 AM', '10:00 AM', 'Room 103', 'Monday,Tuesday,Wednesday,Thursday,Friday'],
         ];
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(templateData);
 
         // Column widths
-        ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+        ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 35 }];
 
         // Header style hint via comment
         ws['A1'].c = [{ a: 'System', t: `Available sections for Grade ${grade} ${strand}: ${availableSections.map(s => s.name).join(', ')}` }];
@@ -269,10 +318,28 @@ const SubjectDetails = () => {
                     const sectionName = String(row[0] || '').trim();
                     const startRaw = row[1];
                     const endRaw = row[2];
+
                     const room = String(row[3] || '').trim();
+                    const daysRaw = String(row[4] || '').trim();
 
                     const scheduleStartTime = parseTimeTo24Hr(startRaw);
                     const scheduleEndTime = parseTimeTo24Hr(endRaw);
+
+                    const scheduleDays = daysRaw
+                        ? daysRaw.split(',')
+                            .map(d => {
+                                const trimmed = d.trim();
+                                // Support shorthand: Mon → Monday, Tue → Tuesday, etc.
+                                return dayOptions.find(opt =>
+                                    opt.toLowerCase() === trimmed.toLowerCase() ||
+                                    opt.toLowerCase().startsWith(trimmed.toLowerCase())
+                                ) || null;
+                            })
+                            .filter(Boolean)
+                        : [];
+
+
+
 
                     // Check if section name matches available sections for this strand
                     const matchedSection = availableSections.find(
@@ -286,13 +353,16 @@ const SubjectDetails = () => {
                     if (!scheduleStartTime) rowErrors.push('Start Time is invalid (use format: 7:00 AM or 07:00)');
                     if (!scheduleEndTime) rowErrors.push('End Time is invalid (use format: 8:00 AM or 08:00)');
                     if (!room) rowErrors.push('Room is required');
-
+                    if (!scheduleDays.length) rowErrors.push('Days is required (e.g. Monday,Wednesday,Friday)');
+                    
+                    
                     if (rowErrors.length > 0) {
                         errors.push(`Row ${rowNum}: ${rowErrors.join(', ')}`);
                     }
 
                     return {
                         id: `row-${idx}-${Date.now()}`,
+                        scheduleDays,
                         sectionName: matchedSection ? matchedSection.name : sectionName,
                         scheduleStartTime,
                         scheduleEndTime,
@@ -339,6 +409,8 @@ const SubjectDetails = () => {
             );
             if (!updatedRow.sectionName) rowErrors.push('Section Name is required');
             else if (!matchedSection) rowErrors.push(`"${updatedRow.sectionName}" is not valid for ${subjectData?.strand}`);
+
+            if (!updatedRow.scheduleDays?.length) rowErrors.push('Days is required');
             if (!updatedRow.scheduleStartTime) rowErrors.push('Start Time is required');
             if (!updatedRow.scheduleEndTime) rowErrors.push('End Time is required');
             if (!updatedRow.room?.trim()) rowErrors.push('Room is required');
@@ -358,13 +430,71 @@ const SubjectDetails = () => {
         setEditingRows(prev => ({ ...prev, [index]: !prev[index] }));
     };
 
+
+
+
+
+
+
+
     const resetBulkImport = () => {
         setExcelFile(null);
         setExcelData([]);
         setImportErrors([]);
         setBulkStep('upload');
         setEditingRows({});
+        setManualRows([]);   // ✅ dagdag
     };
+
+    const createEmptyRow = () => ({
+        id: `manual-${Date.now()}-${Math.random()}`,
+        sectionName: '',
+        scheduleDays: [],
+        scheduleStartTime: '',
+        scheduleEndTime: '',
+        room: '',
+        hasError: true,
+        errorMessages: ['Fill in all fields'],
+        isManual: true,
+    });
+
+    const handleAddManualRow = () => {
+        setManualRows(prev => [...prev, createEmptyRow()]);
+        if (bulkStep === 'upload') setBulkStep('preview');
+    };
+
+    const updateManualRow = (id, fields) => {
+        setManualRows(prev => prev.map(r => {
+            if (r.id !== id) return r;
+            const updatedRow = { ...r, ...fields };
+
+            const rowErrors = [];
+            const matchedSection = availableSections.find(
+                s => s.name.toLowerCase() === (updatedRow.sectionName || '').toLowerCase()
+            );
+            if (!updatedRow.sectionName) rowErrors.push('Section Name required');
+            else if (!matchedSection) rowErrors.push(`"${updatedRow.sectionName}" is not valid`);
+            if (!updatedRow.scheduleDays?.length) rowErrors.push('Days required');
+            if (!updatedRow.scheduleStartTime) rowErrors.push('Start Time required');
+            if (!updatedRow.scheduleEndTime) rowErrors.push('End Time required');
+            if (!updatedRow.room?.trim()) rowErrors.push('Room required');
+
+            updatedRow.hasError = rowErrors.length > 0;
+            updatedRow.errorMessages = rowErrors;
+            return updatedRow;
+        }));
+    };
+
+    const handleDeleteManualRow = (id) => {
+        setManualRows(prev => prev.filter(r => r.id !== id));
+    };
+
+
+
+
+
+
+
 
     const handleOpenBulkModal = () => {
         resetBulkImport();
@@ -376,9 +506,13 @@ const SubjectDetails = () => {
         resetBulkImport();
     };
 
+
+
+    
     const handleBulkSubmit = async () => {
-        const validRows = excelData.filter(row => !row.hasError);
-        const errorRows = excelData.filter(row => row.hasError);
+        const allRows = [...excelData, ...manualRows];          
+        const validRows = allRows.filter(row => !row.hasError); 
+        const errorRows = allRows.filter(row => row.hasError);  
 
         if (errorRows.length > 0) {
             showAlert(`Please fix ${errorRows.length} row(s) with errors before importing.`, 'error');
@@ -402,6 +536,7 @@ const SubjectDetails = () => {
             setIsBulkSubmitting(true);
             const sections = validRows.map(row => ({
                 sectionName: row.sectionName,
+                scheduleDays: row.scheduleDays || [],
                 scheduleStartTime: row.scheduleStartTime,
                 scheduleEndTime: row.scheduleEndTime,
                 room: row.room.trim()
@@ -425,6 +560,12 @@ const SubjectDetails = () => {
             setIsBulkSubmitting(false);
         }
     };
+
+
+
+
+
+
 
     const showAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -489,8 +630,11 @@ const SubjectDetails = () => {
 
     // Derived preview (first 10 rows shown, but all data in excelData)
     const excelPreview = excelData;
-    const errorCount = excelData.filter(r => r.hasError).length;
-    const validCount = excelData.filter(r => !r.hasError).length;
+    const allRows = [...excelData, ...manualRows];              
+    const errorCount = allRows.filter(r => r.hasError).length;  
+    const validCount = allRows.filter(r => !r.hasError).length; 
+
+
 
     if (loading) {
         return (
@@ -519,9 +663,6 @@ const SubjectDetails = () => {
                 <button className="btn btn-sm btn-outline-secondary mb-2" onClick={() => navigate(-1)}>
                     <i className="fa fa-arrow-left me-2" />Back
                 </button>
-                
-
-
 
                 {/* Subject Header */}
                 <div className="row mb-4">
@@ -583,9 +724,25 @@ const SubjectDetails = () => {
                                                         <tr key={index}>
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
                                                             <td className="align-middle fw-semibold">{section.sectionName}</td>
+                                             
+
                                                             <td className="align-middle">
-                                                                {formatTime12Hour(section.scheduleStartTime)} - {formatTime12Hour(section.scheduleEndTime)}
+                                                                <div className="d-flex flex-wrap gap-1 mb-1">
+                                                                    {section.scheduleDays?.length
+                                                                        ? section.scheduleDays.map(d => (
+                                                                            <span key={d} className="badge bg-primary bg-opacity-75 text-capitalize" style={{ fontSize: '0.7rem' }}>
+                                                                                {d.slice(0, 3)}
+                                                                            </span>
+                                                                        ))
+                                                                        : <span className="text-muted small">No days set</span>
+                                                                    }
+                                                                </div>
+                                                                <small className="text-muted">
+                                                                    {formatTime12Hour(section.scheduleStartTime)} - {formatTime12Hour(section.scheduleEndTime)}
+                                                                </small>
                                                             </td>
+
+
                                                             <td className="align-middle text-capitalize">{section.room || 'N/A'}</td>
                                                             <td className="align-middle">
                                                                 <span className="badge bg-info">{section.students?.length || 0}</span>
@@ -668,18 +825,18 @@ const SubjectDetails = () => {
                                                         </option>
                                                     ))}
                                                 </select>
-                                                {availableSections.length === 0 && !loadingSections && (
-                                                    <small className="text-warning d-block mt-1">
-                                                        <i className="fa fa-exclamation-triangle me-1"></i>No sections available
-                                                    </small>
-                                                )}
                                             </div>
+
                                             <div className="col-6">
                                                 <label className="form-label small">Room</label>
                                                 <input type="text" className="form-control" placeholder="e.g. Room 101"
                                                     value={selectedSection?.room || ''}
                                                     onChange={(e) => setSelectedSection({ ...selectedSection, room: e.target.value })} />
                                             </div>
+
+
+
+
                                             <div className="col-6 mt-3">
                                                 <label className="form-label small">Start Time</label>
                                                 <input type="time" className="form-control"
@@ -692,6 +849,47 @@ const SubjectDetails = () => {
                                                     value={selectedSection?.scheduleEndTime || ''}
                                                     onChange={(e) => setSelectedSection({ ...selectedSection, scheduleEndTime: e.target.value })} />
                                             </div>
+
+                                            {/* Schedule Days — full width */}
+                                            <div className="col-12 mt-3">
+                                                <label className="form-label small fw-bold">Schedule Days</label>
+                                                <div className="d-flex flex-wrap gap-2 mt-1">
+                                                    {dayOptions.map(day => {
+                                                        const isSelected = selectedSection?.scheduleDays?.includes(day);
+                                                        return (
+                                                            <div
+                                                                key={day}
+                                                                onClick={() => toggleDay(day)}
+                                                                className={`d-flex align-items-center gap-2 px-3 py-2 rounded border cursor-pointer`}
+                                                                style={{
+                                                                    cursor: 'pointer',
+                                                                    backgroundColor: isSelected ? '#fff5f5' : '#f8f9fa',
+                                                                    borderColor: isSelected ? '#dc3545' : '#dee2e6',
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isSelected}
+                                                                    onChange={() => toggleDay(day)}
+                                                                    className="form-check-input mt-0"
+                                                                    style={{ accentColor: '#dc3545', cursor: 'pointer' }}
+                                                                />
+                                                                <span className={`small fw-semibold text-capitalize ${isSelected ? 'text-danger' : 'text-muted'}`}>
+                                                                    {day.slice(0, 3)}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {!selectedSection?.scheduleDays?.length && (
+                                                    <small className="text-danger d-block mt-1">
+                                                        <i className="fa fa-exclamation-circle me-1"></i>
+                                                        Select at least one day
+                                                    </small>
+                                                )}
+                                            </div>
+
                                         </div>
                                     </div>
                                     <div className="modal-footer">
@@ -791,6 +989,7 @@ const SubjectDetails = () => {
                                                         <th>Column B</th>
                                                         <th>Column C</th>
                                                         <th>Column D</th>
+                                                        <th>Column E</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -799,6 +998,7 @@ const SubjectDetails = () => {
                                                         <td><strong>Start Time</strong><br /><span className="text-muted">e.g. 7:00 AM or 07:00</span></td>
                                                         <td><strong>End Time</strong><br /><span className="text-muted">e.g. 8:00 AM or 08:00</span></td>
                                                         <td><strong>Room</strong><br /><span className="text-muted">e.g. Room 101</span></td>
+                                                        <td><strong>Days</strong><br /><span className="text-muted">e.g. Monday,Wednesday,Friday</span></td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -827,6 +1027,7 @@ const SubjectDetails = () => {
                                                 onChange={handleFileChange}
                                             />
                                         </div>
+                                            
 
                                         {availableSections.length === 0 && !loadingSections && (
                                             <div className="alert alert-warning mt-3 mb-0">
@@ -834,6 +1035,15 @@ const SubjectDetails = () => {
                                                 No available sections to import. All sections for this subject's strand may already be assigned.
                                             </div>
                                         )}
+
+                                        <div className="text-center mt-3">
+                                            <span className="text-muted small">— or —</span>
+                                            <div className="mt-2">
+                                                <button className="btn btn-sm btn-outline-success" onClick={handleAddManualRow}>
+                                                    <i className="fa fa-plus me-1"></i>Add Row Manually
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -850,11 +1060,17 @@ const SubjectDetails = () => {
                                                     <i className="fa fa-check me-1"></i>{validCount} valid
                                                 </span>
                                             )}
+
                                             {errorCount > 0 && (
                                                 <span className="badge bg-danger fs-6 px-3 py-2">
                                                     <i className="fa fa-times me-1"></i>{errorCount} error(s)
                                                 </span>
                                             )}
+
+
+
+
+
                                             <button
                                                 className="btn btn-sm btn-outline-secondary ms-auto"
                                                 onClick={resetBulkImport}
@@ -884,6 +1100,8 @@ const SubjectDetails = () => {
                                                         <th>Start Time</th>
                                                         <th>End Time</th>
                                                         <th>Room</th>
+                                                        <th>Days</th>
+
                                                         <th style={{ width: '100px' }} className="text-center">Actions</th>
                                                     </tr>
                                                 </thead>
@@ -926,6 +1144,10 @@ const SubjectDetails = () => {
                                                                         <span className="fw-semibold">{row.sectionName || <span className="text-danger fst-italic">missing</span>}</span>
                                                                     )}
                                                                 </td>
+
+
+
+
 
                                                                 {/* Start Time */}
                                                                 <td>
@@ -974,6 +1196,60 @@ const SubjectDetails = () => {
                                                                     )}
                                                                 </td>
 
+
+
+                                                                
+                                                                {/* Days */}
+                                                                <td>
+                                                                    {isEditing ? (
+                                                                        <div className="d-flex flex-wrap gap-1">
+                                                                            {dayOptions.map(day => {
+                                                                                const isSelected = row.scheduleDays?.includes(day);
+                                                                                return (
+                                                                                    <div
+                                                                                        key={day}
+                                                                                        onClick={() => updateExcelRow(idx, {
+                                                                                            scheduleDays: isSelected
+                                                                                                ? row.scheduleDays.filter(d => d !== day)
+                                                                                                : [...(row.scheduleDays || []), day]
+                                                                                        })}
+                                                                                        className="d-flex align-items-center gap-1 px-2 py-1 rounded border"
+                                                                                        style={{
+                                                                                            cursor: 'pointer',
+                                                                                            backgroundColor: isSelected ? '#fff5f5' : '#f8f9fa',
+                                                                                            borderColor: isSelected ? '#dc3545' : '#dee2e6',
+                                                                                        }}
+                                                                                    >
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            checked={isSelected}
+                                                                                            onChange={() => {}}
+                                                                                            className="form-check-input mt-0"
+                                                                                            style={{ accentColor: '#dc3545', cursor: 'pointer' }}
+                                                                                        />
+                                                                                        <span className={`small fw-semibold text-capitalize ${isSelected ? 'text-danger' : 'text-muted'}`}
+                                                                                            style={{ fontSize: '0.7rem' }}>
+                                                                                            {day.slice(0, 3)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    ) : (
+                                                                        row.scheduleDays?.length
+                                                                            ? <div className="d-flex flex-wrap gap-1">
+                                                                                {row.scheduleDays.map(d => (
+                                                                                    <span key={d} className="text-capitalize small"
+                                                                                    
+                                                                                    >
+                                                                                        {d.slice(0, 3)}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                            : <span className="text-danger fst-italic">missing</span>
+                                                                    )}
+                                                                </td>
+
                                                                 {/* Actions */}
                                                                 <td className="text-center">
                                                                     <div className="d-flex gap-1 justify-content-center">
@@ -989,7 +1265,7 @@ const SubjectDetails = () => {
                                                                             className="btn btn-sm btn-outline-danger"
                                                                             onClick={() => removeExcelRow(idx)}
                                                                             title="Remove row"
-                                                                            disabled={isBulkSubmitting || excelData.length === 1}
+                                                                            disabled={isBulkSubmitting || (excelData.length === 1 && manualRows.length === 0)}
                                                                         >
                                                                             <i className="fa fa-trash"></i>
                                                                         </button>
@@ -998,11 +1274,142 @@ const SubjectDetails = () => {
                                                             </tr>
                                                         );
                                                     })}
+
+
+
+                                                    
+                                                    {/* Manual Rows */}
+                                                    {manualRows.map((row) => (
+                                                        <tr key={row.id} className={row.hasError ? 'table-danger' : 'table-success'}>
+                                                            <td className="text-center">
+                                                                {row.hasError
+                                                                    ? <i className="fa fa-times-circle text-danger" title={row.errorMessages?.join(', ')}></i>
+                                                                    : <i className="fa fa-check-circle text-success"></i>
+                                                                }
+                                                            </td>
+
+                                                            {/* Section Name */}
+                                                            <td>
+                                                                <select
+                                                                    className="form-select form-select-sm"
+                                                                    value={row.sectionName}
+                                                                    onChange={(e) => updateManualRow(row.id, { sectionName: e.target.value })}
+                                                                >
+                                                                    <option value="">Select Section</option>
+                                                                    {availableSections
+                                                                        .filter(sec =>
+                                                                            sec.name === row.sectionName ||
+                                                                            !allRows.some(r => r.id !== row.id && r.sectionName === sec.name)
+                                                                        )
+                                                                        .map(sec => (
+                                                                            <option key={sec._id} value={sec.name}>
+                                                                                {sec.name} ({sec.students?.length || 0}/{sec.maxCapacity})
+                                                                            </option>
+                                                                        ))
+                                                                    }
+                                                                </select>
+                                                            </td>
+
+
+                                                            {/* Start Time */}
+                                                            <td>
+                                                                <input
+                                                                    type="time"
+                                                                    className="form-control form-control-sm"
+                                                                    value={row.scheduleStartTime}
+                                                                    onChange={(e) => updateManualRow(row.id, { scheduleStartTime: e.target.value })}
+                                                                />
+                                                            </td>
+
+                                                            {/* End Time */}
+                                                            <td>
+                                                                <input
+                                                                    type="time"
+                                                                    className="form-control form-control-sm"
+                                                                    value={row.scheduleEndTime}
+                                                                    onChange={(e) => updateManualRow(row.id, { scheduleEndTime: e.target.value })}
+                                                                />
+                                                            </td>
+
+                                                            {/* Room */}
+                                                            <td>
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control form-control-sm"
+                                                                    placeholder="e.g. Room 101"
+                                                                    value={row.room}
+                                                                    onChange={(e) => updateManualRow(row.id, { room: e.target.value })}
+                                                                />
+                                                            </td>
+
+                                                            
+                                                            {/* Days */}
+                                                            <td>
+                                                                <div className="d-flex flex-wrap gap-1">
+                                                                    {dayOptions.map(day => {
+                                                                        const isSelected = row.scheduleDays?.includes(day);
+                                                                        return (
+                                                                            <div
+                                                                                key={day}
+                                                                                onClick={() => updateManualRow(row.id, {
+                                                                                    scheduleDays: isSelected
+                                                                                        ? row.scheduleDays.filter(d => d !== day)
+                                                                                        : [...(row.scheduleDays || []), day]
+                                                                                })}
+                                                                                className="d-flex align-items-center gap-1 px-2 py-1 rounded border"
+                                                                                style={{
+                                                                                    cursor: 'pointer',
+                                                                                    backgroundColor: isSelected ? '#fff5f5' : '#f8f9fa',
+                                                                                    borderColor: isSelected ? '#dc3545' : '#dee2e6',
+                                                                                }}
+                                                                            >
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={isSelected}
+                                                                                    onChange={() => {}}
+                                                                                    className="form-check-input mt-0"
+                                                                                    style={{ accentColor: '#dc3545', cursor: 'pointer' }}
+                                                                                />
+                                                                                <span className={`small fw-semibold text-capitalize ${isSelected ? 'text-danger' : 'text-muted'}`}
+                                                                                    style={{ fontSize: '0.7rem' }}>
+                                                                                    {day.slice(0, 3)}
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </td>
+
+                                                            {/* Actions */}
+                                                            <td className="text-center">
+                                                                <button
+                                                                    className="btn btn-sm btn-outline-danger"
+                                                                    onClick={() => handleDeleteManualRow(row.id)}
+                                                                    disabled={isBulkSubmitting}
+                                                                    title="Remove row"
+                                                                >
+                                                                    <i className="fa fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+
+
+
                                                 </tbody>
                                             </table>
                                         </div>
 
                                         {/* Error detail tooltip hint */}
+                                        <div className="p-3 border-top d-flex align-items-center gap-3">
+                                            <button className="btn btn-sm btn-outline-success" onClick={handleAddManualRow} disabled={isBulkSubmitting}>
+                                                <i className="fa fa-plus me-1"></i>Add Row Manually
+                                            </button>
+                                            {manualRows.length > 0 && (
+                                                <small className="text-muted">{manualRows.length} manual row(s) added</small>
+                                            )}
+                                        </div>
+
                                         {errorCount > 0 && (
                                             <p className="text-muted small mt-2 mb-0">
                                                 <i className="fa fa-info-circle me-1"></i>

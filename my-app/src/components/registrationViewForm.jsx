@@ -13,9 +13,7 @@ const RegistrationViewForm = () => {
     const formRef = useRef();
     const [isDownloading, setIsDownloading] = useState(false);
 
-    useEffect(() => {
-        console.log(`ROLE: ${role} DATA: `, student);
-    }, [role, student]);
+    
 
     // ✅ Source of truth — currentSemHistory from backend
     const currentSemHistory = student?.currentSemHistory || null;
@@ -249,7 +247,7 @@ const RegistrationViewForm = () => {
                                         <tr>
                                             <th className="fw-bold text-center">Subject</th>
                                             <th className="fw-bold text-center">Teacher</th>
-                                            <th className="fw-bold text-center">Monday - Friday</th>
+                                            <th className="fw-bold text-center">Days & Time</th>
                                             <th className="fw-bold text-center">Room</th>
                                         </tr>
                                     </thead>
@@ -257,11 +255,18 @@ const RegistrationViewForm = () => {
                                         {displaySubjects.length > 0 ? (
                                             displaySubjects.map((subject, index) => (
                                                 <tr key={index}>
-                                                    <td className="text-capitalize text-center">{subject?.subjectName || 'N/A'}</td>
-                                                    <td className="text-capitalize text-center">{subject?.subjectTeacher || 'TBA'}</td>
-                                                    <td className="text-capitalize text-center">
+                                                    <td className="text-capitalize text-center small">{subject?.subjectName || 'N/A'}</td>
+                                                    <td className="text-capitalize text-center small">{subject?.subjectTeacher || 'TBA'}</td>
+
+
+                                                    <td className="text-capitalize text-center small">
                                                         {subject?.scheduleStartTime && subject?.scheduleEndTime ? (
-                                                            <div className="d-flex flex-column">
+                                                            <div className="d-flex flex-column gap-1">
+                                                                {subject?.scheduleDays?.length > 0 && (
+                                                                    <span className="fw-semibold small">
+                                                                        {subject.scheduleDays.map(d => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(', ')}
+                                                                    </span>
+                                                                )}
                                                                 <span className="text-muted">
                                                                     {formatTime(subject.scheduleStartTime)} - {formatTime(subject.scheduleEndTime)}
                                                                 </span>
@@ -270,7 +275,11 @@ const RegistrationViewForm = () => {
                                                             <span className="text-muted fst-italic">TBA</span>
                                                         )}
                                                     </td>
-                                                    <td className="text-capitalize text-center">
+
+
+
+
+                                                    <td className="text-capitalize text-center small">
                                                         {subject?.room ? subject.room : (
                                                             <span className="text-muted fst-italic">TBA</span>
                                                         )}

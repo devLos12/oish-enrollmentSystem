@@ -28,6 +28,7 @@ import Semester from "../components/semester.jsx";
 import StudentSectionList from "../components/student-section-list.jsx";
 import Program from "../components/program.jsx";
 import ApplicantForm from "../components/applicant-form.jsx";
+import GenerateQRCode from "../components/generate-qr-code.jsx";
 
 
 
@@ -79,7 +80,8 @@ const Admin = () => {
         {path: "subject_details",       element: <SubjectDetails/>},
         // {path: "gmail_code",            element: <GmailCodeForm/>},
         {path: "generate_code",         element: <GenerateCodeForm/> },
-        {path: "faculty_member",          element: <StaffManagement/> },
+        {path: "generate_qrcode",       element: <GenerateQRCode/> },
+        {path: "faculty_member",        element: <StaffManagement/> },
         {path: "student_management",    element: <StudentManagement/> },
         {path: "section_management",    element: <SectionManagement/>},
         {path: "applicants",            element: <Applicants />},

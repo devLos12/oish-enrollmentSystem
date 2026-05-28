@@ -87,6 +87,9 @@ export const MyGlobalContext = ( { children }) => {
             }
         };
 
+
+
+        
         const fetchPendingStudentsCount = async () => {
             try {
                 const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getStudents`, {

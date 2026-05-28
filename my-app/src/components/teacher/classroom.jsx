@@ -288,14 +288,21 @@ const ClassRoom = () => {
                                             {data.teacher || 'N/A'}
                                         </p>
                                     </div>
-                                    <div className="d-flex gap-2 align-items-center">
+                                    <div className="d-flex gap-2 align-items-start">
                                         <p className="m-0 text-capitalize small fw-semibold">schedule:</p>
-                                        <p className="m-0 small fw-bold">
-                                            {data.scheduleStartTime && data.scheduleEndTime 
-                                                ? `${formatTime(data.scheduleStartTime)} - ${formatTime(data.scheduleEndTime)}`
-                                                : 'N/A'
-                                            }
-                                        </p>
+                                        <div className="d-flex flex-column">
+                                            {data.scheduleDays?.length > 0 && (
+                                                <p className="m-0 small fw-bold">
+                                                    {data.scheduleDays.map(d => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(', ')}
+                                                </p>
+                                            )}
+                                            <p className="m-0 small fw-bold">
+                                                {data.scheduleStartTime && data.scheduleEndTime 
+                                                    ? `${formatTime(data.scheduleStartTime)} - ${formatTime(data.scheduleEndTime)}`
+                                                    : 'N/A'
+                                                }
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="d-flex gap-2 align-items-center">
                                         <p className="m-0 text-capitalize small fw-semibold">semester:</p>

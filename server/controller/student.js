@@ -766,6 +766,7 @@ export const getStudents = async (req, res) => {
                         // ✅ Realtime — galing sa Subject.sections[], hindi snapshot
                         scheduleStartTime: matchedSection?.scheduleStartTime || s.scheduleStartTime || '',
                         scheduleEndTime:   matchedSection?.scheduleEndTime   || s.scheduleEndTime   || '',
+                        scheduleDays:      matchedSection?.scheduleDays      || s.scheduleDays      || [],
                         room:              matchedSection?.room              || s.room              || '',
                     };
                 }) || [];

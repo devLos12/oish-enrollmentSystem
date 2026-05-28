@@ -833,7 +833,7 @@ const Applicants = () => {
                                 ) : (
                                     <>
                                         <div className="table-responsive">
-                                            <table className="table table-hover mb-0">
+                                            <table className="table table-hover mb-0 mb-5">
                                                 <thead className="bg-light">
                                                     <tr>
                                                         <th className="text-capitalize fw-semibold">#</th>

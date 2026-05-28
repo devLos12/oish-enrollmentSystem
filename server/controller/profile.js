@@ -287,6 +287,7 @@ export const getStudentProfile = async (req, res) => {
                 semester:          populatedSubject?.semester     || s.semester    || null,
                 scheduleStartTime: matchedSection?.scheduleStartTime || s.scheduleStartTime || '',
                 scheduleEndTime:   matchedSection?.scheduleEndTime   || s.scheduleEndTime   || '',
+                scheduleDays:      matchedSection?.scheduleDays      || s.scheduleDays      || [],
                 room:              matchedSection?.room              || s.room              || '',
             };
         }) || [];

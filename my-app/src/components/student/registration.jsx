@@ -1,4 +1,4 @@
-import React, { useContext, useLayoutEffect } from "react";
+import React, { useContext, useEffect, useLayoutEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { globalContext } from "../../context/global";
 
@@ -6,6 +6,7 @@ const Registration = () => {
   const { profile, setTextHeader } = useContext(globalContext);
   const navigate = useNavigate();
   const location = useLocation();
+
 
 
 
@@ -39,6 +40,7 @@ const Registration = () => {
           semester:          s.subjectId?.semester || s.semester || null,
           scheduleStartTime: matchedSection?.scheduleStartTime || '',
           scheduleEndTime:   matchedSection?.scheduleEndTime   || '',
+          scheduleDays:      matchedSection?.scheduleDays      || [],
           room:              matchedSection?.room              || '',
         }
     

@@ -128,12 +128,21 @@ const ClassRoom = () => {
                                 </div>
 
                                 {/* 🔥 Schedule Display */}
-                                {data.scheduleDay && (
-                                    <div className="d-flex gap-2 align-items-center">
+                                {(data.scheduleDays?.length > 0 || data.scheduleStartTime) && (
+                                    <div className="d-flex gap-2 align-items-start">
                                         <p className="m-0 text-capitalize small fw-semibold">Schedule:</p>
-                                        <p className="m-0 text-capitalize small fw-bold">
-                                            {data.scheduleDay} - {formatTo12Hour(data.scheduleStartTime)} - {formatTo12Hour(data.scheduleEndTime)}
-                                        </p>
+                                        <div className="d-flex flex-column">
+                                            {data.scheduleDays?.length > 0 && (
+                                                <p className="m-0 small fw-bold">
+                                                    {data.scheduleDays.map(d => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(', ')}
+                                                </p>
+                                            )}
+                                            {data.scheduleStartTime && data.scheduleEndTime && (
+                                                <p className="m-0 small fw-bold">
+                                                    {formatTo12Hour(data.scheduleStartTime)} - {formatTo12Hour(data.scheduleEndTime)}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
