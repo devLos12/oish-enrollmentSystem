@@ -184,8 +184,7 @@ const Home = () => {
 
 
 
-
-
+    
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -203,7 +202,7 @@ const Home = () => {
 
     const handleEnrollmentNav = () => {
         if (activeSchoolYear?.enrollmentStatus === 'open') {    
-            navigate("/enrollment/step1", { state: { allowed: true } });
+            navigate("/enrollment/step1");
         } else {
             // ✅ Show modal instead of alert
             setShowClosedModal(true);
@@ -212,6 +211,11 @@ const Home = () => {
     
 
 
+
+
+
+
+    
     return(
         <>
             {/* ✅ Enrollment Closed Modal */}

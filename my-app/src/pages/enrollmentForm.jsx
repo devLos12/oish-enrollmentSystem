@@ -109,35 +109,57 @@ export const Step1 = () => {
 
 
     useEffect(() => {
-        if (!location?.state?.allowed && !location?.state?.isUpdate) {
-            navigate("/404_forbidden", { replace: true });
-        }
-
-            // ✅ Skip terms modal agad kung update flow
-        if (location?.state?.isUpdate) {
-            setHasAcceptedTerms(true);
-            return; // ✅ importante — stop na dito
-        }
-
-          // ✅ ADD: Check if terms were already accepted
-        const termsAccepted = sessionStorage.getItem("termsAccepted");
-        if (!termsAccepted && role !== "admin" && role !== "staff") {
-            setShowTermsModal(true); // Show modal on first visit
-        } else {
-            setHasAcceptedTerms(true);
-        }
+        const checkAccess = async () => {
+            // isUpdate flow — direct allow, skip enrollment check
+                        
+            if (location?.state?.isUpdate) {
+                setHasAcceptedTerms(true);
+                return;
+            }
 
 
-    }, [location, navigate]);
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getAllSchoolYears`, {
+                    method: "GET",
+                    credentials: "include"
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const activeYear = data.data.find(sy => sy.isCurrent);
+
+                    if (activeYear?.enrollmentStatus !== 'open') {
+                        navigate("/404_forbidden", { replace: true });
+                        return;
+                    }
+
+
+                } else {
+                    navigate("/404_forbidden", { replace: true });
+                    return;
+                }
+            } catch (err) {
+                navigate("/404_forbidden", { replace: true });
+                return;
+            }
+
+            // ✅ Terms modal logic — only runs if enrollment is open
+            const termsAccepted = sessionStorage.getItem("termsAccepted");
+            if (!termsAccepted) {
+                setShowTermsModal(true);
+            } else {
+                setHasAcceptedTerms(true);
+            }
+        };
+
+        checkAccess();
+    }, [location?.state?.isUpdate]);
 
 
 
-    if(!location?.state?.allowed && !location?.state?.isUpdate) return
 
-    
-    useEffect(( )=> {
-        console.log(emailVerify);
-    },[emailVerify]);
+
+
+
 
 
     useEffect(() => {
