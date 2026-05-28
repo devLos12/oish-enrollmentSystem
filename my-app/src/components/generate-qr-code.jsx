@@ -1,6 +1,10 @@
-import { useState, useEffect } from "react";
+import { useContext } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { globalContext } from "../context/global";
 
 const GenerateQRCode = () => {
+    const { setTextHeader} = useContext(globalContext);
     const [targetUrl, setTargetUrl] = useState("");
     const [qrList, setQrList] = useState([]);
     const [qrData, setQrData] = useState(null);
@@ -39,6 +43,17 @@ const GenerateQRCode = () => {
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
+
+    const location = useLocation();
+
+
+
+
+
+
+    useLayoutEffect(() => {
+        setTextHeader(location?.state?.title);
+    },[location?.state?.title]);
 
 
 

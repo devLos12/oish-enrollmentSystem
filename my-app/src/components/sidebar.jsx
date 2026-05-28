@@ -118,7 +118,7 @@ const SideBar = () => {
             },
 
             {   label: "Generate Qr Code",       icon: "fa-solid fa-qrcode",
-                link: "/admin/generate_qrcode", title: "Generate QR Code", 
+                link: "/admin/generate_qrcode",  title: "Generate QR Code", 
             },
             // {
             //     label: "Schedule",             icon: "fa-solid fa-clock",

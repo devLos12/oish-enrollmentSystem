@@ -46,7 +46,6 @@ export const generateQRCode = async (req, res) => {
 
 
 
-
 export const getQRCodes = async (req, res) => {
     try {
         const qrCodes = await QrCodeModel.find().sort({ createdAt: -1 });
