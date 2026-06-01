@@ -170,6 +170,28 @@ const SubjectDetails = () => {
         }
 
 
+        if (timeToMinutes(selectedSection.scheduleEndTime) <= timeToMinutes(selectedSection.scheduleStartTime)) {
+            showAlert("End time must be after start time!", 'error');
+            return;
+        }
+
+
+        if (hasScheduleConflict(
+            selectedSection.scheduleDays,
+            selectedSection.scheduleStartTime,
+            selectedSection.scheduleEndTime,
+            modalType === 'edit' ? selectedSection._id : null
+        )) {
+            showAlert(
+                "Schedule conflict detected!\nAnother section already has an overlapping time on one or more of the selected days.",
+                'error'
+            );
+            return;
+        }
+
+
+
+
 
         setIsSubmitting(true);
         try {
@@ -356,9 +378,19 @@ const SubjectDetails = () => {
                     if (!scheduleDays.length) rowErrors.push('Days is required (e.g. Monday,Wednesday,Friday)');
                     
                     
+                    if (scheduleStartTime && scheduleEndTime) {
+                        if (timeToMinutes(scheduleEndTime) <= timeToMinutes(scheduleStartTime)) {
+                            rowErrors.push('End time must be after start time');
+                        }
+                    }
+
+                    
                     if (rowErrors.length > 0) {
                         errors.push(`Row ${rowNum}: ${rowErrors.join(', ')}`);
                     }
+
+
+
 
                     return {
                         id: `row-${idx}-${Date.now()}`,
@@ -414,6 +446,15 @@ const SubjectDetails = () => {
             if (!updatedRow.scheduleStartTime) rowErrors.push('Start Time is required');
             if (!updatedRow.scheduleEndTime) rowErrors.push('End Time is required');
             if (!updatedRow.room?.trim()) rowErrors.push('Room is required');
+
+
+            if (updatedRow.scheduleStartTime && updatedRow.scheduleEndTime) {
+                if (timeToMinutes(updatedRow.scheduleEndTime) <= timeToMinutes(updatedRow.scheduleStartTime)) {
+                    rowErrors.push('End time must be after start time');
+                }
+            }
+
+
 
             updatedRow.hasError = rowErrors.length > 0;
             updatedRow.errorMessages = rowErrors;
@@ -479,6 +520,15 @@ const SubjectDetails = () => {
             if (!updatedRow.scheduleEndTime) rowErrors.push('End Time required');
             if (!updatedRow.room?.trim()) rowErrors.push('Room required');
 
+
+
+            if (updatedRow.scheduleStartTime && updatedRow.scheduleEndTime) {
+                if (timeToMinutes(updatedRow.scheduleEndTime) <= timeToMinutes(updatedRow.scheduleStartTime)) {
+                    rowErrors.push('End time must be after start time');
+                }
+            }
+
+
             updatedRow.hasError = rowErrors.length > 0;
             updatedRow.errorMessages = rowErrors;
             return updatedRow;
@@ -532,6 +582,25 @@ const SubjectDetails = () => {
             return;
         }
 
+
+
+
+        const conflictingRows = validRows.filter(row =>
+            hasScheduleConflict(row.scheduleDays, row.scheduleStartTime, row.scheduleEndTime)
+        );
+        if (conflictingRows.length > 0) {
+            showAlert(
+                `Schedule conflict detected in ${conflictingRows.length} row(s):\n` +
+                conflictingRows.map(r => `• ${r.sectionName}: ${formatTime12Hour(r.scheduleStartTime)} - ${formatTime12Hour(r.scheduleEndTime)}`).join('\n'),
+                'error'
+            );
+            return;
+        }
+
+
+
+
+
         try {
             setIsBulkSubmitting(true);
             const sections = validRows.map(row => ({
@@ -581,6 +650,38 @@ const SubjectDetails = () => {
         const hour12 = hour % 12 || 12;
         return `${hour12}:${minutes} ${ampm}`;
     };
+
+
+
+    // ✅ Convert "HH:MM" to total minutes for easy comparison
+    const timeToMinutes = (t) => {
+        if (!t) return null;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    };
+
+    // ✅ Check if two time ranges overlap (exclusive — same end/start is fine)
+    const timesOverlap = (start1, end1, start2, end2) => {
+        const s1 = timeToMinutes(start1), e1 = timeToMinutes(end1);
+        const s2 = timeToMinutes(start2), e2 = timeToMinutes(end2);
+        if (s1 === null || e1 === null || s2 === null || e2 === null) return false;
+
+        return s1 < e2 && e1 > s2; // overlap if ranges intersect
+    };
+
+    // ✅ Check if a new schedule conflicts with existing sections
+    // `days` = array of day strings, ignores sectionId (for edit mode)
+    const hasScheduleConflict = (days, startTime, endTime, excludeSectionId = null) => {
+        return (subjectData?.sections || []).some(section => {
+            if (excludeSectionId && section._id === excludeSectionId) return false; // skip self (edit mode)
+            if (!section.scheduleDays?.length) return false;
+            const sharedDays = days.filter(d => section.scheduleDays.includes(d));
+            if (!sharedDays.length) return false;
+            return timesOverlap(startTime, endTime, section.scheduleStartTime, section.scheduleEndTime);
+        });
+    };
+
+
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -1435,7 +1536,7 @@ const SubjectDetails = () => {
                                         type="button"
                                         className="btn btn-danger"
                                         onClick={handleBulkSubmit}
-                                        disabled={isBulkSubmitting || excelData.length === 0 || errorCount > 0}
+                                        disabled={isBulkSubmitting || allRows.length === 0 || errorCount > 0}
                                     >
                                         {isBulkSubmitting ? (
                                             <><span className="spinner-border spinner-border-sm me-2"></span>Importing...</>
