@@ -238,13 +238,55 @@ export const createSchoolYear = async (req, res) => {
   try {
     const { schoolYear, semester } = req.body;
 
+
+
+
     // check duplicate
     const existing = await SchoolYear.findOne({ schoolYear, semester });
     if (existing) {
       return res.status(409).json({ message: "Semester already exists." });
     }
 
+
+
+    // ✅ Sequential validation
+    const [startYear] = schoolYear.split('-').map(Number);
+
+    if (semester === 2) {
+      // Gusto mag-create ng 2nd sem — dapat may existing na 1st sem ng same school year
+      const firstSem = await SchoolYear.findOne({ schoolYear, semester: 1 });
+      if (!firstSem) {
+        return res.status(400).json({
+          message: `Cannot create 2nd Semester of ${schoolYear}.`,
+          detail: `Please create ${schoolYear} 1st Semester first before adding the 2nd Semester.`
+        });
+      }
+    }
+
+    if (semester === 1) {
+      const prevSchoolYear = `${startYear - 1}-${startYear}`;
+      
+      // Kunin yung pinaka-latest na semester sa DB
+      const latestSem = await SchoolYear.findOne().sort({ schoolYear: -1, semester: -1 });
+
+      // Kung may existing na, dapat yung latest ay yung prevSchoolYear 2nd sem
+      if (latestSem) {
+        const prevSecondSem = await SchoolYear.findOne({ schoolYear: prevSchoolYear, semester: 2 });
+        if (!prevSecondSem) {
+          return res.status(400).json({
+            message: `Cannot create 1st Semester of ${schoolYear}.`,
+            detail: `Please create ${prevSchoolYear} 2nd Semester first before adding ${schoolYear} 1st Semester.`
+          });
+        }
+      }
+    }
+
+
     const label = `${schoolYear} ${semester === 1 ? "1st" : "2nd"} sem`;
+
+
+
+
 
     const newSchoolYear = await SchoolYear.create({
       label,

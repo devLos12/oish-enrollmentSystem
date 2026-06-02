@@ -41,6 +41,13 @@ const Semester = () => {
     const [pendingDeleteLabel, setPendingDeleteLabel] = useState("");
 
 
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorModalData, setErrorModalData] = useState({ message: '', detail: '' });
+
+
+
+
+
 
 
     useLayoutEffect(() => {
@@ -191,6 +198,8 @@ const Semester = () => {
         return pages;
     };
 
+
+
     const formatDateTime = (dateStr) => {
         const date = new Date(dateStr);
         return {
@@ -209,13 +218,26 @@ const Semester = () => {
         };
     };
 
+
+
+
+    // Updated handleCreate
     const handleCreate = async () => {
         try {
             if (!form.startYear || !form.endYear) return;
+            
+                    
             if (parseInt(form.endYear) !== parseInt(form.startYear) + 1) {
-                alert("End year must be start year + 1");
+                setShowModal(false);
+                setErrorModalData({
+                    message: "Invalid school year format.",
+                    detail: `End year must be exactly 1 year after start year. (e.g. 2026 - 2027)`
+                });
+                setShowErrorModal(true);
                 return;
             }
+
+
             setLoading(true);
             const schoolYear = `${form.startYear}-${form.endYear}`;
             const res = await fetch(`${BASE_URL}/api/create-school-year`, {
@@ -224,7 +246,18 @@ const Semester = () => {
                 body: JSON.stringify({ schoolYear, semester: parseInt(form.semester) }),
             });
             const data = await res.json();
-            if (!res.ok) { alert(data.message || "Error creating semester"); return; }
+            
+            if (!res.ok) {
+                // ✅ Close create modal, open error modal
+                setShowModal(false);
+                setErrorModalData({
+                    message: data.message || "Failed to create semester.",
+                    detail: data.detail || ""
+                });
+                setShowErrorModal(true);
+                return;
+            }
+            
             setShowModal(false);
             setForm({ startYear: "", endYear: "", semester: 1 });
             fetchSemesters();
@@ -235,6 +268,12 @@ const Semester = () => {
             setLoading(false);
         }
     };
+    
+
+
+
+
+
 
     const handleActivate = async () => {
         try {
@@ -730,6 +769,48 @@ const Semester = () => {
                     </div>
                 </div>
             </div>
+            )}
+
+
+            {showErrorModal && (
+                <div className="modal show d-block" style={{ backgroundColor: "rgba(0,0,0,0.45)", zIndex: 9999 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 rounded-4">
+                            <div className="modal-header border-0 pb-0">
+                                <div className="d-flex align-items-center gap-2">
+                                    <div className="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center"
+                                        style={{ width: 40, height: 40 }}>
+                                        <i className="fa fa-triangle-exclamation text-danger" />
+                                    </div>
+                                    <div>
+                                        <h5 className="modal-title mb-0 text-danger">Cannot Create Semester</h5>
+                                    </div>
+                                </div>
+                                <button className="btn-close" onClick={() => setShowErrorModal(false)} />
+                            </div>
+                            <div className="modal-body">
+                                <p className="fw-semibold mb-1">{errorModalData.message}</p>
+                                {errorModalData.detail && (
+                                    <p className="text-muted mb-0 small">
+                                        <i className="fa fa-info-circle me-1" />
+                                        {errorModalData.detail}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="modal-footer border-0 pt-0">
+                                <button
+                                    className="btn btn-danger px-4"
+                                    onClick={() => {
+                                        setShowErrorModal(false);
+                                        setShowModal(true); // ✅ Bumalik sa create modal
+                                    }}
+                                >
+                                    Got it
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
 

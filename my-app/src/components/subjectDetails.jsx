@@ -1366,7 +1366,7 @@ const SubjectDetails = () => {
                                                                             className="btn btn-sm btn-outline-danger"
                                                                             onClick={() => removeExcelRow(idx)}
                                                                             title="Remove row"
-                                                                            disabled={isBulkSubmitting || (excelData.length === 1 && manualRows.length === 0)}
+                                                                            disabled={isBulkSubmitting}
                                                                         >
                                                                             <i className="fa fa-trash"></i>
                                                                         </button>
