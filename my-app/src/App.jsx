@@ -75,7 +75,7 @@ const App = () => {
         {/* <Route path="/*"  element={ isAdminAuth || isStaffAuth || isStudentAuth
           ? <Navigate to={getRedirectPath()}/> : <Layout/>}/> */}
 
-        <Route path="/*" element={<Layout/>}/>
+        <Route path="/*" element={  true ? <UrlForbidden/> : <Layout/>}/>
 
         <Route path='/admin/*' element={
           <ProtectedRoute isAuthenticated={isAdminAuth} >
