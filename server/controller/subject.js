@@ -782,11 +782,14 @@ export const createSubject = async (req, res) => {
         const normalizedCode = subjectCode.replace(/\s+/g, '').toUpperCase();
         const normalizedName = subjectName.replace(/\s{2,}/g, ' ').trim();
 
+
+
         // CHECK 1: Code + Strand must be unique
         const codeExists = await Subject.findOne({ 
             subjectCode: normalizedCode,
             strand: strand,
             gradeLevel: parseInt(gradeLevel),
+            schoolYear: activeSchoolYear._id,
             semester: activeSchoolYear.semester
         });
         
@@ -801,6 +804,7 @@ export const createSubject = async (req, res) => {
             subjectName: normalizedName,
             strand: strand,
             gradeLevel: parseInt(gradeLevel),
+            schoolYear: activeSchoolYear._id,
             semester: activeSchoolYear.semester
         });
         

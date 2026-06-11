@@ -773,7 +773,7 @@ const StudentManagement = () => {
 
                                                             <td className="align-middle">{student.sex}</td>
                                                             <td className="align-middle">
-                                                                <span className={`badge ${getStatusBadge(student)}`}>{getDerivedStatus(student)}</span>
+                                                                <span className={`badge text-capitalize ${getStatusBadge(student)}`}>{getDerivedStatus(student)}</span>
                                                             </td>
                                                             <td className="align-middle text-center">
                                                                 <div className="position-relative action-dropdown">
