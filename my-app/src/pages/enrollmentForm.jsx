@@ -4603,38 +4603,23 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
                             </div>
 
                             {/* 1. Enrollment Agreement */}
-                            <section className="mb-4">
+                            <section className="mb-4 ">
                                 <h6 className="fw-bold text-danger">
                                     <i className="fa-solid fa-check-circle me-2"></i>
                                     1. Enrollment Agreement
                                 </h6>
-                                <ul className="small">
-                                    <li>I certify that all information provided in this enrollment form is true and accurate.</li>
-                                     {/* Added */}
-                                    <li>I confirm that my Learner Reference Number (LRN) is valid and registered under my name.</li>
-                                    <li>I confirm that the Gmail address I provided is active and will be used to receive school notifications and announcements.</li>
-                                    <li>I understand that any false information may result in the cancellation of my enrollment.</li>
-                                    <li>I agree to comply with all school policies and regulations.</li>
-                                    <li>I acknowledge that the school has the right to modify policies as necessary.</li>
+                                <div className="ms-4">
 
-                                   
-                                </ul>
+                                <p className="small mb-1">I certify that all information provided in this enrollment form is true and accurate.</p>
+                                <p className="small mb-1">I confirm that my Learner Reference Number (LRN) is valid and registered under my name.</p>
+                                <p className="small mb-1">I confirm that the Gmail address I provided is active and will be used to receive school notifications and announcements.</p>
+                                <p className="small mb-1">I understand that any false information may result in the cancellation of my enrollment.</p>
+                                <p className="small mb-1">I agree to comply with all school policies and regulations.</p>
+                                <p className="small mb-0">I acknowledge that the school has the right to modify policies as necessary.</p>
+                                </div>
+
+                            
                             </section>
-
-                            {/* 2. Tuition and Fees Policy */}
-                            {/* <section className="mb-4">
-                                <h6 className="fw-bold text-danger">
-                                    <i className="fa-solid fa-money-bill-wave me-2"></i>
-                                    2. Tuition and Fees Policy
-                                </h6>
-                                <ul className="small">
-                                    <li><strong>Payment Options:</strong> Tuition may be paid in full or through an installment plan.</li>
-                                    <li><strong>Reservation Fee:</strong> The reservation fee is <strong>non-refundable</strong> once paid.</li>
-                                    <li><strong>Late Payment:</strong> Late payments will incur penalties according to the schedule provided by the school.</li>
-                                    <li><strong>Clearance:</strong> Students with outstanding balances will not receive report cards, diplomas, or be allowed to graduate until all fees are paid in full.</li>
-                                    <li>The school reserves the right to deny examination privileges to students with unpaid balances.</li>
-                                </ul>
-                            </section> */}
 
                             {/* 3. School Rules and Discipline */}
                             <section className="mb-4">
@@ -4642,140 +4627,62 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
                                     <i className="fa-solid fa-school me-2"></i>
                                     2. School Rules and Discipline
                                 </h6>
-                                <ul className="small">
-                                    <li><strong>Student Handbook:</strong> All students must comply with the rules stated in the Student Handbook.</li>
-                                    <li><strong>Dress Code:</strong> Proper school uniform must be worn and maintained according to school policy.</li>
-                                    <li><strong>Behavior Policy:</strong> Good conduct and respect toward fellow students, teachers, and school staff are expected.</li>
-                                    <li><strong>Prohibited Items:</strong> Bringing prohibited items such as weapons, drugs, or any dangerous materials is strictly forbidden.</li>
-                                    <li><strong>Sanctions:</strong> Violation of school policies will result in appropriate disciplinary action ranging from warnings to suspension or dismissal.</li>
-                                </ul>
-                            </section>
+                                <div className="ms-4">
 
-                            {/* 4. Attendance Policy */}
-                            <section className="mb-4">
-                                <h6 className="fw-bold text-danger">
-                                    <i className="fa-solid fa-calendar-check me-2"></i>
-                                    3. Attendance Policy
-                                </h6>
-                                <ul className="small">
-                                    <li><strong>Required Attendance:</strong> A minimum of 75% attendance is required to pass a subject.</li>
-                                    <li><strong>Excused Absences:</strong> Absences due to illness (with medical certificate), family emergencies, or other valid reasons may be excused.</li>
-                                    <li><strong>Unexcused Absences:</strong> Absences without valid reason will negatively affect grades and may result in failure.</li>
-                                    <li><strong>Tardiness:</strong> Repeated tardiness is equivalent to an absence. Three (3) times tardy equals one (1) absence.</li>
-                                    <li>An excuse letter must be presented to the guidance counselor or class adviser within 3 days.</li>
-                                </ul>
-                            </section>
+                                <p className="small mb-1"><strong>Student Handbook:</strong> All students must comply with the rules stated in the Student Handbook.</p>
+                                <p className="small mb-1"><strong>Dress Code:</strong> Proper school uniform must be worn and maintained according to school policy.</p>
+                                <p className="small mb-1"><strong>Behavior Policy:</strong> Good conduct and respect toward fellow students, teachers, and school staff are expected.</p>
+                                <p className="small mb-1"><strong>Prohibited Items:</strong> Bringing prohibited items such as weapons, drugs, or any dangerous materials is strictly forbidden.</p>
+                                <p className="small mb-0"><strong>Sanctions:</strong> Violation of school policies will result in appropriate disciplinary action ranging from warnings to suspension or dismissal.</p>
+                                </div>
 
-                            {/* 5. Academic Policy */}
-                            <section className="mb-4">
-                                <h6 className="fw-bold text-danger">
-                                    <i className="fa-solid fa-graduation-cap me-2"></i>
-                                    4. Academic Policy
-                                </h6>
-                                <ul className="small">
-                                    <li><strong>Grading System:</strong> Grading follows the Department of Education (DepEd) grading system for Senior High School.</li>
-                                    <li><strong>Passing Grade:</strong> The minimum passing grade is 75. Grades below 75 are considered failing.</li>
-                                    <li><strong>Retention Rules:</strong> Students who fail three (3) or more subjects may not be allowed to advance to the next grade level.</li>
-                                    <li><strong>Academic Honesty:</strong> Cheating, plagiarism, and other forms of academic dishonesty are strictly prohibited.</li>
-                                    <li><strong>Academic Sanctions:</strong> Students caught cheating will receive a failing grade for the subject and may face disciplinary action.</li>
-                                </ul>
+                            
                             </section>
 
                             {/* 6. Data Privacy Consent */}
                             <section className="mb-4">
                                 <h6 className="fw-bold text-danger">
                                     <i className="fa-solid fa-shield-halved me-2"></i>
-                                    5. Data Privacy Consent
+                                    3. Data Privacy Consent
                                 </h6>
+                                <div className="ms-4">
+
                                 <p className="small mb-2">
                                     In accordance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>:
                                 </p>
-                                <ul className="small">
-                                    <li><strong>Data Collection:</strong> The school collects personal information such as name, address, contact details, and academic records.</li>
-                                    <li><strong>Purpose:</strong> This information will be used solely for enrollment, student records, academic purposes, and official school communications.</li>
-                                    <li><strong>Protection:</strong> All personal data is securely stored and protected against unauthorized access.</li>
-                                    <li><strong>Sharing:</strong> Your information will not be shared with third parties unless required by law or with your consent.</li>
-                                    <li><strong>Rights:</strong> You have the right to access, correct, or request deletion of your personal data.</li>
-                                </ul>
+                                <p className="small mb-1"><strong>Data Collection:</strong> The school collects personal information such as name, address, contact details, and academic records.</p>
+                                <p className="small mb-1"><strong>Purpose:</strong> This information will be used solely for enrollment, student records, academic purposes, and official school communications.</p>
+                                <p className="small mb-1"><strong>Protection:</strong> All personal data is securely stored and protected against unauthorized access.</p>
+                                <p className="small mb-1"><strong>Sharing:</strong> Your information will not be shared with third parties unless required by law or with your consent.</p>
+                                <p className="small mb-0"><strong>Rights:</strong> You have the right to access, correct, or request deletion of your personal data.</p>
+                                </div>
                             </section>
 
-                            {/* 7. Withdrawal / Cancellation Policy */}
-                            {/* <section className="mb-4">
-                                <h6 className="fw-bold text-danger">
-                                    <i className="fa-solid fa-right-from-bracket me-2"></i>
-                                    7. Withdrawal / Cancellation Policy
-                                </h6>
-                                <ul className="small">
-                                    <li><strong>Deadline:</strong> Withdrawal must be processed before the prescribed period (usually before midterms).</li>
-                                    <li><strong>Refund Policy:</strong> 
-                                        <ul>
-                                            <li>Withdrawal before classes start - 100% tuition refund (minus reservation fee)</li>
-                                            <li>Withdrawal within 1st week - 75% refund</li>
-                                            <li>Withdrawal within 2nd week - 50% refund</li>
-                                            <li>Withdrawal after 2nd week - No refund</li>
-                                        </ul>
-                                    </li>
-                                    <li><strong>Clearance:</strong> The clearance process must be completed and all school property returned.</li>
-                                    <li><strong>Transfer Credentials:</strong> Transfer credentials will only be released if the student is cleared of all obligations.</li>
-                                </ul>
-                            </section> */}
 
-                            {/* 8. Parent / Guardian Consent */}
-                            <section className="mb-4">
-                                <h6 className="fw-bold text-danger">
-                                    <i className="fa-solid fa-users me-2"></i>
-                                    6. Parent / Guardian Consent
-                                </h6>
-                                <ul className="small">
-                                    <li>As a parent or legal guardian, I agree to comply with all school policies.</li>
-                                    <li>I acknowledge my responsibility to monitor my child's academic progress and behavior.</li>
-                                    <li>I agree to communicate with the school regarding any issues or concerns about my child.</li>
-                                    <li>I understand that the school has the right to impose disciplinary measures when necessary.</li>
-                                    <li>I agree to pay all fees and tuition in a timely manner.</li>
-                                </ul>
-                            </section>
 
                             {/* 9. Liability / Safety Clause */}
                             <section className="mb-4">
                                 <h6 className="fw-bold text-danger">
                                     <i className="fa-solid fa-triangle-exclamation me-2"></i>
-                                    7. Liability and Safety Clause
+                                    4. Liability and Safety Clause
                                 </h6>
-                                <ul className="small">
-                                    <li><strong>Lost Items:</strong> The school is not liable for lost or damaged personal belongings of students.</li>
-                                    <li><strong>Accidents/Injuries:</strong> While the school strives to maintain a safe environment, we are not liable for accidents unless directly caused by school negligence.</li>
-                                    <li><strong>Health and Safety:</strong> 
-                                        <ul>
-                                            <li>Students must comply with school health protocols</li>
-                                            <li>Report immediately if experiencing symptoms of illness</li>
-                                            <li>Students with contagious diseases are not allowed on campus</li>
-                                        </ul>
-                                    </li>
-                                    <li><strong>Emergency Contact:</strong> Emergency contact information must be kept current in school records.</li>
-                                    <li><strong>Valuables:</strong> Avoid bringing valuable items to school. If necessary, they are brought at the student's own risk.</li>
-                                </ul>
-                            </section>
+                                <div className="ms-4">
 
-                            {/* Final Note */}
-                            {/* <div className="alert alert-warning mt-4" style={{ borderRadius: 0 }}>
-                                <p className="small mb-0">
-                                    <strong><i className="fa-solid fa-info-circle me-2"></i>Notice:</strong> 
-                                    These policies may be amended by the school at any time. Changes will be communicated through official channels. 
-                                    Continued enrollment constitutes acceptance of any new policies.
-                                </p>
-                            </div> */}
-
-                            {/* Scroll Reminder */}
-                            {/* {!hasScrolledToBottom && (
-                                <div className="alert alert-danger mt-3" style={{ borderRadius: 0 }}>
-                                    <small>
-                                        <i className="fa-solid fa-arrow-down me-2"></i>
-                                        Please scroll down to read all terms and conditions.
-                                    </small>
+                                <p className="small mb-1"><strong>Lost Items:</strong> The school is not liable for lost or damaged personal belongings of students.</p>
+                                <p className="small mb-1"><strong>Accidents/Injuries:</strong> While the school strives to maintain a safe environment, we are not liable for accidents unless directly caused by school negligence.</p>
+                                <p className="small mb-1"><strong>Health and Safety:</strong></p>
+                                <p className="small mb-1 ms-3">Students must comply with school health protocols</p>
+                                <p className="small mb-1 ms-3">Report immediately if experiencing symptoms of illness</p>
+                                <p className="small mb-1 ms-3">Students with contagious diseases are not allowed on campus</p>
+                                <p className="small mb-1"><strong>Emergency Contact:</strong> Emergency contact information must be kept current in school records.</p>
+                                <p className="small mb-0"><strong>Valuables:</strong> Avoid bringing valuable items to school. If necessary, they are brought at the student's own risk.</p>
                                 </div>
-                            )} */}
+                            
+                            </section>
                         </div>
                         
+                        
+
                         {/* Footer */}
                         <div className="modal-footer border-top" style={{ borderRadius: 0 }}>
                             <div className="form-check mb-2 w-100">
@@ -4812,6 +4719,8 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
                                 </button>
                             </div>
                         </div>
+
+
                     </div>
                 </div>
             </div>

@@ -208,7 +208,7 @@ const RegistrationViewForm = () => {
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Student Name: </p>
                                         <p className="m-0 fw-bold text-capitalize">
-                                            {student?.lastName || ""}, {student?.firstName || ""} {student?.middleName || ""} {student?.extensionName && student.extensionName !== "N/A" && student.extensionName !== "n/a" ? student.extensionName : ""}
+                                            {student?.lastName || ""}, {student?.firstName || ""} {student?.middleName !== 'N/A' || student?.middleName === 'n/a' ? student?.middleName?.charAt(0) : ""}. {student?.extensionName && student.extensionName !== "N/A" && student.extensionName !== "n/a" ? student.extensionName : ""}
                                         </p>
                                     </div>
                                     <div className="d-flex gap-2">
@@ -302,7 +302,7 @@ const RegistrationViewForm = () => {
                                 <div className="col-md-6 text-center">
                                     <div className="">
                                         <strong className="text-capitalize">
-                                            {student?.lastName || ''}, {student?.firstName || ''} {student?.middleName} {student?.extensionName === "N/A" || student?.extensionName === "n/a" ? "" : student?.extensionName}
+                                            {student?.lastName || ''}, {student?.firstName || ''} {student?.middleName === 'N/A' || student?.middleName === 'n/a' ? '' : student?.middleName } {student?.extensionName === "N/A" || student?.extensionName === "n/a" ? "" : student?.extensionName}
                                         </strong>
                                     </div>
                                     <div className="border-top border-dark d-inline-block px-5" style={{ width: "250px" }}></div>

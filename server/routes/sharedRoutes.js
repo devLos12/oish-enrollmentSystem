@@ -124,7 +124,6 @@ SharedRouter.get('/get-school-years', verifyAuth, getSchoolYears);
 
 
 
-
 // Reusing activateSchoolYear for deletion since it already checks if the school year is active or not.
 SharedRouter.get('/getAllSchoolYears', getAllSchoolYears);  // ✅ Moved from homeRouter
 SharedRouter.patch('/update-school-year/:id', verifyAuth, activateSchoolYear);

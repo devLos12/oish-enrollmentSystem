@@ -72,8 +72,8 @@ const Dashboard = () => {
                             )}
                         </div>
                         <div className="col">
-                            <h4 className="fw-bold text-capitalize mb-2">
-                                {staffData?.lastName}, {staffData?.firstName} {staffData?.suffix}
+                            <h4 className="fw-bold text-capitalize my-2">
+                                {staffData?.lastName}, {staffData?.firstName} {staffData?.middleName?.charAt(0)}. {staffData?.suffix}
                             </h4>
                             
                             <div className="mb-2">

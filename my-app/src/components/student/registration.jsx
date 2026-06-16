@@ -68,6 +68,8 @@ const Registration = () => {
       });
   };
 
+  
+
 
   const getSemesterLabel = (semester) => {
     return semester === 1 ? "FIRST" : semester === 2 ? "SECOND" : "SUMMER";

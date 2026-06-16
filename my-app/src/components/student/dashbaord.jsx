@@ -155,8 +155,8 @@ const Dashboard = () => {
                             )}
                         </div>
                         <div className="col">
-                            <h4 className="fw-bold text-capitalize mb-2">
-                                {profile?.lastName}, {profile?.firstName} {profile?.middleName} {(profile?.extensionName === "N/A" || profile?.extensionName === "n/a") ? "" : profile?.extensionName}
+                            <h4 className="fw-bold text-capitalize my-2">
+                                {profile?.lastName}, {profile?.firstName} {profile?.middleName === 'N/A' || profile?.middleName === 'n/a' ? "" : profile?.middleName?.charAt(0)} {(profile?.extensionName === "N/A" || profile?.extensionName === "n/a") ? "" : profile?.extensionName}
                             </h4>
                             
                             <div className="mb-2">

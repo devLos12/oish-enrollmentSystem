@@ -9,8 +9,6 @@ import { createLogs } from "./logs.js";
 
 
 
-
-
 const timeToMinutes = (t) => {
     if (!t) return null;
     const [h, m] = t.split(':').map(Number);
@@ -69,6 +67,7 @@ export const updateScheduleDays = async(req, res) => {
         });
     }
 }
+
 
 
 
@@ -148,12 +147,14 @@ export const updateSubjectSection = async(req, res) => {
             gradeLevel: gradeLevel
         });
         
+
         if (!subject) {
             return res.status(404).json({
                 success: false,
                 message: "Subject not found"
             });
         }
+
 
         // Find the section to update
         const sectionIndex = subject.sections.findIndex(
@@ -223,6 +224,40 @@ export const updateSubjectSection = async(req, res) => {
         }
 
 
+
+
+        const allSubjectsForRoom = await Subject.find({
+            schoolYear: subject.schoolYear,
+            _id: { $ne: subject._id }
+        });
+
+        for (const otherSubject of allSubjectsForRoom) {
+            for (const sec of otherSubject.sections) {
+                if (!sec.scheduleDays?.length || !sec.room) continue;
+                if (sec.room.toUpperCase() !== room.toUpperCase()) continue;
+
+                const sharedDays = scheduleDays.filter(d =>
+                    sec.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                );
+                if (!sharedDays.length) continue;
+
+                const newStart = timeToMinutes(scheduleStartTime);
+                const newEnd   = timeToMinutes(scheduleEndTime);
+                const exStart  = timeToMinutes(sec.scheduleStartTime);
+                const exEnd    = timeToMinutes(sec.scheduleEndTime);
+
+                if (newStart < exEnd && newEnd > exStart) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Room "${room}" is already occupied by ${otherSubject.teacher} — "${otherSubject.subjectName} - ${sec.sectionName}" with that same schedule time and room.`
+                    });
+                }
+            }
+        }
+
+
+
+
         // Update section
         subject.sections[sectionIndex] = {
             ...subject.sections[sectionIndex].toObject(),
@@ -232,6 +267,8 @@ export const updateSubjectSection = async(req, res) => {
             scheduleEndTime,
             room
         };
+
+
 
         await subject.save();
 
@@ -258,6 +295,7 @@ export const updateSubjectSection = async(req, res) => {
         });
     }
 }
+
 
 
 
@@ -305,11 +343,14 @@ export const addSubjectSection = async(req, res) => {
 
 
 
+
         const teacherSubjects = await Subject.find({
             teacherId: subject.teacherId,
             schoolYear: subject.schoolYear,
             _id: { $ne: subject._id } // exclude current subject
         });
+
+
 
         for (const otherSubject of teacherSubjects) {
             for (const sec of otherSubject.sections) {
@@ -335,6 +376,41 @@ export const addSubjectSection = async(req, res) => {
                 }
             }
         }
+
+
+
+
+        const allSubjectsSameSchoolYear = await Subject.find({
+            schoolYear: subject.schoolYear,
+            _id: { $ne: subject._id }
+        });
+
+        for (const otherSubject of allSubjectsSameSchoolYear) {
+            for (const sec of otherSubject.sections) {
+                if (!sec.scheduleDays?.length || !sec.room) continue;
+                if (sec.room.toUpperCase() !== room.toUpperCase()) continue;
+
+                const sharedDays = scheduleDays.filter(d =>
+                    sec.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                );
+                if (!sharedDays.length) continue;
+
+                const newStart = timeToMinutes(scheduleStartTime);
+                const newEnd   = timeToMinutes(scheduleEndTime);
+                const exStart  = timeToMinutes(sec.scheduleStartTime);
+                const exEnd    = timeToMinutes(sec.scheduleEndTime);
+
+                if (newStart < exEnd && newEnd > exStart) {
+                        
+                    return res.status(400).json({
+                        success: false,
+                        message: `Room "${room}" is already occupied by ${otherSubject.teacher} — "${otherSubject.subjectName} - ${sec.sectionName}" with that same schedule time and room.`
+                    });
+                }
+            }
+        }
+
+
 
 
         // ✅ FIX 2 — findOne (not find) + scoped sa activeSchoolYear
@@ -430,7 +506,6 @@ export const addSubjectSection = async(req, res) => {
         });
     }
 }
-
 
 
 
@@ -532,11 +607,72 @@ export const bulkAddSubjectSections = async (req, res) => {
 
 
 
+
+
+
+
+            const allSubjectsForRoom = await Subject.find({
+                schoolYear: subject.schoolYear,
+                _id: { $ne: subject._id }
+            });
+
+            let roomConflict = false;
+            for (const otherSubject of allSubjectsForRoom) {
+                for (const sec of otherSubject.sections) {
+                    if (!sec.scheduleDays?.length || !sec.room) continue;
+                    if (sec.room.toUpperCase() !== room.toUpperCase()) continue;
+
+                    const sharedDays = scheduleDays.filter(d =>
+                        sec.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                    );
+                    if (!sharedDays.length) continue;
+
+                    const newStart = timeToMinutes(scheduleStartTime);
+                    const newEnd   = timeToMinutes(scheduleEndTime);
+                    const exStart  = timeToMinutes(sec.scheduleStartTime);
+                    const exEnd    = timeToMinutes(sec.scheduleEndTime);
+
+                    if (newStart < exEnd && newEnd > exStart) {
+                        errors.push(`Row ${rowNum}: Room "${room}" is already occupied by ${otherSubject.teacher} — "${otherSubject.subjectName} - ${sec.sectionName}" with that same schedule time and room.`);
+                        roomConflict = true;
+                        break;
+                    }
+                }
+                if (roomConflict) break;
+
+            }
+
+            if (roomConflict) continue;
+
+            // ── Room conflict vs batch ───────────────────────────────────────────
+            const batchRoomConflict = toAdd.some(added => {
+                if (added.room.toUpperCase() !== room.toUpperCase()) return false;
+                const sharedDays = scheduleDays.filter(d =>
+                    added.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                );
+                if (!sharedDays.length) return false;
+                const newStart = timeToMinutes(scheduleStartTime);
+                const newEnd   = timeToMinutes(scheduleEndTime);
+                const exStart  = timeToMinutes(added.scheduleStartTime);
+                const exEnd    = timeToMinutes(added.scheduleEndTime);
+                return newStart < exEnd && newEnd > exStart;
+            });
+            if (batchRoomConflict) {
+                errors.push(`Row ${rowNum}: Room "${room}" conflicts with another row in this import (same room, overlapping time).`);
+                continue;
+            }
+
+
+
+
+
             const studentSec = await Section.findOne({
                 name: sectionName.trim(),
                 gradeLevel: subject.gradeLevel,
                 schoolYear: activeSchoolYear._id
             });
+
+
 
             toAdd.push({
                 sectionId: studentSec?._id ?? null,
@@ -623,6 +759,7 @@ export const bulkAddSubjectSections = async (req, res) => {
 
 
 
+
 export const getSubjectDetails = async(req, res) => {
     try {
         const { id } = req.params;
@@ -676,6 +813,7 @@ export const getSubjectDetails = async(req, res) => {
         });
     }
 }
+
 
 
 
@@ -772,10 +910,6 @@ export const getSubjectSection = async (req, res) => {
 
 
 
-
-
-
-
 export const getAllSubjects = async (req, res) => {
     try {
         const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
@@ -812,6 +946,11 @@ export const getAllTeachers = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+
+
+
+
 
 
 
@@ -1470,3 +1609,6 @@ export const deleteSubject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+

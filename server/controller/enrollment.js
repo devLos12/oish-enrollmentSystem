@@ -497,7 +497,6 @@ export const uploadDocuments = multer({
 });
 
 
-
 // Upload fields configuration
 export const enrollmentUpload = uploadDocuments.fields([
   { name: 'psaBirthCertFile', maxCount: 1 },
@@ -505,6 +504,7 @@ export const enrollmentUpload = uploadDocuments.fields([
   { name: 'goodMoralFile', maxCount: 1 },
   { name: 'idPictureFile', maxCount: 1 },
 ]);
+
 
 
 const normalizeName = (value) => {
@@ -581,13 +581,13 @@ export const EnrollmentRegistration = async (req, res) => {
         { field: 'placeOfBirth', message: 'Place of Birth is required' },
         { field: 'motherTongue', message: 'Mother Tongue is required' },
       ];
-
+      
 
       for (const { field, message } of learnerRequiredFields) {
         if (!learnerInfo[field] || learnerInfo[field].trim() === '') {
             return res.status(400).json({ message });
         }
-      } 
+      }   
 
       // ✅ VALIDATION: Sex is required
       if (!learnerInfo.sex || learnerInfo.sex.trim() === '') {
@@ -742,7 +742,7 @@ export const EnrollmentRegistration = async (req, res) => {
       
 
 
-      
+
 
 
 
@@ -2329,7 +2329,6 @@ export const Update_Applicant = async (req, res) => {
 
 
 
-
 //resend email approve applicants
 const sendStudentAccount = async (email, studentNo, password, studentName) => {
     
@@ -2553,8 +2552,6 @@ const sendStudentAccount = async (email, studentNo, password, studentName) => {
 
 
 
-
-
 export const ApplicantApproval = async (req, res) => {
   try {
     const { enrollmentId } = req.body;
@@ -2681,8 +2678,6 @@ export const ApplicantApproval = async (req, res) => {
 
 
 
-
-
 export const revertToPending = async (req, res) => {
   try {
     const { id } = req.params;
@@ -2735,7 +2730,6 @@ export const revertToPending = async (req, res) => {
 
 
 
-
 export const getEnrollmentByToken = async (req, res) => {
   try {
     const { token } = req.params;
@@ -2770,7 +2764,6 @@ export const getEnrollmentByToken = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
 
 
 
