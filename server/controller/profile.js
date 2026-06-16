@@ -212,8 +212,6 @@ export const updateStudentProfile = async (req, res) => {
         res.status(500).json({ message: error.message});
     }
 };
-
-
  
 
 
@@ -222,7 +220,7 @@ export const updateStudentProfile = async (req, res) => {
 export const UpdateProfile = async (req, res) => {
     try {
         const { id } = req.account;
-        const { firstName, middleName, lastName, suffix, email } = req.body;
+        const { firstName, middleName, lastName, suffix, email, contact } = req.body;
 
         // Find the staff
         const staff = await Staff.findById(id);
@@ -231,12 +229,27 @@ export const UpdateProfile = async (req, res) => {
         }
 
 
-
         const validSuffixes = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III', 'JR', 'SR.'];
         if (suffix && !validSuffixes.includes(suffix.trim())) {
             return res.status(400).json({ message: "Invalid suffix. Accepted values: Jr., Sr., II, III" });
         }
         
+
+        if (contact) {
+            const rawContact = contact.replace(/\s/g, '');
+            const existingStudentContact = await Student.findOne({
+                contactNumber: { $regex: new RegExp(rawContact.split('').join('\\s*'), '') }
+            });
+            const existingStaffContact = await Staff.findOne({
+                contact: { $regex: new RegExp(rawContact.split('').join('\\s*'), '') },
+                _id: { $ne: id }
+            });
+            if (existingStudentContact || existingStaffContact) {
+                return res.status(409).json({ message: "Contact number already in use." });
+            }
+        }
+
+
 
         // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Staff (exclude current)
         const incomingFirstName = firstName?.trim() || staff.firstName;
@@ -297,6 +310,7 @@ export const UpdateProfile = async (req, res) => {
         if (lastName) staff.lastName = lastName.trim().toUpperCase();
         if (suffix !== undefined) staff.suffix = suffix.trim().toUpperCase();
         if (email) staff.email = email;
+        if (contact) staff.contact = contact; 
 
 
         // Handle profile image upload
@@ -475,7 +489,6 @@ export const getStudentProfile = async (req, res) => {
 
 
 
-
 export const getProfile = async(req, res) => {
     try {
         const { id } = req.account;
@@ -484,7 +497,6 @@ export const getProfile = async(req, res) => {
         if(!profile){
             return res.status(409).json({ message: "account not found."});
         }
-
         
         return res.status(200).json(profile);
     } catch (error) {
@@ -540,7 +552,6 @@ export const changePassword = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 
 
 

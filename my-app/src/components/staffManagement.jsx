@@ -20,7 +20,8 @@ const StaffManagement = () => {
         middleName: '',
         lastName: '',
         suffix: '',       // ✅ added
-        email: '',
+        email: '',  
+        contact: '',
         password: '',
         confirmPassword: ''
     });
@@ -46,8 +47,8 @@ const StaffManagement = () => {
 
 
     const [updateLoading, setUpdateLoading] = useState(false);
-
-
+    
+    const [contactError, setContactError] = useState('');
 
 
     useLayoutEffect(() => {
@@ -128,9 +129,11 @@ const StaffManagement = () => {
             lastName: '',
             suffix: '',       // ✅ reset
             email: '',
+            contact: '',
             password: '',
             confirmPassword: ''
         });
+        setContactError('');
         setPasswordError('');
         setShowPassword(false);
         setShowConfirmPassword(false);
@@ -161,12 +164,20 @@ const StaffManagement = () => {
             return;
         }
 
+
+        if (newStaff.contact.replace(/\D/g, '').length !== 11) {
+            showAlert("Contact number must be exactly 11 digits", "error");
+            setSubmitLoading(false);
+            return;
+        }
+
         const dataPost = {
             firstName: newStaff.firstName,
             middleName: newStaff.middleName,
             lastName: newStaff.lastName,
             suffix: newStaff.suffix,      // ✅ added
             email: newStaff.email,
+            contact: newStaff.contact,     
             password: newStaff.password
         };
 
@@ -234,6 +245,16 @@ const StaffManagement = () => {
     const handleUpdateStaff = async (e) => {
         e.preventDefault();
         setUpdateLoading(true);
+
+
+
+        if ((selectedStaff.contact || '').replace(/\D/g, '').length !== 11) {
+            showAlert("Contact number must be exactly 11 digits", "error");
+            setUpdateLoading(false);
+            return;
+        }
+
+
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/staff_update/${selectedStaff._id}`, {
                 method: "PATCH",
@@ -243,7 +264,8 @@ const StaffManagement = () => {
                     middleName: selectedStaff.middleName,
                     lastName: selectedStaff.lastName,
                     suffix: selectedStaff.suffix || '',
-                    email: selectedStaff.email
+                    email: selectedStaff.email,
+                    contact: selectedStaff.contact, 
                 }),
                 credentials: "include",
             });
@@ -319,6 +341,37 @@ const StaffManagement = () => {
 
         return pages;
     };
+
+
+
+
+    const formatContact = (value) => {
+        const digits = value.replace(/\D/g, '');
+        if (digits.length <= 4) return digits;
+        if (digits.length <= 7) return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+        return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 11)}`;
+    };
+
+    const handleContactChange = (value, isEdit = false) => {
+        const raw = value.replace(/\D/g, '');
+        if (raw.length > 11) return;
+        const formatted = formatContact(raw);
+
+        if (isEdit) {
+            setSelectedStaff(prev => ({ ...prev, contact: formatted }));
+        } else {
+            setNewStaff(prev => ({ ...prev, contact: formatted }));
+        }
+
+        if (raw.length > 0 && raw.length !== 11) {
+            setContactError("Contact number must be exactly 11 digits");
+        } else {
+            setContactError('');
+        }
+    };
+
+
+
 
     return (
         <>
@@ -398,10 +451,10 @@ const StaffManagement = () => {
                                                         <tr key={staff._id}>
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
                                                             <td className="align-middle">
-                                                                {/* ✅ suffix displayed after last name */}
+                                                                {/*suffix displayed after last name */}
                                                                 <span className="text-capitalize fw-semibold">
                                                                     {staff.firstName}
-                                                                    {staff.middleName ? ` ${staff.middleName.charAt(0)}. ` : ' '}
+                                                                    {staff.middleName === 'N/A' || staff.middleName === 'n/a' ? ` ` : `  ${staff.middleName?.charAt(0)}. `} 
                                                                     {staff.lastName}
                                                                     {staff.suffix ? `, ${staff.suffix}` : ''}
                                                                 </span>
@@ -592,6 +645,26 @@ const StaffManagement = () => {
                                                     required
                                                 />
                                             </div>
+
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-phone text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">contact number:</label>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="09XX XXX XXXX"
+                                                    value={selectedStaff?.contact || ''}
+                                                    onChange={(e) => handleContactChange(e.target.value, true)}
+                                                    className={`form-control shadow-sm ${
+                                                        contactError ? 'is-invalid'
+                                                        : (selectedStaff?.contact || '').replace(/\D/g, '').length === 11 ? 'is-valid' : ''
+                                                    }`}
+                                                    required
+                                                />
+                                                {contactError && <small className="text-danger d-block mt-1">{contactError}</small>}
+                                                <small className="text-muted">Must be 11 digits (e.g. 09XX XXX XXXX)</small>
+                                            </div>
                                         </div>
                                     </div>
                                 <div className="modal-footer">
@@ -752,37 +825,30 @@ const StaffManagement = () => {
                                             </div>
                                             <div className="col-md-6">
                                                 <div className="d-flex align-items-center gap-1 mb-2">
-                                                    <i className="fa fa-lock text-muted"></i>
-                                                    <label className="m-0 text-capitalize fw-bold text-muted small">password:</label>
+                                                    <i className="fa fa-phone text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">contact number:</label>
                                                     <span className="small text-danger fw-semibold ms-1">*</span>
-
                                                 </div>
-                                                <div className="position-relative">
-                                                    <input 
-                                                        type={showPassword ? "text" : "password"}
-                                                        placeholder="Enter password" 
-                                                        value={newStaff.password}
-                                                        onChange={handlePasswordChange}
-                                                        required
-                                                        className="form-control shadow-sm"
-                                                        disabled={submitLoading}
-                                                    />
-                                                    <i 
-                                                        className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
-                                                        style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
-                                                        onClick={() => setShowPassword(!showPassword)}
-                                                    ></i>
-                                                </div>
-                                                {passwordError && <small className="text-danger d-block mt-1">{passwordError}</small>}
-                                                <small className="text-muted d-block mt-1">
-                                                    8+ characters, uppercase, lowercase, number, and special character
-                                                </small>
+                                                <input
+                                                    type="text"
+                                                    placeholder="09XX XXX XXXX"
+                                                    value={newStaff.contact}
+                                                    onChange={(e) => handleContactChange(e.target.value, false)}
+                                                    className={`form-control shadow-sm ${
+                                                        contactError ? 'is-invalid' 
+                                                        : (newStaff.contact || '').replace(/\D/g, '').length === 11 ? 'is-valid' : ''
+                                                    }`}
+                                                    required
+                                                    disabled={submitLoading}
+                                                />
+                                                {contactError && <small className="text-danger d-block mt-1">{contactError}</small>}
+                                                <small className="text-muted">Must be 11 digits (e.g. 09XX XXX XXXX)</small>
                                             </div>
                                         </div>
 
                                         {/* Row 4: Confirm Password */}
                                         <div className="row">
-                                            <div className="col-md-6 offset-md-6">
+                                            <div className="col-md-6 ">
                                                 <div className="d-flex align-items-center gap-1 mb-2">
                                                     <i className="fa fa-lock text-muted"></i>
                                                     <label className="m-0 text-capitalize fw-bold text-muted small">confirm password:</label>
@@ -805,6 +871,34 @@ const StaffManagement = () => {
                                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                                     ></i>
                                                 </div>
+                                            </div>
+
+                                            <div className="col-md-6">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-lock text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">password:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
+                                                </div>
+                                                <div className="position-relative">
+                                                    <input 
+                                                        type={showPassword ? "text" : "password"}
+                                                        placeholder="Enter password" 
+                                                        value={newStaff.password}
+                                                        onChange={handlePasswordChange}
+                                                        required
+                                                        className="form-control shadow-sm"
+                                                        disabled={submitLoading}
+                                                    />
+                                                    <i 
+                                                        className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute text-muted`}
+                                                        style={{right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                    ></i>
+                                                </div>
+                                                {passwordError && <small className="text-danger d-block mt-1">{passwordError}</small>}
+                                                <small className="text-muted d-block mt-1">
+                                                    8+ characters, uppercase, lowercase, number, and special character
+                                                </small>
                                             </div>
                                         </div>
 

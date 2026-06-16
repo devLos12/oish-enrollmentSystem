@@ -61,7 +61,7 @@ const Student = () => {
         }, 2500); // 2.5 seconds bago mag-redirect
     };
 
-
+    
     
     //fetch profile
     useEffect(() => {
@@ -107,9 +107,7 @@ const Student = () => {
     }, [profile]);
 
 
-
-
-
+        
 
     const routes = [
         {path: "/",                      element: <Dashboard/>},

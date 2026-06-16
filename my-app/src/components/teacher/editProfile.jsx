@@ -16,6 +16,7 @@ const EditProfile = () => {
         lastName: "",
         suffix: "",
         email: "",
+        contact: '',
         imageFile: null
     });
 
@@ -30,6 +31,11 @@ const EditProfile = () => {
     const [alertType, setAlertType] = useState('success');
 
     const [prevImage, setPrevImage] = useState('');
+    const [contactError, setContactError] = useState('');
+
+
+
+
 
     const showAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -49,6 +55,7 @@ const EditProfile = () => {
                 lastName: profile.lastName || "",
                 suffix: profile.suffix || "",
                 email: profile.email || "",
+                contact: profile.contact || '',
                 imageFile: null
             });
             // Set preview from existing profile image
@@ -177,6 +184,14 @@ const EditProfile = () => {
         if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
         if (!formData.email.trim()) newErrors.email = "Email is required";
 
+
+
+
+
+        if ((formData.contact || '').replace(/\D/g, '').length !== 11) {
+            newErrors.contact = "Contact number must be exactly 11 digits";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -198,6 +213,7 @@ const EditProfile = () => {
             data.append("lastName", formData.lastName);
             data.append("suffix", formData.suffix || "");
             data.append("email", formData.email);
+            data.append("contact", formData.contact); 
             
             // Only append image if a new one was selected
             if (formData.imageFile && formData.imageFile instanceof File) {
@@ -239,6 +255,34 @@ const EditProfile = () => {
             </div>
         );
     }
+
+
+
+
+
+
+    const formatContact = (value) => {
+        const digits = value.replace(/\D/g, '');
+        if (digits.length <= 4) return digits;
+        if (digits.length <= 7) return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+        return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 11)}`;
+    };
+
+    const handleContactChange = (e) => {
+        const raw = e.target.value.replace(/\D/g, '');
+        if (raw.length > 11) return;
+
+        setFormData(prev => ({ ...prev, contact: formatContact(raw) }));
+
+        if (raw.length > 0 && raw.length !== 11) {
+            setContactError("Contact number must be exactly 11 digits");
+        } else {
+            setContactError('');
+        }
+    };
+
+
+
 
     return (
         <>
@@ -380,7 +424,7 @@ const EditProfile = () => {
                                             />
                                         </div>
 
-                                        <div className="col-12">
+                                        <div className="col-6">
                                             <label className="form-label fw-semibold">
                                                 Email Address <span className="text-danger">*</span>
                                             </label>
@@ -394,6 +438,32 @@ const EditProfile = () => {
                                             />
                                             {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                                         </div>
+
+
+                                        <div className="col-6">
+                                            <label className="form-label fw-semibold">
+                                                Contact Number <span className="text-danger">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="09XX XXX XXXX"
+                                                value={formData.contact || ''}
+                                                onChange={handleContactChange}
+                                                className={`form-control ${
+                                                    errors.contact ? 'is-invalid'
+                                                    : (formData.contact || '').replace(/\D/g, '').length === 11 ? 'is-valid' : ''
+                                                }`}
+                                                required
+                                                disabled={loading}
+                                            />
+                                            {errors.contact && <div className="invalid-feedback">{errors.contact}</div>}
+                                            {contactError && !errors.contact && (
+                                                <small className="text-danger d-block mt-1">{contactError}</small>
+                                            )}
+                                            <small className="text-muted">Must be 11 digits (e.g. 09XX XXX XXXX)</small>
+                                        </div>
+
+                                        
                                     </div>
                                 </div>
                             </div>

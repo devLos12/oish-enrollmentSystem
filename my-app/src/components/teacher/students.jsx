@@ -405,9 +405,7 @@ const Students = () => {
                                             <thead className="bg-light">
                                                 <tr>
                                                     <th>#</th>
-                                                    <th>Student Number</th>
                                                     <th>Full Name</th>
-                                                    <th>Email</th>
                                                     <th>Sex</th>
                                                     <th>Grade & Section</th>
                                                 </tr>
@@ -416,15 +414,9 @@ const Students = () => {
                                                 {currentStudents.map((student, index) => (
                                                     <tr key={student.studentId}>
                                                         <td className="align-middle">{indexOfFirstItem + index + 1}</td>
-                                                        <td className="align-middle">
-                                                            <span className="badge bg-secondary font-monospace">
-                                                                {student.studentNumber}
-                                                            </span>
-                                                        </td>
                                                         <td className="align-middle fw-semibold text-capitalize">
                                                             {student.firstName} {student.lastName}
                                                         </td>
-                                                        <td className="align-middle">{student.email}</td>
                                                         <td className="align-middle">{student.sex}</td>
                                                         <td className="align-middle">
                                                             {student.gradeLevel} - {student.section}
@@ -435,7 +427,7 @@ const Students = () => {
                                         </table>
                                     </div>
                                     
-                                
+                                                
 
                                     {totalPages >= 1 && (
                                         <div className="d-flex justify-content-between align-items-center pt-3 border-top flex-wrap gap-2">

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import SideBar from "../components/sidebar.jsx";
 import Header from "../components/header.jsx";
@@ -33,6 +33,35 @@ const Staff =  () => {
         fetchPendingApplicantsCount
     } = useContext(globalContext);
     const navigate = useNavigate();
+
+
+    const [isAutoLoggingOut, setIsAutoLoggingOut] = useState(false);
+
+
+    
+
+    const handleForceLogout = async () => {
+        setIsAutoLoggingOut(true);
+
+        setTimeout(() => {
+            navigate("/", { replace: true });
+
+            setTimeout(() => {
+                fetch(`${import.meta.env.VITE_API_URL}/api/Logout`, {
+                    method: "GET",
+                    credentials: "include"
+                })
+                .then((res) => res.json())
+                .then((data) => {
+                    setStaffAuth(false);
+                    setRole(null);
+                    setProfile(null);
+                })
+                .catch((err) => console.error("Logout error:", err));
+            }, 100);
+        }, 2500);
+    };
+
 
 
 
@@ -82,6 +111,23 @@ const Staff =  () => {
 
 
 
+
+
+
+    useEffect(() => {   
+        const socket = io(import.meta.env.VITE_API_URL, {
+            withCredentials: true
+        });
+
+        socket.on("deleted-teacher", (data) => {
+            if (profile?.email === data.email) {
+                handleForceLogout();
+            }
+        });
+
+
+        return () => socket.disconnect(); // cleanup!
+    },[profile])
 
 
     const routes = [
@@ -162,6 +208,30 @@ const Staff =  () => {
                 </div>
             </div>
         </div>
+
+        {/* Auto Logout Overlay */}
+        {isAutoLoggingOut && (
+            <div
+                className="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+                style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 99999 }}
+            >
+                <div className="text-center text-white">
+                    <div className="mb-4">
+                        <div
+                            className="spinner-border"
+                            style={{ width: "48px", height: "48px", color: "#dc3545" }}
+                            role="status"
+                        />
+                    </div>
+                    <h5 className="fw-semibold mb-2">Session Ended</h5>
+                    <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
+                        Your account has been removed by the administrator.
+                        <br/>
+                        You will be redirected shortly...
+                    </p>
+                </div>
+            </div>
+        )}
 
         {modal?.isShow && <Modal textModal={modal?.text}
         handleClickYes={()=> {

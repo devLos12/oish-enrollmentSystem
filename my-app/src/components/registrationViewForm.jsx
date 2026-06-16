@@ -208,7 +208,7 @@ const RegistrationViewForm = () => {
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Student Name: </p>
                                         <p className="m-0 fw-bold text-capitalize">
-                                            {student?.lastName || ""}, {student?.firstName || ""} {student?.middleName !== 'N/A' || student?.middleName === 'n/a' ? student?.middleName?.charAt(0) : ""}. {student?.extensionName && student.extensionName !== "N/A" && student.extensionName !== "n/a" ? student.extensionName : ""}
+                                            {student?.lastName || ""}, {student?.firstName || ""} {student?.middleName !== 'N/A' || student?.middleName === 'n/a' ? `${student?.middleName?.charAt(0)}.` : ""} {student?.extensionName && student.extensionName !== "N/A" && student.extensionName !== "n/a" ? student.extensionName : ""}
                                         </p>
                                     </div>
                                     <div className="d-flex gap-2">

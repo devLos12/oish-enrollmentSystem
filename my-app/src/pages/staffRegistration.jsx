@@ -16,6 +16,9 @@ const StaffRegistration = () => {
     const [middleName, setMiddleName] = useState('');
     const [suffix, setSuffix] = useState('');
 
+    const [contact, setContact] = useState('');
+    const [contactError, setContactError] = useState('');
+
     // Modal states
     const [showModal, setShowModal] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -76,6 +79,11 @@ const StaffRegistration = () => {
             return;
         }
 
+        if (contact.replace(/\D/g, '').length !== 11) {
+            showNotification("Contact number must be exactly 11 digits", "error");
+            setLoading(false);
+            return;
+        }
         
 
         try {
@@ -89,6 +97,7 @@ const StaffRegistration = () => {
                     lastName,
                     suffix,
                     email,
+                    contact,
                     password
                 }),
                 credentials: "include",
@@ -111,6 +120,33 @@ const StaffRegistration = () => {
             setLoading(false);
         }
     };
+
+
+
+    
+
+    const formatContact = (value) => {
+        const digits = value.replace(/\D/g, '');
+        if (digits.length <= 4) return digits;
+        if (digits.length <= 7) return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+        return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 11)}`;
+    };
+
+    const handleContactChange = (e) => {
+        const raw = e.target.value.replace(/\D/g, ''); // digits only
+        if (raw.length > 11) return;                   // max 11 digits
+
+        setContact(formatContact(raw));
+
+        if (raw.length > 0 && raw.length !== 11) {
+            setContactError("Contact number must be exactly 11 digits");
+        } else {
+            setContactError('');
+        }
+    };
+
+
+
 
     return (
         <>
@@ -202,6 +238,40 @@ const StaffRegistration = () => {
                                                 />
                                             </div>
                                         </div>
+
+                                        
+
+                                        {/* Row: Contact Number */}
+                                        <div className="row mb-3">
+                                            <div className="col-md-12">
+                                                <div className="d-flex align-items-center gap-1 mb-2">
+                                                    <i className="fa fa-phone text-muted"></i>
+                                                    <label className="m-0 text-capitalize fw-bold text-muted small">contact number:</label>
+                                                    <span className="small text-danger fw-semibold ms-1">*</span>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="09XX XXX XXXX"
+                                                    value={contact}
+                                                    onChange={handleContactChange}
+                                                    className={`form-control shadow-sm ${
+                                                        contactError 
+                                                            ? 'is-invalid' 
+                                                            : contact.replace(/\D/g, '').length === 11 
+                                                                ? 'is-valid' 
+                                                                : ''
+                                                    }`}
+                                                    required
+                                                    disabled={loading}
+                                                />
+                                                {contactError && (
+                                                    <small className="text-danger d-block mt-1">{contactError}</small>
+                                                )}
+                                                <small className="text-muted">Must be 11 digits (e.g. 09XXXXXXXXX)</small>
+                                            </div>
+                                        </div>
+
+
 
                                         {/* Section 2: Verification & Security */}
                                         <p className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-3">

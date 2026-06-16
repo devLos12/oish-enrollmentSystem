@@ -18,7 +18,7 @@ const normalizeName = (value) => {
 
 export const createFacultyMember = async (req, res) => {
     try {
-        const { firstName, middleName, lastName, suffix, email, password } = req.body;
+        const { firstName, middleName, lastName, suffix, email, contact, password } = req.body;
         
 
         // Validate suffix
@@ -34,6 +34,18 @@ export const createFacultyMember = async (req, res) => {
 
         if (admin || staff || student) {
             return res.status(409).json({ message: "Email already exists" });
+        }
+
+
+        const rawContact = contact?.replace(/\s/g, '');
+        const existingStudentContact = await Student.findOne({
+            contactNumber: { $regex: new RegExp(rawContact.split('').join('\\s*'), '') }
+        });
+        const existingStaffContact = await Staff.findOne({
+            contact: { $regex: new RegExp(rawContact.split('').join('\\s*'), '') }
+        });
+        if (existingStudentContact || existingStaffContact) {
+            return res.status(409).json({ message: "Contact number already in use." });
         }
 
 
@@ -93,6 +105,7 @@ export const createFacultyMember = async (req, res) => {
             lastName: lastName.trim().toUpperCase(),
             suffix: suffix.trim().toUpperCase() || '',
             email,
+            contact,
             password: hashedPassword
         });
 
@@ -128,7 +141,7 @@ export const getStaffList = async (req, res) => {
 export const updateStaff = async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, middleName, lastName, suffix, email } = req.body;
+        const { firstName, middleName, lastName, suffix, email, contact } = req.body;
 
         if (!firstName || !lastName || !email) {
             return res.status(400).json({ message: "Please provide all required fields" });
@@ -141,7 +154,22 @@ export const updateStaff = async (req, res) => {
             return res.status(400).json({ message: "Invalid suffix. Accepted values: Jr., Sr., II, III" });
         }
 
-        // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Staff (exclude current)
+        
+
+        const rawContact = contact?.replace(/\s/g, '');
+        const existingStudentContact = await Student.findOne({
+            contactNumber: { $regex: new RegExp(rawContact.split('').join('\\s*'), '') }
+        });
+        const existingStaffContact = await Staff.findOne({
+            contact: { $regex: new RegExp(rawContact.split('').join('\\s*'), '') },
+            _id: { $ne: id }
+        });
+        if (existingStudentContact || existingStaffContact) {
+            return res.status(409).json({ message: "Contact number already in use." });
+        }
+
+
+        // VALIDATION: Same firstName + lastName + middleName not allowed in Staff (exclude current)
         const staffQuery = {
           firstName: { $regex: new RegExp(`^${firstName.trim()}$`, 'i') },
           lastName:  { $regex: new RegExp(`^${lastName.trim()}$`, 'i') },
@@ -178,7 +206,6 @@ export const updateStaff = async (req, res) => {
         }
 
 
-
         const existingApplicant2 = await Enrollment.findOne({
           "learnerInfo.firstName":  normalizeName(firstName),
           "learnerInfo.lastName":   normalizeName(lastName),
@@ -199,11 +226,11 @@ export const updateStaff = async (req, res) => {
                 middleName: middleName?.trim().toUpperCase() || 'N/A',
                 lastName: lastName.trim().toUpperCase(),
                 suffix: suffix ? suffix.trim().toUpperCase() : '',
+                contact: contact,
                 email: email.toLowerCase().trim()
             },
             { new: true, runValidators: true }
         ).select('-password');
-
 
 
 
@@ -224,18 +251,21 @@ export const updateStaff = async (req, res) => {
 
 
 
-
 export const deleteStaff = async (req, res) => {
     try {
-        const { id } = req.params;
+      const { id } = req.params;
 
-        const deletedStaff = await Staff.findByIdAndDelete(id);
 
-        if (!deletedStaff) {
-            return res.status(404).json({ message: "Staff member not found" });
-        }
+      const deletedStaff = await Staff.findOne({ _id: id });
+      if (!deletedStaff) {
+          return res.status(404).json({ message: "Staff member not found" });
+      } 
 
-        return res.status(200).json({ message: "Staff member deleted successfully" });
+      await Staff.findByIdAndDelete(id);
+      io.emit('deleted-teacher', { email: deletedStaff.email });
+
+
+      return res.status(200).json({ message: "Staff member deleted successfully" });
 
     } catch (error) {
         return res.status(500).json({ message: error.message });

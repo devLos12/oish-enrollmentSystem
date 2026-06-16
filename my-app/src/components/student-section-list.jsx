@@ -448,7 +448,7 @@ const StudentSectionList = () => {
                                                             {s.firstName?.charAt(0)}
                                                         </div>
                                                     )}
-                                                    {s.lastName}, {s.firstName} {s.middleName || ""}
+                                                    {s.lastName}, {s.firstName} {s.middleName === 'N/A' || s.middleName === 'n/a' ? " " : ` ${s.middleName}.`}
                                                 </div>
                                             </td>
                                             <td><span className="badge bg-danger">{s.strand}</span></td>

@@ -73,7 +73,7 @@ const Dashboard = () => {
                         </div>
                         <div className="col">
                             <h4 className="fw-bold text-capitalize my-2">
-                                {staffData?.lastName}, {staffData?.firstName} {staffData?.middleName?.charAt(0)}. {staffData?.suffix}
+                                {staffData?.lastName}, {staffData?.firstName} {staffData?.middleName === 'N/A' || staffData?.middleName === 'n/a' ? " " : ` ${staffData?.middleName?.charAt(0)}.`} {staffData?.suffix}
                             </h4>
                             
                             <div className="mb-2">
@@ -107,7 +107,7 @@ const Dashboard = () => {
                                     { label: "Middle Name", value: staffData?.middleName },
                                     { label: "Last Name", value: staffData?.lastName },
                                     { label: "Suffix Name", value: staffData?.suffix },
-
+                                    { label: 'Contact Number', value: staffData?.contact},
                                     { label: "Email Address", value: staffData?.email }
                                 ].map((item, i) => (
                                     <div key={i} className="col-12">

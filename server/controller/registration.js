@@ -27,9 +27,10 @@ const validateAccessCode = async (code) => {
 
 
 
+
 export const StaffRegistration = async (req, res) => {
     try {
-        const { verificationCode, firstName, middleName, lastName, suffix, email, password } = req.body;
+        const { verificationCode, firstName, middleName, lastName, suffix, email, contact, password } = req.body;
 
         // Validate access code
         await validateAccessCode(verificationCode);
@@ -50,6 +51,18 @@ export const StaffRegistration = async (req, res) => {
         if(admin || staff || student) {
             return res.status(409).json({ message: "Account already exists" });
         }
+
+
+
+        const existingStudentContact = await Student.findOne({ contactNumber: contact });
+        const existingStaffContact = await Staff.findOne({ contact: contact });
+
+        if (existingStudentContact || existingStaffContact) {
+            return res.status(409).json({ message: "Contact number already in use." });
+        }
+
+
+
 
         // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Enrollment
         const existingApplicant = await Enrollment.findOne({
@@ -102,19 +115,18 @@ export const StaffRegistration = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-
+        
         await Staff.create({
             firstName: normalizeName(firstName),
             middleName: normalizeName(middleName?.trim() || 'N/A'),
             lastName: normalizeName(lastName),
             suffix: normalizeName(suffix) || '',
             email, 
+            contact,
             password: hashedPassword 
         });
+        
 
-
-                
-   
         await AccessCode.findOneAndUpdate(
             { code: verificationCode }, 
             { 

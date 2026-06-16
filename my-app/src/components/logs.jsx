@@ -55,11 +55,14 @@ const Logs = () => {
       }
   };
 
+
   const parseLogDate = (dateString) => {
     if (!dateString) return null;
     const [month, day, year] = dateString.split('-');
     return new Date(year, month - 1, day);
   };
+
+
 
   const formatReadableDate = (dateString) => {
     if (!dateString) return '';
@@ -79,12 +82,17 @@ const Logs = () => {
     })
     .filter((log) => (filterRole ? log.role === filterRole : true))
     .filter((log) => (filterAction ? log.action === filterAction : true))
+    
     .filter((log) => {
-      if (!filterDate) return true;
-      const logDate = parseLogDate(log.Date);
-      const selectedDate = new Date(filterDate);
-      if (!logDate) return false;
-      return logDate.toDateString() === selectedDate.toDateString();
+        if (!filterDate) return true;
+        const logDate = parseLogDate(log.Date);
+        if (!logDate) return false;
+
+        // ✅ Manual split para local time, hindi UTC
+        const [fyear, fmonth, fday] = filterDate.split('-');
+        const selectedDate = new Date(fyear, fmonth - 1, fday);
+
+        return logDate.toDateString() === selectedDate.toDateString();
     });
 
   const indexOfLastItem = currentPage * itemsPerPage;
