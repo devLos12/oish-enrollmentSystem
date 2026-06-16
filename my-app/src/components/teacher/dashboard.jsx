@@ -73,7 +73,7 @@ const Dashboard = () => {
                         </div>
                         <div className="col">
                             <h4 className="fw-bold text-capitalize mb-2">
-                                {staffData?.lastName}, {staffData?.firstName}
+                                {staffData?.lastName}, {staffData?.firstName} {staffData?.suffix}
                             </h4>
                             
                             <div className="mb-2">
@@ -104,7 +104,10 @@ const Dashboard = () => {
                             <div className="row g-3">
                                 {[
                                     { label: "First Name", value: staffData?.firstName },
+                                    { label: "Middle Name", value: staffData?.middleName },
                                     { label: "Last Name", value: staffData?.lastName },
+                                    { label: "Suffix Name", value: staffData?.suffix },
+
                                     { label: "Email Address", value: staffData?.email }
                                 ].map((item, i) => (
                                     <div key={i} className="col-12">

@@ -76,11 +76,7 @@ const StaffRegistration = () => {
             return;
         }
 
-        if (!email.endsWith('@gmail.com')) {
-            showNotification("Please use a Gmail address!", "error");
-            setLoading(false);
-            return;
-        }
+        
 
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/staff_registration`, {
@@ -198,7 +194,7 @@ const StaffRegistration = () => {
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    placeholder="e.g. Jr., Sr., II, III, MD, PhD, CPA, Esq."
+                                                    placeholder="e.g. Jr., Sr., II, III"
                                                     value={suffix}
                                                     onChange={(e) => setSuffix(e.target.value)}
                                                     className="form-control shadow-sm"

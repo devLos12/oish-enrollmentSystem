@@ -3,6 +3,15 @@ import Student from "../model/student.js";
 import AccessCode from "../model/accessCode.js"
 import bcrypt from "bcrypt";
 import Admin from "../model/admin.js";
+import Enrollment from '../model/enrollment.js';
+
+
+
+
+const normalizeName = (value) => {
+    if (!value || value === 'N/A') return value;
+    return value.trim().toUpperCase();
+};
 
 
 
@@ -26,11 +35,13 @@ export const StaffRegistration = async (req, res) => {
         await validateAccessCode(verificationCode);
 
 
-        // // Validate suffix
-        // const validSuffixes = ['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
-        // if (suffix && !validSuffixes.includes(suffix.trim())) {
-        //     return res.status(400).json({ message: "Invalid suffix. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA" });
-        // }
+        // Validate suffix
+        const validSuffixes = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III', 'JR', 'SR.'];
+        if (suffix && !validSuffixes.includes(suffix.trim())) {
+            return res.status(400).json({ message: "Invalid suffix. Accepted values: Jr., Sr., II, III" });
+        }
+
+
 
         const student = await Student.findOne({ email });
         const staff = await Staff.findOne({ email });
@@ -40,23 +51,85 @@ export const StaffRegistration = async (req, res) => {
             return res.status(409).json({ message: "Account already exists" });
         }
 
+        // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Enrollment
+        const existingApplicant = await Enrollment.findOne({
+          "learnerInfo.firstName": normalizeName(firstName),
+          "learnerInfo.lastName":  normalizeName(lastName),
+          "learnerInfo.middleName": normalizeName(middleName?.trim() || 'N/A'),
+        });
+        if (existingApplicant) {
+          return res.status(409).json({
+            message: "Full name already exists."
+          });
+        }
+
+
+        const existingApplicant2 = await Enrollment.findOne({
+          "learnerInfo.firstName": normalizeName(firstName),
+          "learnerInfo.lastName":  normalizeName(lastName),
+        });
+        if (existingApplicant2) {
+          return res.status(409).json({
+            message: "Full name already exists."
+          });
+        }
+
+
+
+        // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Staff
+        const staffQuery = {
+          firstName: { $regex: new RegExp(`^${firstName.trim()}$`, 'i') },
+          lastName:  { $regex: new RegExp(`^${lastName.trim()}$`, 'i') },
+        };
+        const incomingMiddleName = middleName?.trim();
+        if (incomingMiddleName) {
+          staffQuery.middleName = { $regex: new RegExp(`^${incomingMiddleName}$`, 'i') };
+        } else {
+          staffQuery.$or = [
+            { middleName: { $exists: false } },
+            { middleName: null },
+            { middleName: '' },
+            { middleName: 'N/A' },
+          ];
+        }
+        const existingStaff = await Staff.findOne(staffQuery);
+        if (existingStaff) {
+          return res.status(409).json({
+            message: "Full name already exists."
+          });
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+
         await Staff.create({
-            firstName, 
-            middleName,
-            lastName,
-            suffix: suffix || '',
+            firstName: normalizeName(firstName),
+            middleName: normalizeName(middleName?.trim() || 'N/A'),
+            lastName: normalizeName(lastName),
+            suffix: normalizeName(suffix) || '',
             email, 
             password: hashedPassword 
         });
-        
+
+
+                
+   
         await AccessCode.findOneAndUpdate(
             { code: verificationCode }, 
-            { isUsed: true }, 
+            { 
+                isUsed: true,
+                usedAt: new Date(),
+                usedBy: {
+                    firstName:  normalizeName(firstName),
+                    middleName: normalizeName(middleName?.trim() || 'N/A'),
+                    lastName:   normalizeName(lastName),
+                    email:      email,
+                }
+            }, 
             { new: true }
         );
+
 
         return res.status(200).json({ message: "Registered successfully." });
         

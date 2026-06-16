@@ -4,6 +4,9 @@ import { globalContext } from "../context/global";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import html2pdf from "html2pdf.js";
 
+import deped from "../assets/image/deped.png";
+import logo from "../assets/image/logo.png";
+
 
 
 const Dashboard = () => {
@@ -274,10 +277,16 @@ const Dashboard = () => {
     };
 
 
+
+    // Ctrl+F: categoryKey map — i-declare bago yung pieChartData
+    const categoryKeyMap = ['regular', 'returnee', 'transferee', 'pwd', 'indigenous', 'fourps'];
+
+
     // ============================
     // CHART DATA
     // ============================
 
+    
     // ✅ Isang pie chart — kasama na Regular, Returnees, Transferees, PWD, Indigenous, 4Ps
     const pieChartData = [
         { name: 'Regular Students',  value: stats.regularStudents },
@@ -305,49 +314,216 @@ const Dashboard = () => {
     };
 
 
+
+
+
+
+    const handleDownloadCategoryPDF = async (item, color, categoryKey) => {
+        try {
+            const params = new URLSearchParams({ category: categoryKey });
+            if (isFiltering) {
+                params.append('startDate', dateRange.startDate);
+                params.append('endDate', dateRange.endDate);
+            }
+
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL}/api/studentsByCategory?${params.toString()}`,
+                { method: "GET", credentials: "include" }
+            );
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+
+            const students = result.data;
+
+            const chunkSize = 9;
+            const chunks = [];
+            for (let i = 0; i < students.length; i += chunkSize) {
+                chunks.push(students.slice(i, i + chunkSize));
+            }
+
+            const schoolHeaderHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 2px solid #7f1d1d;">
+                    <img src="${deped}" alt="DepEd" style="width: 50px; height: 50px;" crossOrigin="anonymous" />
+                    <div style="text-align: center;">
+                        <p style="font-size: 16px; font-weight: bold; color: #7f1d1d; margin: 0;">Francisco Osorio Integrated Senior High School</p>
+                        <p style="font-size: 12px; color: #555; margin: 2px 0 0;">Barangay Osorio, Trece Martires City, Cavite</p>
+                        <p style="font-size: 12px; color: #555; margin: 2px 0 0;">Department of Education — Region IV-A CALABARZON</p>
+                    </div>
+                    <img src="${logo}" alt="Logo" style="width: 50px; height: 50px;" crossOrigin="anonymous" />
+                </div>
+            `;
+
+            const tableHeader = `
+                <thead>
+                    <tr style="background-color: #dc3545; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 40px;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Full Name</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">LRN</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Sex</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Grade Level</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Strand</th>
+                    </tr>
+                </thead>
+            `;
+
+            const pages = chunks.length === 0
+                ? `
+                    <div style="padding: 20px;">
+                        ${schoolHeaderHTML}
+                        <h2 style="text-align: center; color: #dc3545; margin: 10px 0 4px;">Student Statistics</h2>
+                        <h3 style="text-align: center; color: #6c757d; margin: 0 0 16px;">${item.name} Report</h3>
+                        <p style="margin: 4px 0;"><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        ${isFiltering
+                            ? `<p style="margin: 4px 0 16px;"><strong>Date Range:</strong> ${new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} - ${new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
+                            : '<p style="margin: 4px 0 16px;"><strong>Showing:</strong> All Time Data</p>'
+                        }
+                        <p style="text-align: center; color: #6c757d; margin-top: 40px;">No students found.</p>
+                    </div>
+                `
+                : chunks.map((chunk, pageIndex) => {
+                    const isLastPage = pageIndex === chunks.length - 1;
+                    const startNum = pageIndex * chunkSize + 1;
+
+                    const rows = chunk.map((s, i) => `
+                        <tr style="${(startNum + i - 1) % 2 === 0 ? 'background-color: #f8f9fa;' : ''}">
+                            <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">${startNum + i}</td>
+                            <td style="border: 1px solid #ddd; padding: 10px;">
+                                ${s.learnerInfo?.lastName || '—'}, ${s.learnerInfo?.firstName || '—'} ${s.learnerInfo?.middleName || ''}
+                            </td>
+                            <td style="border: 1px solid #ddd; padding: 10px;">${s.learnerInfo?.lrn || '—'}</td>
+                            <td style="border: 1px solid #ddd; padding: 10px;">${s.learnerInfo?.sex || '—'}</td>
+                            <td style="border: 1px solid #ddd; padding: 10px;">${s.gradeLevelToEnroll || '—'}</td>
+                            <td style="border: 1px solid #ddd; padding: 10px;">${s.seniorHigh?.strand || '—'}</td>
+                        </tr>
+                    `).join('');
+
+                    return `
+                        <div style="padding: 20px; ${!isLastPage ? 'page-break-after: always;' : ''}">
+                            ${schoolHeaderHTML}
+                            <h2 style="text-align: center; color: #dc3545; margin: 10px 0 4px;">Student Statistics</h2>
+                            <h3 style="text-align: center; color: #6c757d; margin: 0 0 16px;">${item.name} Report</h3>
+                            <p style="margin: 4px 0;"><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            ${isFiltering
+                                ? `<p style="margin: 4px 0 16px;"><strong>Date Range:</strong> ${new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} - ${new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
+                                : '<p style="margin: 4px 0 16px;"><strong>Showing:</strong> All Time Data</p>'
+                            }
+                            <div style="display: flex; align-items: center; gap: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;">
+                                <div style="width: 16px; height: 16px; border-radius: 4px; background: ${color}; flex-shrink: 0;"></div>
+                                <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1a1a1a;">
+                                    Total: <span style="color: ${color};">${students.length} student${students.length !== 1 ? 's' : ''}</span>
+                                    &nbsp;|&nbsp; Page ${pageIndex + 1} of ${chunks.length}
+                                </p>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                ${tableHeader}
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    `;
+                }).join('');
+            
+            // i-add to bago ang html2pdf().set({
+            const element = document.createElement('div');
+            element.innerHTML = `<div style="font-family: Arial, sans-serif;">${pages}</div>`;
+
+                    
+            html2pdf().set({
+                margin: 10,
+                filename: `${item.name.toLowerCase().replace(/\s+/g, '_')}_report_${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save();
+
+        } catch (error) {
+            console.error("Error downloading category PDF:", error);
+            alert("Failed to download PDF. Please try again.");
+        }
+    };
+
+
+
+
+
+
+
+
+
+
+
+
     const handleDownloadPDF = () => {
         const filterText = isFiltering 
-            ? `<p><strong>Date Range:</strong> ${new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} - ${new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
-            : '<p><strong>Showing:</strong> All Time Data</p>';
+            ? `<p style="margin: 4px 0;"><strong>Date Range:</strong> ${new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} - ${new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
+            : '<p style="margin: 4px 0;"><strong>Showing:</strong> All Time Data</p>';
+
+        const schoolHeader = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 2px solid #7f1d1d;">
+                <img src="${deped}" alt="DepEd" style="width: 50px; height: 50px;" crossOrigin="anonymous" />
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; font-weight: bold; color: #7f1d1d; margin: 0;">Francisco Osorio Integrated Senior High School</p>
+                    <p style="font-size: 12px; color: #555; margin: 2px 0 0;">Barangay Osorio, Trece Martires City, Cavite</p>
+                    <p style="font-size: 12px; color: #555; margin: 2px 0 0;">Department of Education — Region IV-A CALABARZON</p>
+                </div>
+                <img src="${logo}" alt="Logo" style="width: 50px; height: 50px;" crossOrigin="anonymous" />
+            </div>
+        `;
 
         const element = document.createElement('div');
         element.innerHTML = `
-            <div style="padding: 20px; font-family: Arial, sans-serif;">
-                <h2 style="text-align: center; color: #dc3545; margin-bottom: 10px;">Dashboard Overview</h2>
-                <h3 style="text-align: center; color: #6c757d; margin-bottom: 20px;">Enrollment Statistics Report</h3>
-                <div style="margin-bottom: 30px;">
-                    <p><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    ${filterText}
+            <div style="font-family: Arial, sans-serif;">
+
+                <!-- ========== PAGE 1: STUDENT STATISTICS ========== -->
+                <div style="padding: 20px; page-break-after: always;">
+                    ${schoolHeader}
+                    <h2 style="text-align: center; color: #dc3545; margin: 10px 0 4px;">Dashboard Overview</h2>
+                    <h3 style="text-align: center; color: #6c757d; margin: 0 0 16px;">Enrollment Statistics Report</h3>
+                    <div style="margin-bottom: 20px;">
+                        <p style="margin: 4px 0;"><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        ${filterText}
+                    </div>
+                    <h4 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 8px; margin-bottom: 16px;">Student Statistics</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Total Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.totalStudents}</td></tr>
+                        <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Male Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.maleStudents}</td></tr>
+                        <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Female Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.femaleStudents}</td></tr>
+                        <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Regular Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.regularStudents}</td></tr>
+                        <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Returnees</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.returnees}</td></tr>
+                        <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Transferees</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.transferees}</td></tr>
+                        <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">PWD Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.pwdStudents}</td></tr>
+                        <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Indigenous Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.indigenousStudents}</td></tr>
+                        <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">4Ps Beneficiaries</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.fourPsStudents}</td></tr>
+                    </table>
                 </div>
-                <h4 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 8px; margin-bottom: 20px;">Student Statistics</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-                    <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Total Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.totalStudents}</td></tr>
-                    <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Male Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.maleStudents}</td></tr>
-                    <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Female Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.femaleStudents}</td></tr>
-                    <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Regular Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.regularStudents}</td></tr>
-                    <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Returnees</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.returnees}</td></tr>
-                    <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Transferees</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.transferees}</td></tr>
-                    <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">PWD Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.pwdStudents}</td></tr>
-                    <tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">Indigenous Students</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.indigenousStudents}</td></tr>
-                    <tr style="background-color: #f8f9fa;"><td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">4Ps Beneficiaries</td><td style="border: 1px solid #ddd; padding: 12px; text-align: right;">${stats.fourPsStudents}</td></tr>
-                </table>
-                <h4 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 8px; margin-bottom: 20px;">Popular Strands</h4>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #dc3545; color: white;">
-                            <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Strand</th>
-                            <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">Student Count</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${strandStats.map((strand, index) => `
-                            <tr style="${index % 2 === 0 ? 'background-color: #f8f9fa;' : ''}">
-                                <td style="border: 1px solid #ddd; padding: 12px;">${strand.name}</td>
-                                <td style="border: 1px solid #ddd; padding: 12px; text-align: right; font-weight: bold;">${strand.count}</td>
+
+                <!-- ========== PAGE 2: POPULAR STRANDS ========== -->
+                <div style="padding: 20px;">
+                    ${schoolHeader}
+                    <h2 style="text-align: center; color: #dc3545; margin: 10px 0 4px;">Dashboard Overview</h2>
+                    <h3 style="text-align: center; color: #6c757d; margin: 0 0 16px;">Enrollment Statistics Report</h3>
+                    <div style="margin-bottom: 20px;">
+                        <p style="margin: 4px 0;"><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        ${filterText}
+                    </div>
+                    <h4 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 8px; margin-bottom: 16px;">Popular Strands</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #dc3545; color: white;">
+                                <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Strand</th>
+                                <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">Student Count</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${strandStats.map((strand, index) => `
+                                <tr style="${index % 2 === 0 ? 'background-color: #f8f9fa;' : ''}">
+                                    <td style="border: 1px solid #ddd; padding: 12px;">${strand.name}</td>
+                                    <td style="border: 1px solid #ddd; padding: 12px; text-align: right; font-weight: bold;">${strand.count}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
         `;
 
@@ -472,14 +648,25 @@ const Dashboard = () => {
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
+                                                    
                                     <div className="d-flex flex-column gap-3">
                                         {pieChartData.map((item, index) => (
-                                            <div key={index} className="d-flex align-items-center gap-3">
-                                                <div className="rounded" style={{ width: '16px', height: '16px', backgroundColor: COLORS[index], flexShrink: 0 }}></div>
-                                                <div>
-                                                    <p className="mb-0 fw-semibold text-dark small">{item.name}</p>
-                                                    <p className="mb-0 text-muted" style={{ fontSize: '0.75rem' }}>{item.value} students</p>
+                                            <div key={index} className="d-flex align-items-center justify-content-between gap-3">
+                                                <div className="d-flex align-items-center gap-3">
+                                                    <div className="rounded" style={{ width: '16px', height: '16px', backgroundColor: COLORS[index], flexShrink: 0 }}></div>
+                                                    <div>
+                                                        <p className="mb-0 fw-semibold text-dark small">{item.name}</p>
+                                                        <p className="mb-0 text-muted" style={{ fontSize: '0.75rem' }}>{item.value} students</p>
+                                                    </div>
                                                 </div>
+                                                <button
+                                                    className="btn btn-outline-danger btn-sm py-0 px-2"
+                                                    style={{ fontSize: '0.7rem', flexShrink: 0 }}
+                                                    onClick={() => handleDownloadCategoryPDF(item, COLORS[index], categoryKeyMap[index])}
+                                                    title={`Download ${item.name} PDF`}
+                                                >
+                                                    <i className="fa fa-download"></i>
+                                                </button>
                                             </div>
                                         ))}
                                     </div>

@@ -25,8 +25,6 @@ const Layout = () => {
         <Routes>
             <Route path="/" element={
 
-                
-
                 <main>
                     {[
                         { id: "home",         element: <Home/> },

@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
 
-
 const LogsSchema = new mongoose.Schema({
     participantId: { 
         type: mongoose.Schema.Types.ObjectId, 
         refPath: "role",
-        requried: true, 
+        required: false, 
     },
     participantName: { 
         type: String,
@@ -14,6 +13,14 @@ const LogsSchema = new mongoose.Schema({
     role: { 
         type: String, 
         enum: ['admin', 'staff'],
+        required: true
+    },
+    action: {
+        type: String,
+        required: true
+    },
+    description: {
+        type: String,
         required: true
     },
     time: {
@@ -26,7 +33,6 @@ const LogsSchema = new mongoose.Schema({
             })
         }
     },
-   
     Date: {
         type: String,
         default: function() {
@@ -37,11 +43,10 @@ const LogsSchema = new mongoose.Schema({
             }).replace(/\//g, '-');
         }
     },
-     status: {
+    status: {
         type: String
     },
-
-})
+});
 
 const Logs = mongoose.model("Log", LogsSchema);
 export default Logs;

@@ -26,6 +26,11 @@ const StudentTable = () => {
 
 
 
+    useEffect(() => {
+        console.log(studentList);
+    },[studentList]);
+
+
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
     },[location?.state?.title]);
@@ -297,9 +302,7 @@ const StudentTable = () => {
                                                 <thead className="bg-light">
                                                     <tr>
                                                         <th className="text-capitalize fw-bold">#</th>
-                                                        <th className="text-capitalize fw-bold">Student Number</th>
                                                         <th className="text-capitalize fw-bold">Name</th>
-                                                        <th className="text-capitalize fw-bold">Email</th>
                                                         <th className="text-capitalize fw-bold">Sex</th>
                                                         <th className="text-capitalize  fw-bold">Grade & Section</th>
                                                     </tr>
@@ -309,17 +312,7 @@ const StudentTable = () => {
                                                         <tr key={student.id}>
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
                                                             <td className="align-middle">
-                                                                <span className="badge bg-secondary">
-                                                                    {student.studentNumber}
-                                                                </span>
-                                                            </td>
-                                                            <td className="align-middle">
-                                                                <span className="text-capitalize fw-semibold">
-                                                                    {student.name}
-                                                                </span>
-                                                            </td>
-                                                            <td className="align-middle">
-                                                                {student.email}
+                                                                {student.name}
                                                             </td>
                                                             <td className="align-middle">
                                                                 {student.sex}
@@ -353,7 +346,7 @@ const StudentTable = () => {
                     </div>
                 </div>
             </div>
-
+                                
             {/* View Modal */}
             {showModal && selectedStudent && (
                 <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>

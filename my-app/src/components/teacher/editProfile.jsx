@@ -12,10 +12,13 @@ const EditProfile = () => {
 
     const [formData, setFormData] = useState({
         firstName: "",
+        middleName: "",
         lastName: "",
+        suffix: "",
         email: "",
         imageFile: null
     });
+
     const [imagePreview, setImagePreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -42,7 +45,9 @@ const EditProfile = () => {
         if (profile) {
             setFormData({
                 firstName: profile.firstName || "",
+                middleName: profile.middleName || "",
                 lastName: profile.lastName || "",
+                suffix: profile.suffix || "",
                 email: profile.email || "",
                 imageFile: null
             });
@@ -189,7 +194,9 @@ const EditProfile = () => {
         try {
             const data = new FormData();
             data.append("firstName", formData.firstName);
+            data.append("middleName", formData.middleName || "");
             data.append("lastName", formData.lastName);
+            data.append("suffix", formData.suffix || "");
             data.append("email", formData.email);
             
             // Only append image if a new one was selected
@@ -322,8 +329,24 @@ const EditProfile = () => {
                                                 value={formData.firstName}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled
                                             />
                                             {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
+                                        </div>
+                                        
+                                            
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-semibold">
+                                                Middle Name <span className="text-muted small">(Optional)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="middleName"
+                                                className="form-control"
+                                                value={formData.middleName}
+                                                onChange={handleInputChange}
+                                                disabled
+                                            />
                                         </div>
 
                                         <div className="col-md-6">
@@ -337,8 +360,24 @@ const EditProfile = () => {
                                                 value={formData.lastName}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled
                                             />
                                             {errors.lastName && <div className="invalid-feedback">{errors.lastName}</div>}
+                                        </div>
+
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-semibold">
+                                                Suffix <span className="text-muted small">(Optional)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="suffix"
+                                                className="form-control"
+                                                placeholder="e.g. Jr., Sr., II, III"
+                                                value={formData.suffix}
+                                                onChange={handleInputChange}
+                                                disabled
+                                            />
                                         </div>
 
                                         <div className="col-12">

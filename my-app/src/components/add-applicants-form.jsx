@@ -6,6 +6,37 @@ from "../pages/enrollmentForm";
 
 
 
+
+
+const Reminder = () => {
+
+    const [showReminder, setShowReminder] = useState(true);
+
+    return (
+        
+        showReminder && (
+            <div className="alert alert-warning alert-dismissible fade show bg-warning bg-opacity-10 border-warning mx-auto mb-3" 
+                style={{ maxWidth: '700px' }} 
+                role="alert">
+                <i className="fa-solid fa-triangle-exclamation me-2 text-warning"></i>
+                <strong>Reminder:</strong> This form will ask for the following requirements:
+                <ul className="mb-0 mt-1 small">
+                    <li>PSA Birth Certificate</li>
+                    <li>Report Card (Form 138)</li>
+                    <li>2x2 ID Picture</li>
+                    <li>Good Moral Certificate <span className="text-muted">(optional)</span></li>
+                </ul>
+                <button type="button" 
+                onClick={() => setShowReminder(false)}
+                className="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        )  
+
+    )
+}
+
+
+
 // ═══════════════════════════════════════════════════════════════
 // PROGRESS STEPPER
 // ═══════════════════════════════════════════════════════════════
@@ -193,10 +224,11 @@ const AddApplicantStep1 = ({
 
             if (fieldName === 'email') {
                 const v2 = value.toLowerCase().trim();
+
                 const dup = emailVerify.some(e => 
-                    e.learnerInfo?.email.toLowerCase() === v2 && 
-                    e._id !== currentApplicantId
+                    e.learnerInfo?.email.toLowerCase() === v2 
                 );
+
                 setEmailError(dup ? 'Email already exists' : '');
                 setEmailValid(!dup && v2.length > 0);
                 setFormData(prev => ({ ...prev, learnerInfo: { ...prev.learnerInfo, email: value } }));
@@ -321,7 +353,7 @@ const AddApplicantStep1 = ({
                         type="text" name="learnerInfo.extensionName"
                         value={formData?.learnerInfo?.extensionName || ''}
                         onChange={handleChange} className="form-control"
-                        placeholder="e.g. Jr., Sr., II, III, MD, PhD, CPA, Esq." maxLength={10}
+                        placeholder="e.g. Jr., Sr., II, III" maxLength={10}
                     />
                 </div>
             );
@@ -539,7 +571,7 @@ const AddApplicantStep1 = ({
             {/* ── Returning Learner card ─────────────────────────────────────── */}
             <div className="card border-0">
                 <div className="card-body px-0">
-                    <p className="mb-3">Check the appropriate circle only</p>
+                    <p className="mb-3">Select the appropriate circle only</p>
                     {renderRadioGroup({ label: '2. Returning (Balik-Aral)', name: 'isReturning', options: ['Yes', 'No'] })}
                 </div>
             </div>
@@ -575,18 +607,14 @@ const AddApplicantStep1 = ({
 
 
 
-
-
-
-
-
-
 const AddApplicantStep2 = ({
     formData,
     setFormData,
     programs,
     loadingPrograms,
     hasAutoFilled,     setHasAutoFilled,
+    guardianSameAs,
+    handleGuardianSameAs,
 }) => {
  
     // ── Auto-fill permanent address (same logic as Step2) ─────────────────────
@@ -658,6 +686,32 @@ const AddApplicantStep2 = ({
             setFormData(prev => ({
                 ...prev,
                 address: { ...prev.address, [addressType]: { ...prev.address[addressType], [name]: cleaned } }
+            }));
+            return;
+        }
+
+        if (name === 'zipAutoFilled') {
+            setFormData(prev => ({
+                ...prev,
+                address: { ...prev.address, [addressType]: { ...prev.address[addressType], zipAutoFilled: value === true || value === 'true' } }
+            }));
+            return;
+        }
+
+        
+        if (name === 'municipality') {
+            const zipCode = getZipCode(value);
+            setFormData(prev => ({
+                ...prev,
+                address: { 
+                    ...prev.address, 
+                    [addressType]: { 
+                        ...prev.address[addressType], 
+                        [name]: value,
+                        zipCode: zipCode || '',
+                        zipAutoFilled: !!zipCode
+                    } 
+                }
             }));
             return;
         }
@@ -733,7 +787,7 @@ const AddApplicantStep2 = ({
     }, [setFormData]);
  
 
- 
+ console.log('current address:', formData.address?.current);
     // ── Render ─────────────────────────────────────────────────────────────────
     return (
         <>
@@ -761,7 +815,38 @@ const AddApplicantStep2 = ({
                         disabled={false}
                         parentType="mother"
                     />
- 
+
+                    {/* ✅ Guardian Checkboxes - Same As Mother/Father */}
+                    <div className="mb-4 p-3 border rounded" style={{ backgroundColor: '#f8f9fa' }}>
+                        <label className="fw-semibold small mb-3 d-block">Guardian Same as:</label>
+                        <div className="d-flex gap-3">
+                            <div className="form-check">
+                                <input 
+                                    className="form-check-input" 
+                                    type="checkbox" 
+                                    checked={guardianSameAs === 'mother'}
+                                    onChange={() => handleGuardianSameAs('mother')}
+                                    id="add_sameAsMother"
+                                />
+                                <label className="form-check-label" htmlFor="add_sameAsMother">
+                                    Mother
+                                </label>
+                            </div>
+                            
+                            <div className="form-check">
+                                <input 
+                                    className="form-check-input" 
+                                    type="checkbox" 
+                                    checked={guardianSameAs === 'father'}
+                                    onChange={() => handleGuardianSameAs('father')}
+                                    id="add_sameAsFather"
+                                />
+                                <label className="form-check-label" htmlFor="add_sameAsFather">
+                                    Father
+                                </label>
+                            </div>
+                        </div>
+                    </div>
 
  
                     {/* Guardian */}
@@ -776,7 +861,9 @@ const AddApplicantStep2 = ({
                         onChange={handleParentGuardianChange}
                         parentType="guardian"
                     />
- 
+
+
+
                     {/* Guardian Relationship */}
                     <div className="mb-3">
                         <label className="form-label small">
@@ -789,20 +876,37 @@ const AddApplicantStep2 = ({
                             className="form-select"
                         >
                             <option value="">Select Relationship</option>
-                            {[
-                                'mother','father','sister','brother','grandmother','grandfather',
-                                'aunt','uncle','cousin','godmother','godfather',
-                                'stepmother','stepfather','adoptive-mother','adoptive-father','others'
-                            ].map(r => (
-                                <option key={r} value={r}>
-                                    {r.charAt(0).toUpperCase() + r.slice(1).replace(/-/g, ' ')}
-                                </option>
-                            ))}
+                            {guardianSameAs === 'mother' && (
+                                <option value="mother">Mother</option>
+                            )}
+                            {guardianSameAs === 'father' && (
+                                <option value="father">Father</option>
+                            )}
+                            {!guardianSameAs && (
+                                <>
+                                    <option value="mother">Mother</option>
+                                    <option value="father">Father</option>
+                                    <option value="sister">Sister</option>
+                                    <option value="brother">Brother</option>
+                                    <option value="grandmother">Grandmother</option>
+                                    <option value="grandfather">Grandfather</option>
+                                    <option value="aunt">Aunt</option>
+                                    <option value="uncle">Uncle</option>
+                                    <option value="cousin">Cousin</option>
+                                    <option value="godmother">Godmother</option>
+                                    <option value="godfather">Godfather</option>
+                                    <option value="stepmother">Stepmother</option>
+                                    <option value="stepfather">Stepfather</option>
+                                    <option value="adoptive-mother">Adoptive Mother</option>
+                                    <option value="adoptive-father">Adoptive Father</option>
+                                    <option value="others">Others</option>
+                                </>
+                            )}
                         </select>
                     </div>
  
                     {/* Others specify */}
-                    {formData.parentGuardianInfo?.guardian?.relationship === 'others' && (
+                    {!guardianSameAs && formData.parentGuardianInfo?.guardian?.relationship === 'others' && (
                         <div className="mb-3">
                             <label className="form-label small">
                                 Please specify: <span className="text-danger">*</span>
@@ -850,7 +954,12 @@ const AddApplicantStep2 = ({
                         value={formData.address?.current?.zipCode}
                         onChange={(e) => handleAddressChange(e, 'current')}
                         required={true}
+                        disabled={!formData.address?.current?.municipality || !!formData.address?.current?.zipAutoFilled}
+                        zipAutoFilled={!!formData.address?.current?.zipAutoFilled}
+                        hasMunicipality={!!formData.address?.current?.municipality}
                     />
+
+
                     <FormField
                         label="Contact Number" name="contactNumber" type="tel"
                         value={formData.address?.current?.contactNumber}
@@ -906,9 +1015,13 @@ const AddApplicantStep2 = ({
                         label="Zip Code" name="zipCode" type="text"
                         value={formData.address?.permanent?.zipCode}
                         onChange={(e) => handleAddressChange(e, 'permanent')}
-                        disabled={formData.address?.permanent?.sameAsCurrent}
+                        disabled={formData.address?.permanent?.sameAsCurrent || !formData.address?.permanent?.municipality || !!formData.address?.permanent?.zipAutoFilled}
                         required={!formData.address?.permanent?.sameAsCurrent}
+                        zipAutoFilled={!!formData.address?.permanent?.zipAutoFilled}
+                        hasMunicipality={!!formData.address?.permanent?.municipality}
                     />
+
+
                 </div>
             </div>
  
@@ -1046,12 +1159,6 @@ const AddApplicantStep2 = ({
         </>
     );
 };
-
-
-
-
-
-
 
 
 
@@ -1566,9 +1673,8 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess, applicant = null, mode = '
 
 
     const [hasAutoFilled,    setHasAutoFilled]    = useState(false);
+    const [guardianSameAs, setGuardianSameAs] = useState('');
     const [loadingPrograms,  setLoadingPrograms]  = useState(false);
-
-
 
 
 
@@ -1605,10 +1711,17 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess, applicant = null, mode = '
 
         const fetchEmails = async () => {
             try {
-                const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/getAllEmails`, { method: "GET", credentials: "include" });
+                const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/getAllEmails`, {
+                     method: "GET", 
+                     credentials: "include" 
+                });
                 const data = await res.json();
-                if (data.success) setEmailVerify(data.emails);
-            } catch (e) { console.log("Error fetching emails:", e.message); }
+                if (data.success) {
+                    setEmailVerify(data.emails);
+                }
+            } catch (e) { 
+                console.log("Error fetching emails:", e.message); 
+            }
         };
         fetchPrograms();
         fetchEmails();
@@ -1634,6 +1747,64 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess, applicant = null, mode = '
             !lrnError && !emailError && emailValid
         );
     };
+
+
+
+
+    const handleGuardianSameAs = useCallback((source) => {
+        const newSource = guardianSameAs === source ? '' : source;
+        setGuardianSameAs(newSource);
+
+        if (newSource === 'mother') {
+            const motherData = formData.parentGuardianInfo?.mother;
+            setFormData(prev => ({
+                ...prev,
+                parentGuardianInfo: {
+                    ...prev.parentGuardianInfo,
+                    guardian: {
+                        lastName: motherData?.lastName || '',
+                        firstName: motherData?.firstName || '',
+                        middleName: motherData?.middleName || '',
+                        contactNumber: motherData?.contactNumber || '',
+                        relationship: 'mother'  // ← AUTO-SET
+                    }
+                }
+            }));
+        } 
+        else if (newSource === 'father') {
+            const fatherData = formData.parentGuardianInfo?.father;
+            setFormData(prev => ({
+                ...prev,
+                parentGuardianInfo: {
+                    ...prev.parentGuardianInfo,
+                    guardian: {
+                        lastName: fatherData?.lastName || '',
+                        firstName: fatherData?.firstName || '',
+                        middleName: fatherData?.middleName || '',
+                        contactNumber: fatherData?.contactNumber || '',
+                        relationship: 'father'  // ← AUTO-SET
+                    }
+                }
+            }));
+    } 
+    else {
+        setFormData(prev => ({
+            ...prev,
+            parentGuardianInfo: {
+                ...prev.parentGuardianInfo,
+                guardian: {
+                    lastName: '',
+                    firstName: '',
+                    middleName: '',
+                    contactNumber: '',
+                    relationship: '',
+                    relationshipOther: ''
+                }
+            }
+        }));
+    }
+}, [guardianSameAs, formData.parentGuardianInfo, setFormData]);
+
 
 
 
@@ -1759,6 +1930,8 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess, applicant = null, mode = '
                         <div className="modal-body px-4">
                             <ProgressStepper currentStep={currentStep} />
 
+                            <Reminder/>
+
                             {/* ── Step 1 ── */}
                             {currentStep === 1 && (
                                 <AddApplicantStep1
@@ -1782,12 +1955,13 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess, applicant = null, mode = '
                                     loadingPrograms={loadingPrograms}
                                     hasAutoFilled={hasAutoFilled}
                                     setHasAutoFilled={setHasAutoFilled}
+                                    guardianSameAs={guardianSameAs}
+                                    handleGuardianSameAs={handleGuardianSameAs}
                                 />
                             )}
 
 
                             {/* ── Step 3 placeholder ── */}
-                       
                             {currentStep === 3 && (
                                 <AddApplicantStep3
                                     formData={formData}
@@ -1833,7 +2007,7 @@ const Add_Applicants = ({ isOpen, onClose, onSuccess, applicant = null, mode = '
                     </div>
                 </div>
             </div>
-            
+                                
             
 
             {/* Success Modal */}

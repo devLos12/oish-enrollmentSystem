@@ -63,7 +63,7 @@ export const getClassrooms = async (req, res) => {
         }
       }
     // ✅ select registrationHistory — para makuha natin yung section doon, hindi global
-    }).select('studentNumber firstName lastName email sex registrationHistory');
+    }).select('studentNumber firstName lastName middleName extensionName email sex registrationHistory');
 
     // ✅ Map result
     const result = subjects.map(sub => {
@@ -98,11 +98,14 @@ export const getClassrooms = async (req, res) => {
             h.schoolYear === latestHistory.schoolYear &&
             h.semester   === latestHistory.semester
           );
-
           return {
             id:            s._id,
             studentNumber: s.studentNumber,
             name:          `${s.firstName} ${s.lastName}`,
+            firstName:     s.firstName,
+            lastName:      s.lastName,
+            middleName:    s.middleName,
+            extensionName: s.extensionName,
             gradeLevel:    classmateHistory?.gradeLevel || gradeLevel,
             email:         s.email,
             sex:           s.sex,

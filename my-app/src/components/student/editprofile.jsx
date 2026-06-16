@@ -47,14 +47,7 @@ const EditProfile = () => {
     const [contactNumberError, setContactNumberError] = useState('');
 
 
-    const extensionNameOptions = [
-        'Jr.',
-        'Sr.',
-        'II',
-        'III',
-        'IV',
-        'V'
-    ];
+
 
 
     const showAlert = (message, type = 'success') => {
@@ -533,22 +526,27 @@ const EditProfile = () => {
                                             <input
                                                 type="text"
                                                 name="firstName"
-                                                className={`form-control ${errors.firstName ? 'is-invalid' : ''}`}
+                                                className={`form-control bg-light ${errors.firstName ? 'is-invalid' : ''}`}
                                                 value={formData.firstName}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled
                                             />
                                             {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
                                         </div>
 
                                         <div className="col-md-6">
                                             <label className="form-label fw-semibold">Middle Name</label>
+                                            <small className="text-muted ms-2">(Optional)</small>
+
                                             <input
                                                 type="text"
                                                 name="middleName"
-                                                className="form-control"
+                                                className="form-control bg-light"
                                                 value={formData.middleName}
                                                 onChange={handleInputChange}
+                                                disabled
+
                                             />
                                         </div>
 
@@ -559,27 +557,31 @@ const EditProfile = () => {
                                             <input
                                                 type="text"
                                                 name="lastName"
-                                                className={`form-control ${errors.lastName ? 'is-invalid' : ''}`}
+                                                className={`form-control bg-light ${errors.lastName ? 'is-invalid' : ''}`}
                                                 value={formData.lastName}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled
+
                                             />
                                             {errors.lastName && <div className="invalid-feedback">{errors.lastName}</div>}
                                         </div>
 
                                         <div className="col-md-6">
                                             <label className="form-label fw-semibold">Extension Name</label>
-                                            <select
+                                            <small className="text-muted ms-2">(Optional)</small>
+
+                                            <input
+                                                type="text"
                                                 name="extensionName"
-                                                className="form-select"
+                                                className="form-control bg-light"
+                                                placeholder="e.g. Jr., Sr., II, III"
                                                 value={formData.extensionName}
                                                 onChange={handleInputChange}
-                                            >
-                                                <option value="">Select Extension Name (Optional)</option>
-                                                {extensionNameOptions.map(option => (
-                                                    <option key={option} value={option}>{option}</option>
-                                                ))}
-                                            </select>
+                                                maxLength={10}
+                                                disabled
+
+                                            />
                                         </div>
 
                                         <div className="col-md-4">
@@ -589,12 +591,14 @@ const EditProfile = () => {
                                             <input
                                                 type="date"
                                                 name="birthDate"
-                                                className={`form-control ${errors.birthDate ? 'is-invalid' : ''}`}
+                                                className={`form-control bg-light ${errors.birthDate ? 'is-invalid' : ''}`}
                                                 value={formData.birthDate}
                                                 onChange={handleInputChange}
                                                 max="2011-12-31"
                                                 min="1990-01-01"
                                                 required
+                                                disabled
+
                                             />
                                             {errors.birthDate && <div className="invalid-feedback">{errors.birthDate}</div>}
                                         </div>
@@ -605,10 +609,12 @@ const EditProfile = () => {
                                             </label>
                                             <select
                                                 name="sex"
-                                                className={`form-select ${errors.sex ? 'is-invalid' : ''}`}
+                                                className={`form-select bg-light ${errors.sex ? 'is-invalid' : ''}`}
                                                 value={formData.sex}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled
+
                                             >
                                                 <option value="">Select Sex</option>
                                                 <option value="Male">Male</option>

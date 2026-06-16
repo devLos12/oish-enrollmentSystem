@@ -61,6 +61,7 @@ const Semester = () => {
             const res = await fetch(`${BASE_URL}/api/delete-school-year/${pendingDeleteId}`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include"
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Error deleting semester");
@@ -82,6 +83,7 @@ const Semester = () => {
             const res = await fetch(`${BASE_URL}/api/set-current-school-year/${pendingCurrentId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include"
             });
             const data = await res.json();
             if (!res.ok) { 
@@ -106,7 +108,10 @@ const Semester = () => {
     const fetchSemesters = async () => {
         try {
             setFetching(true);
-            const res = await fetch(`${BASE_URL}/api/get-school-years`);
+            const res = await fetch(`${BASE_URL}/api/get-school-years`, {
+                method: "GET",
+                credentials: "include"
+            });
             const data = await res.json();
             const reversed = [...data].reverse();
             setSemesters(reversed);
@@ -244,6 +249,7 @@ const Semester = () => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ schoolYear, semester: parseInt(form.semester) }),
+                credentials: "include"
             });
             const data = await res.json();
             
@@ -281,6 +287,7 @@ const Semester = () => {
             const res = await fetch(`${BASE_URL}/api/update-school-year/${pendingId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include"
             });
             const data = await res.json();
             if (!res.ok) { alert(data.message || "Error switching semester"); return; }

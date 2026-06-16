@@ -3,6 +3,77 @@ import Student from "../model/student.js";
 import Staff from '../model/staff.js';
 import Section from "../model/section.js";
 import SchoolYear from "../model/schoolYear.js";
+import { createLogs } from "./logs.js";
+
+
+
+
+
+
+
+const timeToMinutes = (t) => {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+};
+
+
+
+
+export const updateScheduleDays = async(req, res) => {
+    try {
+        const { subjectId } = req.params;
+        const { sectionIds, scheduleDays } = req.body;
+
+        if (!sectionIds?.length) {
+            return res.status(400).json({ success: false, message: "No sections selected." });
+        }
+
+        if (!scheduleDays?.length) {
+            return res.status(400).json({ success: false, message: "Select at least one day." });
+        }
+
+        const subject = await Subject.findById(subjectId);
+        if (!subject) {
+            return res.status(404).json({ success: false, message: "Subject not found." });
+        }
+
+        // Update scheduleDays ng bawat selected section
+        subject.sections = subject.sections.map(section => {
+            if (sectionIds.includes(section._id.toString())) {
+                return { ...section.toObject(), scheduleDays };
+            }
+            return section;
+        });
+
+        await subject.save();
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "UPDATE SCHEDULE DAYS",
+            `Updated schedule days for ${sectionIds.length} section(s) in subject "${subject.subjectName}" (${subject.subjectCode})`,
+            "Success"
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: `Schedule days updated for ${sectionIds.length} section(s).`
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server Error.'
+        });
+    }
+}
+
+
+
+
+
 
 
 
@@ -34,8 +105,21 @@ export const deleteSubjectSection = async(req, res) => {
         }
 
         // Remove section
+        const deletedSectionName = subject.sections[sectionIndex].sectionName;
         subject.sections.splice(sectionIndex, 1);
         await subject.save();
+
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "DELETE SECTION",
+            `Deleted section "${deletedSectionName}" from subject "${subject.subjectName}" (${subject.subjectCode})`,
+            "Success"
+        );
+
+
 
         return res.status(200).json({
             success: true,
@@ -83,6 +167,62 @@ export const updateSubjectSection = async(req, res) => {
             });
         }
 
+
+        const teacherSubjects = await Subject.find({
+            teacherId: subject.teacherId,
+            schoolYear: subject.schoolYear,
+            _id: { $ne: subject._id } // ibang subjects lang
+        });
+
+        
+        for (const otherSubject of teacherSubjects) {
+            for (const sec of otherSubject.sections) {
+                if (!sec.scheduleDays?.length) continue;
+
+                const sharedDays = scheduleDays.filter(d =>
+                    sec.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                );
+                if (!sharedDays.length) continue;
+
+                const newStart = timeToMinutes(scheduleStartTime);
+                const newEnd   = timeToMinutes(scheduleEndTime);
+                const exStart  = timeToMinutes(sec.scheduleStartTime);
+                const exEnd    = timeToMinutes(sec.scheduleEndTime);
+
+                if (newStart < exEnd && newEnd > exStart) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Teacher already has "${otherSubject.subjectName} - ${sec.sectionName}"  with the same schedule time.`
+                    });
+                }
+            }
+        }
+
+
+        for (const sec of subject.sections) {
+            if (sec._id.toString() === sectionId) continue; // skip self
+
+            if (!sec.scheduleDays?.length) continue;
+
+            const sharedDays = scheduleDays.filter(d =>
+                sec.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+            );
+            if (!sharedDays.length) continue;
+
+            const newStart = timeToMinutes(scheduleStartTime);
+            const newEnd   = timeToMinutes(scheduleEndTime);
+            const exStart  = timeToMinutes(sec.scheduleStartTime);
+            const exEnd    = timeToMinutes(sec.scheduleEndTime);
+
+            if (newStart < exEnd && newEnd > exStart) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Schedule conflict: Same subject already has section "${sec.sectionName}" on ${sharedDays.join(', ')} at the same time.`
+                });
+            }
+        }
+
+
         // Update section
         subject.sections[sectionIndex] = {
             ...subject.sections[sectionIndex].toObject(),
@@ -94,6 +234,16 @@ export const updateSubjectSection = async(req, res) => {
         };
 
         await subject.save();
+
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "UPDATE SECTION",
+            `Updated section "${sectionName}" in subject "${subject.subjectName}" (${subject.subjectCode})`,
+            "Success"
+        );
 
         return res.status(200).json({
             success: true,
@@ -152,6 +302,40 @@ export const addSubjectSection = async(req, res) => {
                 message: "Section already exists in this subject"
             });
         }
+
+
+
+        const teacherSubjects = await Subject.find({
+            teacherId: subject.teacherId,
+            schoolYear: subject.schoolYear,
+            _id: { $ne: subject._id } // exclude current subject
+        });
+
+        for (const otherSubject of teacherSubjects) {
+            for (const sec of otherSubject.sections) {
+                if (!sec.scheduleDays?.length) continue;
+
+                // Check if may shared days
+                const sharedDays = scheduleDays.filter(d =>
+                    sec.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                );
+                if (!sharedDays.length) continue;
+
+                // Check if nag-ooverlap ang time
+                const newStart = timeToMinutes(scheduleStartTime);
+                const newEnd   = timeToMinutes(scheduleEndTime);
+                const exStart  = timeToMinutes(sec.scheduleStartTime);
+                const exEnd    = timeToMinutes(sec.scheduleEndTime);
+
+                if (newStart < exEnd && newEnd > exStart) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Teacher already has "${otherSubject.subjectName} - ${sec.sectionName}"  with the same schedule time.`
+                    });
+                }
+            }
+        }
+
 
         // ✅ FIX 2 — findOne (not find) + scoped sa activeSchoolYear
         const studentSec = await Section.findOne({
@@ -222,6 +406,17 @@ export const addSubjectSection = async(req, res) => {
             await Promise.all(updatePromises);
         }
 
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "ADD SECTION",
+            `Added section "${sectionName}" to subject "${subject.subjectName}" (${subject.subjectCode})`,
+            "Success"
+        );
+
+
         return res.status(200).json({
             success: true,
             message: `Section added successfully and synced to ${studentsToUpdate.length} student(s)`,
@@ -235,6 +430,7 @@ export const addSubjectSection = async(req, res) => {
         });
     }
 }
+
 
 
 
@@ -257,6 +453,17 @@ export const bulkAddSubjectSections = async (req, res) => {
             return res.status(400).json({ success: false, message: "No active school year." });
         }
 
+
+
+        const teacherSubjects = await Subject.find({
+            teacherId: subject.teacherId,
+            schoolYear: subject.schoolYear,
+            _id: { $ne: subject._id }
+        });
+
+
+
+
         const errors = [];
         const toAdd = [];
 
@@ -275,6 +482,55 @@ export const bulkAddSubjectSections = async (req, res) => {
 
             const dupInBatch = toAdd.some(s => s.sectionName === sectionName.trim());
             if (dupInBatch) { errors.push(`Row ${rowNum}: Duplicate section "${sectionName}" in batch`); continue; }
+
+
+
+
+            let crossConflict = false;
+            for (const otherSubject of teacherSubjects) {
+                for (const sec of otherSubject.sections) {
+                    if (!sec.scheduleDays?.length) continue;
+
+                    const sharedDays = scheduleDays.filter(d =>
+                        sec.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                    );
+                    if (!sharedDays.length) continue;
+
+                    const newStart = timeToMinutes(scheduleStartTime);
+                    const newEnd   = timeToMinutes(scheduleEndTime);
+                    const exStart  = timeToMinutes(sec.scheduleStartTime);
+                    const exEnd    = timeToMinutes(sec.scheduleEndTime);
+
+                    if (newStart < exEnd && newEnd > exStart) {
+                        errors.push(`Row ${rowNum}: Schedule conflict — Teacher already has "${otherSubject.subjectName} - with the same schedule time.`);
+                        crossConflict = true;
+                        break;
+                    }
+                }
+                if (crossConflict) break;
+            }
+            if (crossConflict) continue;
+
+            const batchConflict = toAdd.some(added => {
+                const sharedDays = scheduleDays.filter(d =>
+                    added.scheduleDays.map(x => x.toLowerCase()).includes(d.toLowerCase())
+                );
+                if (!sharedDays.length) return false;
+
+                const newStart = timeToMinutes(scheduleStartTime);
+                const newEnd   = timeToMinutes(scheduleEndTime);
+                const exStart  = timeToMinutes(added.scheduleStartTime);
+                const exEnd    = timeToMinutes(added.scheduleEndTime);
+
+                return newStart < exEnd && newEnd > exStart;
+            });
+            if (batchConflict) {
+                errors.push(`Row ${rowNum}: Schedule conflict with another row in this import.`);
+                continue;
+            }
+
+
+
 
             const studentSec = await Section.findOne({
                 name: sectionName.trim(),
@@ -344,6 +600,15 @@ export const bulkAddSubjectSections = async (req, res) => {
                 totalSynced += studentsToUpdate.length;
             }
         }
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "BULK ADD SECTIONS",
+            `Imported ${toAdd.length} section(s) to subject "${subject.subjectName}" (${subject.subjectCode}) via Excel`,
+            "Success"
+        );
 
         return res.status(200).json({
             success: true,
@@ -511,7 +776,6 @@ export const getSubjectSection = async (req, res) => {
 
 
 
-
 export const getAllSubjects = async (req, res) => {
     try {
         const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
@@ -528,7 +792,6 @@ export const getAllSubjects = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 
 
 export const getAllTeachers = async (req, res) => {
@@ -549,6 +812,7 @@ export const getAllTeachers = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 
 
@@ -744,6 +1008,16 @@ export const bulkAddSubjects = async (req, res) => {
             }
         }
 
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "BULK ADD SUBJECTS",
+            `Imported ${insertedSubjects.length} subject(s) via Excel`,
+            "Success"
+        );
+
         res.status(201).json({
             message: `Successfully imported ${insertedSubjects.length} subject(s)`,
             imported: insertedSubjects.length
@@ -780,7 +1054,8 @@ export const createSubject = async (req, res) => {
 
         // Normalize inputs
         const normalizedCode = subjectCode.replace(/\s+/g, '').toUpperCase();
-        const normalizedName = subjectName.replace(/\s{2,}/g, ' ').trim();
+        const normalizedName = subjectName.replace(/\s{2,}/g, ' ').trim().toUpperCase();
+
 
 
 
@@ -887,6 +1162,18 @@ export const createSubject = async (req, res) => {
             });
         }
 
+
+        const { id: accountId, role } = req.account;  
+        await createLogs(
+            accountId,
+            role,
+            "ADD SUBJECT",
+            `Added subject "${savedSubject.subjectName}" (${savedSubject.subjectCode}) for ${savedSubject.strand} - Grade ${savedSubject.gradeLevel}`,
+            "Success"
+        );  
+
+
+
         res.status(201).json({ message: "Subject created successfully."});
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -918,7 +1205,7 @@ export const updateSubject = async (req, res) => {
             ? subjectCode.replace(/\s+/g, '').toUpperCase()
             : null;
         const normalizedName = subjectName
-            ? subjectName.replace(/\s{2,}/g, ' ').trim()
+            ? subjectName.replace(/\s{2,}/g, ' ').trim().toUpperCase()
             : null;
 
         // Get the new values (or keep old if not changing)
@@ -1107,6 +1394,16 @@ export const updateSubject = async (req, res) => {
             }
         });
 
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "UPDATE SUBJECT",
+            `Updated subject "${subject.subjectName}" (${subject.subjectCode}) for ${subject.strand} - Grade ${subject.gradeLevel}`,
+            "Success"
+        );
+
         res.status(200).json({ 
             message: "Subject updated and synced to students successfully."
         });
@@ -1116,6 +1413,7 @@ export const updateSubject = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 
 export const deleteSubject = async (req, res) => {
@@ -1148,6 +1446,18 @@ export const deleteSubject = async (req, res) => {
     await Promise.all(removeOps);
 
     await Subject.findByIdAndDelete(id);
+
+
+
+    const { id: accountId, role } = req.account;
+    await createLogs(
+        accountId, role,
+        "DELETE SUBJECT",
+        `Deleted subject "${subject.subjectName}" (${subject.subjectCode}) for ${subject.strand} - Grade ${subject.gradeLevel}`,
+        "Success"
+    );
+
+
 
     res.status(200).json({
       message: "Subject deleted successfully",

@@ -130,7 +130,6 @@ const SideBar = () => {
                 link: "/admin/logs",            title: "Logs"
             },
 
- 
         ],
 
 
@@ -196,6 +195,9 @@ const SideBar = () => {
     }
 
     const navLinks = data[role] || [];
+    
+    const { profile } = useContext(globalContext);
+    const isFirstLogin = profile?.isFirstLogin === true;
 
     const handleNavClick = (item) => {
 
@@ -207,7 +209,7 @@ const SideBar = () => {
             setPendingApplicantsCount(0);
         }
         
-
+        
         if (item.hasDropdown) {
             // Toggle dropdown
             setIsAccessCodeOpen(!isAccessCodeOpen);
@@ -258,20 +260,26 @@ const SideBar = () => {
                 <div key={i}>
                     {/* Main Navigation Item */}
                     <div 
-                        className={`row mt-2 p-2 cursor d-flex align-items-center rounded-3 g-0 gap-2
-                            ${ (location?.pathname === data.link || textHeader === data.title ) ? "bg-white text-dark" : "text-white"}`} 
+                        className={`row mt-2 p-2 d-flex align-items-center rounded-3 g-0 gap-2
+                            ${ (location?.pathname === data.link || textHeader === data.title ) ? "bg-white text-dark" : "text-white"}
+                            ${isFirstLogin && data.link !== `/${role}/change_password` ? 'opacity-50' : 'cursor'}
+                        `} 
                         onClick={() => {
-                            handleNavClick(data)
+                            // Kapag isFirstLogin, block lahat except change_password
+                            if (isFirstLogin && data.link !== `/${role}/change_password`) return;
+                            handleNavClick(data);
                         }}
-                    >
-                        <div className="col-1">
+                        style={{
+                            cursor: isFirstLogin && data.link !== `/${role}/change_password` ? 'not-allowed' : 'pointer'
+                        }}
+                    >                        <div className="col-1">
                             <i className={`${data.icon} `}></i>
                         </div>
                         <div className="col">
                             <p className="m-0 text-capitalize  small">{data.label}</p>
                         </div>
 
-                        {/* ✅ NOTIFICATION BADGE - Show only for applicants */}
+                        {/*  NOTIFICATION BADGE - Show only for applicants */}
                         {data.label === "applicants" && pendingApplicantsCount > 0 && (
                             <div className="col-auto">
                                 <span className={`badge  
@@ -303,14 +311,20 @@ const SideBar = () => {
                 </div>
             ))}
 
-            <div className="row mt-2 p-2 rounded-3 cursor d-flex align-items-center "
-            onClick={()=>  {
-                setOpenmenu(false);
-                setModal((prev) => ({...prev, 
-                    isShow: true, 
-                    text: "do you want to exit?"
-                }))
-            }}
+            <div className={`row mt-2 p-2 rounded-3 d-flex align-items-center 
+                ${isFirstLogin ? 'opacity-50' : 'cursor'}`}
+                onClick={()=>  {
+                    // ✅ Block logout kapag isFirstLogin
+                    if (isFirstLogin) return;
+                    setOpenmenu(false);
+                    setModal((prev) => ({...prev, 
+                        isShow: true, 
+                        text: "do you want to exit?"
+                    }))
+                }}
+                style={{
+                    cursor: isFirstLogin ? 'not-allowed' : 'pointer'
+                }}
             >
                 <div className="col-1">
                     <i className={`fa-solid fa-right-from-bracket text-white`}></i>

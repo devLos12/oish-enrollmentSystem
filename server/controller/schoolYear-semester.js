@@ -1,6 +1,8 @@
 import SchoolYear from "../model/schoolYear.js";
 import Section from "../model/section.js";
 import Student from "../model/student.js";
+import Subject from "../model/subject.js";
+import { createLogs } from "./logs.js";
 
 
 
@@ -14,6 +16,18 @@ export const deleteSchoolYear = async (req, res) => {
       return res.status(404).json({ message: "School year not found." });
     }    
     await SchoolYear.findByIdAndDelete(id);
+
+
+
+    const { id: accountId, role } = req.account;
+    await createLogs(
+        accountId, role,
+        "DELETE SCHOOL YEAR",
+        `Deleted school year "${schoolYear.label}"`,
+        "Success"
+    );
+    
+
     
     res.status(200).json({ message: "School year deleted successfully." });
   } catch (error) {
@@ -22,7 +36,6 @@ export const deleteSchoolYear = async (req, res) => {
 }
     
 
-      
 
 
 
@@ -68,7 +81,6 @@ export const setCurrentSchoolYear = async (req, res) => {
     const previousCurrent = await SchoolYear.findOne({ isCurrent: true });
 
     if (previousCurrent) {
-      // Same sem — already current
       if (previousCurrent._id.toString() === target._id.toString()) {
         return res.status(400).json({ 
           success: false, 
@@ -83,17 +95,11 @@ export const setCurrentSchoolYear = async (req, res) => {
       (targetYear === currentYear && target.semester < previousCurrent.semester);
     }
 
-    // ✅ Set as current + active din
     await SchoolYear.updateMany({}, { isCurrent: false, isActive: false });
     await SchoolYear.findByIdAndUpdate(req.params.id, { 
       isCurrent: true, 
       isActive: true
     });
-
-
-    // ========================================
-    // 🔥 Section copy + promotions dito na
-    // ========================================
 
     const isConsecutive = previousCurrent ? (() => {
       const prevYear = parseInt(previousCurrent.schoolYear.split('-')[0]);
@@ -101,10 +107,7 @@ export const setCurrentSchoolYear = async (req, res) => {
       const prevSem = previousCurrent.semester;
       const targetSem = target.semester;
 
-      // Sem 1 → Sem 2 (same school year)
       if (prevYear === targetYear && prevSem === 1 && targetSem === 2) return true;
-
-      // Sem 2 → Sem 1 (next school year)
       if (targetYear === prevYear + 1 && prevSem === 2 && targetSem === 1) return true;
 
       return false;
@@ -116,7 +119,6 @@ export const setCurrentSchoolYear = async (req, res) => {
       const isSem2ToSem1 = previousCurrent.semester === 2 && target.semester === 1;
 
       // ✅ CASE 1 — Sem 1 → Sem 2 (same school year)
-      // Repeater — HINDI kasama, naiwan sa Sem 1
       if (!isNewSchoolYear && isSem1ToSem2) {
         const sem1Sections = await Section.find({
           schoolYear: previousCurrent._id,
@@ -134,7 +136,6 @@ export const setCurrentSchoolYear = async (req, res) => {
           });
 
           if (!exists) {
-            // ✅ Regular lang — repeater excluded sa Sem 2
             const eligibleStudents = await Student.find({
               _id: { $in: sec.students },
               studentType: 'regular'
@@ -154,11 +155,45 @@ export const setCurrentSchoolYear = async (req, res) => {
             });
           }
         }
+
+        // ✅ Copy subjects — source: previous SY's 2nd sem (NOT 1st sem ng same SY)
+        const prevSYStr = `${parseInt(target.schoolYear.split('-')[0]) - 1}-${parseInt(target.schoolYear.split('-')[1]) - 1}`;
+        const prevSecondSem = await SchoolYear.findOne({ schoolYear: prevSYStr, semester: 2 });
+
+        if (prevSecondSem) {
+          const subjectsToCopy = await Subject.find({ schoolYear: prevSecondSem._id });
+
+          for (const subj of subjectsToCopy) {
+            const exists = await Subject.findOne({
+              subjectCode: subj.subjectCode,
+              strand: subj.strand,
+              gradeLevel: subj.gradeLevel,
+              semester: 2,
+              schoolYear: target._id
+            });
+
+            if (!exists) {
+              await Subject.create({
+                schoolYear: target._id,
+                subjectCode: subj.subjectCode,
+                subjectName: subj.subjectName,
+                gradeLevel: subj.gradeLevel,
+                strand: subj.strand,
+                track: subj.track,
+                subjectType: subj.subjectType,
+                teacherId: subj.teacherId,
+                teacher: subj.teacher,
+                semester: 2,
+                sections: [],
+                students: []
+              });
+            }
+          }
+        }
+        // kung walang prevSecondSem — skip lang, walang mag-copy
       }
 
-      // ✅ CASE 2 — Sem 2 → Sem 1 (new school year + promotions)
-      // Repeater — HINDI kasama, hindi promoted, hindi graduated
-      // Admin na mag-enroll manually sa New SY
+      // ✅ CASE 2 — Sem 2 → Sem 1 (new school year)
       else if (isNewSchoolYear && isSem2ToSem1) {
         const sem2Sections = await Section.find({
           schoolYear: previousCurrent._id,
@@ -166,7 +201,6 @@ export const setCurrentSchoolYear = async (req, res) => {
         });
 
         for (const sec of sem2Sections) {
-          // ✅ Regular lang — repeater excluded sa promotion/graduation
           const eligibleStudents = await Student.find({
             _id: { $in: sec.students },
             studentType: 'regular'
@@ -174,7 +208,6 @@ export const setCurrentSchoolYear = async (req, res) => {
 
           const eligibleIds = eligibleStudents.map(s => s._id);
 
-          // G12 regular → graduated
           if (sec.gradeLevel === 12) {
             await Student.updateMany(
               { _id: { $in: eligibleIds } },
@@ -183,7 +216,6 @@ export const setCurrentSchoolYear = async (req, res) => {
             continue;
           }
 
-          // G11 regular → G12 promoted
           const exists = await Section.findOne({
             schoolYear: target._id,
             name: sec.name,
@@ -212,14 +244,57 @@ export const setCurrentSchoolYear = async (req, res) => {
             studentType: 'repeater',
             status: { $nin: ['graduated', 'dropped'] }
           },
-          { 
-            $set: { 
-              hasEnrollmentRequest: true,
-            } 
-          }
+          { $set: { hasEnrollmentRequest: true } }
         );
+
+        // ✅ Copy subjects — source: previous SY's 1st sem
+        const prevSYStr = `${parseInt(target.schoolYear.split('-')[0]) - 1}-${parseInt(target.schoolYear.split('-')[1]) - 1}`;
+        const prevFirstSem = await SchoolYear.findOne({ schoolYear: prevSYStr, semester: 1 });
+
+        if (prevFirstSem) {
+          const subjectsToCopy = await Subject.find({ schoolYear: prevFirstSem._id });
+
+          for (const subj of subjectsToCopy) {
+            const exists = await Subject.findOne({
+              subjectCode: subj.subjectCode,
+              strand: subj.strand,
+              gradeLevel: subj.gradeLevel,
+              semester: 1,
+              schoolYear: target._id
+            });
+
+            if (!exists) {
+              await Subject.create({
+                schoolYear: target._id,
+                subjectCode: subj.subjectCode,
+                subjectName: subj.subjectName,
+                gradeLevel: subj.gradeLevel,
+                strand: subj.strand,
+                track: subj.track,
+                subjectType: subj.subjectType,
+                teacherId: subj.teacherId,
+                teacher: subj.teacher,
+                semester: 1,
+                sections: [],
+                students: []
+              });
+            }
+          }
+        }
+        // kung walang prevFirstSem — skip lang, walang mag-copy
       }
     }
+
+
+    const { id: accountId, role } = req.account;
+    await createLogs(
+        accountId, role,
+        "SET CURRENT SEMESTER",
+        `Set "${target.label}" as current semester`,
+        "Success"
+    );
+
+
 
     res.status(200).json({ 
       success: true,
@@ -230,6 +305,8 @@ export const setCurrentSchoolYear = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 
 
@@ -295,6 +372,18 @@ export const createSchoolYear = async (req, res) => {
       isActive: false,
       isCurrent: false,
     });
+
+
+
+
+
+    const { id: accountId, role } = req.account;
+    await createLogs(
+        accountId, role,
+        "CREATE SCHOOL YEAR",
+        `Created ${label} (${schoolYear} - ${semester === 1 ? "1st" : "2nd"} Semester)`,
+        "Success"
+    );
 
     
     res.status(201).json({ 
@@ -363,6 +452,16 @@ export const activateSchoolYear = async (req, res) => {
     // isActive lang — admin view switching, walang side effects
     await SchoolYear.updateMany({}, { isActive: false });
     await SchoolYear.findByIdAndUpdate(req.params.id, { isActive: true });
+
+    
+
+    const { id: accountId, role } = req.account;
+    await createLogs(
+        accountId, role,
+        "SWITCH ACTIVE SEMESTER",
+        `Switched active view to "${activated.label}"`,
+        "Success"
+    );
 
     res.status(200).json({ 
       message: `Now viewing ${activated.label}.`, 

@@ -65,6 +65,13 @@ const Applicants = () => {
     const [openDropdown, setOpenDropdown] = useState(null);
 
 
+     // Bulk approve states
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
+    const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
+    const [selectMode, setSelectMode] = useState(false); 
+
+
 
 
 
@@ -441,6 +448,63 @@ const Applicants = () => {
 
 
 
+
+    // Pending on current page lang
+    const pendingOnPage = currentApplicants.filter(a => a.status === 'pending');
+    const isAllPageSelected = pendingOnPage.length > 0 &&
+        pendingOnPage.every(a => selectedIds.includes(a._id));
+
+    const handleSelectAll = (e) => {
+        const pageIds = pendingOnPage.map(a => a._id);
+        if (e.target.checked) {
+            setSelectedIds(prev => [...new Set([...prev, ...pageIds])]);
+        } else {
+            setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)));
+        }
+    };
+
+    const handleSelectOne = (id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const handleToggleSelectMode = () => {
+        setSelectMode(prev => !prev);
+        setSelectedIds([]); // clear selections pag nag-toggle
+    };
+
+    const confirmBulkApprove = async () => {
+        try {
+            setBulkApproveLoading(true);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bulkApproveApplicants`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enrollmentIds: selectedIds }),
+                credentials: "include",
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            setShowBulkApproveModal(false);
+            setSelectedIds([]);
+            setSelectMode(false);
+            showAlert(data.message, 'success');
+            getAllApplicants();
+            fetchPendingApplicantsCount();
+        } catch (error) {
+            setShowBulkApproveModal(false);
+            showAlert(error.message, 'error');
+        } finally {
+            setBulkApproveLoading(false);
+        }
+    };
+
+
+
+
+
+
     const getStatusBadge = (status) => {
         const badges = {
             pending: 'bg-warning text-dark',
@@ -449,6 +513,9 @@ const Applicants = () => {
         };
         return badges[status] || 'bg-secondary';
     };
+
+
+
 
     const getStatusCounts = () => {
         return {
@@ -706,7 +773,7 @@ const Applicants = () => {
                         <div className="d-flex justify-content-md-end gap-2">
 
 
-                            {role === "admin" && (
+                            {role === "admin" && !selectMode && (
                             <button
                                 className={`btn btn-sm fw-semibold ${
                                     activeSchoolYear?.enrollmentStatus === 'open'
@@ -738,10 +805,10 @@ const Applicants = () => {
                                     </>
                                 )}
                             </button>
-                            )}|
+                            )}
 
-                            
-                            {role === 'admin' && (
+
+                            {role === 'admin' && !selectMode && (
                                 <button
                                     className="btn btn-sm btn-primary fw-semibold"
                                     onClick={handleOpenAddApplicantModal}
@@ -749,6 +816,32 @@ const Applicants = () => {
                                 >
                                     <i className="fa fa-plus me-2"></i>
                                     Add Applicant
+                                </button>
+                            )}
+                            
+                            
+                            {/* Approve Selected — lalabas lang pag may naka-check */}
+                            {selectMode && selectedIds.length > 0 && (
+                                <button
+                                    className="btn btn-sm btn-success fw-semibold"
+                                    onClick={() => setShowBulkApproveModal(true)}
+                                >
+                                    <i className="fa fa-check me-2"></i>
+                                    Approve Selected ({selectedIds.length})
+                                </button>
+                            )}
+                            
+
+
+                            {/* Select Mode Toggle */}
+                            {role === 'admin' && (
+                                <button
+                                    className={`btn btn-sm fw-semibold ${selectMode ? 'btn-danger' : 'btn-outline-secondary'}`}
+                                    onClick={handleToggleSelectMode}
+                                    title={selectMode ? 'Cancel Selection' : 'Select applicants for bulk action'}
+                                >
+                                    <i className={`fa ${selectMode ? 'fa-times' : 'fa-check-square'} me-2`}></i>
+                                    {selectMode ? 'Cancel Select' : 'Select'}
                                 </button>
                             )}
 
@@ -846,6 +939,17 @@ const Applicants = () => {
                                                         <th className="text-capitalize fw-semibold">Status</th>
                                                         <th className="text-capitalize fw-semibold">Date Applied</th>
                                                         <th className="text-capitalize fw-semibold text-center">Actions</th>
+                                                        {selectMode && (
+                                                            <th>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="form-check-input"
+                                                                    checked={isAllPageSelected}
+                                                                    onChange={handleSelectAll}
+                                                                    title="Select all pending on this page"
+                                                                />
+                                                            </th>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -930,6 +1034,20 @@ const Applicants = () => {
                                                                     )}
                                                                 </div>
                                                             </td>
+
+
+                                                            {selectMode && (
+                                                                <td className="align-middle">
+                                                                    {applicant.status === 'pending' && (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="form-check-input"
+                                                                            checked={selectedIds.includes(applicant._id)}
+                                                                            onChange={() => handleSelectOne(applicant._id)}
+                                                                        />
+                                                                    )}
+                                                                </td>
+                                                            )}
                                                       
                                                         </tr>
                                                     ))}
@@ -1352,6 +1470,66 @@ const Applicants = () => {
                 </div>
             )}
 
+
+
+            {/* Bulk Approve Confirmation Modal */}
+            {showBulkApproveModal && (
+                <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Bulk Approve Applicants</h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setShowBulkApproveModal(false)}
+                                    disabled={bulkApproveLoading}
+                                ></button>
+                            </div>
+                            <div className="modal-body text-center">
+                                <i className="fa fa-check-circle fa-3x text-success mb-3"></i>
+                                <h5 className="mb-3">Approve {selectedIds.length} Applicant(s)?</h5>
+                                <p className="text-muted">
+                                    Student accounts will be created and login credentials
+                                    will be sent to each applicant's email.
+                                    <br/>
+                                    <small className="text-danger mt-2 d-block">
+                                        This action cannot be undone.
+                                    </small>
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowBulkApproveModal(false)}
+                                    disabled={bulkApproveLoading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-success"
+                                    onClick={confirmBulkApprove}
+                                    disabled={bulkApproveLoading}
+                                >
+                                    {bulkApproveLoading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2"></span>
+                                            Approving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fa fa-check me-2"></i>
+                                            Yes, Approve All
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
 
 

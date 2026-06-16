@@ -40,6 +40,15 @@ const SubjectDetails = () => {
     const [editingRows, setEditingRows] = useState({});
     const [manualRows, setManualRows] = useState([]);
 
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedSectionIds, setSelectedSectionIds] = useState([]);
+
+
+    const [showEditDaysModal, setShowEditDaysModal] = useState(false);
+    const [editDays, setEditDays] = useState([]);
+    const [isEditDaysSubmitting, setIsEditDaysSubmitting] = useState(false);
+
+
 
 
 
@@ -176,6 +185,20 @@ const SubjectDetails = () => {
         }
 
 
+
+
+        if (exceedsOneHour(selectedSection.scheduleStartTime, selectedSection.scheduleEndTime)) {
+            showAlert("Schedule duration must not exceed 1 hour.", 'error');
+            return;
+        }
+
+
+
+
+
+  
+
+
         if (hasScheduleConflict(
             selectedSection.scheduleDays,
             selectedSection.scheduleStartTime,
@@ -183,7 +206,7 @@ const SubjectDetails = () => {
             modalType === 'edit' ? selectedSection._id : null
         )) {
             showAlert(
-                "Schedule conflict detected!\nAnother section already has an overlapping time on one or more of the selected days.",
+                "Schedule time already exist.",
                 'error'
             );
             return;
@@ -382,6 +405,14 @@ const SubjectDetails = () => {
                         if (timeToMinutes(scheduleEndTime) <= timeToMinutes(scheduleStartTime)) {
                             rowErrors.push('End time must be after start time');
                         }
+                    }   
+
+
+
+                    if (scheduleStartTime && scheduleEndTime) {
+                        if (exceedsOneHour(scheduleStartTime, scheduleEndTime)) {
+                            rowErrors.push('Schedule must not exceed 1 hour');
+                        }
                     }
 
                     
@@ -456,6 +487,14 @@ const SubjectDetails = () => {
 
 
 
+            if (updatedRow.scheduleStartTime && updatedRow.scheduleEndTime) {
+                if (exceedsOneHour(updatedRow.scheduleStartTime, updatedRow.scheduleEndTime)) {
+                    rowErrors.push('Schedule must not exceed 1 hour');
+                }
+            }
+
+
+
             updatedRow.hasError = rowErrors.length > 0;
             updatedRow.errorMessages = rowErrors;
             updated[index] = updatedRow;
@@ -504,6 +543,8 @@ const SubjectDetails = () => {
         if (bulkStep === 'upload') setBulkStep('preview');
     };
 
+
+
     const updateManualRow = (id, fields) => {
         setManualRows(prev => prev.map(r => {
             if (r.id !== id) return r;
@@ -525,6 +566,14 @@ const SubjectDetails = () => {
             if (updatedRow.scheduleStartTime && updatedRow.scheduleEndTime) {
                 if (timeToMinutes(updatedRow.scheduleEndTime) <= timeToMinutes(updatedRow.scheduleStartTime)) {
                     rowErrors.push('End time must be after start time');
+                }
+            }
+
+
+
+            if (updatedRow.scheduleStartTime && updatedRow.scheduleEndTime) {
+                if (exceedsOneHour(updatedRow.scheduleStartTime, updatedRow.scheduleEndTime)) {
+                    rowErrors.push('Schedule must not exceed 1 hour');
                 }
             }
 
@@ -633,6 +682,50 @@ const SubjectDetails = () => {
 
 
 
+    const handleOpenEditDaysModal = () => {
+        setEditDays([]);
+        setShowEditDaysModal(true);
+    };
+
+    const toggleEditDay = (day) => {
+        setEditDays(prev =>
+            prev.includes(day)
+                ? prev.filter(d => d !== day)
+                : [...prev, day]
+        );
+    };
+
+    const handleSubmitEditDays = async () => {
+        if (!editDays.length) {
+            showAlert("Select at least one day!", 'error');
+            return;
+        }
+
+        try {
+            setIsEditDaysSubmitting(true);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/updateSectionScheduleDays/${subjectId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sectionIds: selectedSectionIds,
+                    scheduleDays: editDays
+                }),
+                credentials: "include"
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            showAlert(data.message, 'success');
+            setShowEditDaysModal(false);
+            setIsSelectMode(false);
+            setSelectedSectionIds([]);
+            getSubjectDetails();
+        } catch (error) {
+            showAlert(error.message, 'error');
+        } finally {
+            setIsEditDaysSubmitting(false);
+        }
+    };
+
 
 
 
@@ -641,6 +734,11 @@ const SubjectDetails = () => {
         setAlertType(type);
         setShowAlertModal(true);
     };
+
+
+
+
+
 
     const formatTime12Hour = (time24) => {
         if (!time24) return 'N/A';
@@ -653,14 +751,35 @@ const SubjectDetails = () => {
 
 
 
-    // ✅ Convert "HH:MM" to total minutes for easy comparison
+    //  Convert "HH:MM" to total minutes for easy comparison
     const timeToMinutes = (t) => {
         if (!t) return null;
         const [h, m] = t.split(':').map(Number);
         return h * 60 + m;
     };
 
-    // ✅ Check if two time ranges overlap (exclusive — same end/start is fine)
+
+
+
+    const addOneHour = (time24) => {
+        if (!time24) return '';
+        const [h, m] = time24.split(':').map(Number);
+        const totalMinutes = h * 60 + m + 60;
+        const newH = Math.floor(totalMinutes / 60) % 24;
+        const newM = totalMinutes % 60;
+        return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    };
+
+    const exceedsOneHour = (startTime, endTime) => {
+        if (!startTime || !endTime) return false;
+        return timeToMinutes(endTime) - timeToMinutes(startTime) > 60;
+    };
+
+
+
+
+
+    //  Check if two time ranges overlap (exclusive — same end/start is fine)
     const timesOverlap = (start1, end1, start2, end2) => {
         const s1 = timeToMinutes(start1), e1 = timeToMinutes(end1);
         const s2 = timeToMinutes(start2), e2 = timeToMinutes(end2);
@@ -669,7 +788,7 @@ const SubjectDetails = () => {
         return s1 < e2 && e1 > s2; // overlap if ranges intersect
     };
 
-    // ✅ Check if a new schedule conflicts with existing sections
+    //  Check if a new schedule conflicts with existing sections
     // `days` = array of day strings, ignores sectionId (for edit mode)
     const hasScheduleConflict = (days, startTime, endTime, excludeSectionId = null) => {
         return (subjectData?.sections || []).some(section => {
@@ -680,7 +799,7 @@ const SubjectDetails = () => {
             return timesOverlap(startTime, endTime, section.scheduleStartTime, section.scheduleEndTime);
         });
     };
-
+    
 
 
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -797,12 +916,34 @@ const SubjectDetails = () => {
                                 <div className="d-flex justify-content-between align-items-center mb-3">
                                     <h5 className="fw-bold mb-0">Sections ({subjectData.sections?.length || 0})</h5>
                                     <div className="d-flex gap-2">
-                                        <button className="btn btn-sm btn-outline-danger text-capitalize" onClick={handleOpenBulkModal}>
-                                            <i className="fa fa-file-excel-o me-2"></i>Import Sections
-                                        </button>
-                                        <button className="btn btn-sm btn-danger" onClick={handleAddSection}>
-                                            <i className="fa fa-plus me-2"></i>Add Section
-                                        </button>
+                                        {!isSelectMode ? (
+                                            <>
+                                                <button className="btn btn-sm btn-outline-danger text-capitalize" onClick={handleOpenBulkModal}>
+                                                    <i className="fa fa-file-excel-o me-2"></i>Import Sections
+                                                </button>
+                                                <button className="btn btn-sm btn-danger" onClick={handleAddSection}>
+                                                    <i className="fa fa-plus me-2"></i>Add Section
+                                                </button>
+                                                {/* <button className="btn btn-sm btn-outline-secondary" onClick={() => { setIsSelectMode(true); setSelectedSectionIds([]); }}>
+                                                    <i className="fa fa-check-square-o me-2"></i>Select
+                                                </button> */}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {selectedSectionIds.length > 0 ? (
+                                                    <button className="btn btn-sm btn-warning" onClick={handleOpenEditDaysModal}>
+                                                        <i className="fa fa-calendar me-2"></i>Edit Schedule Days ({selectedSectionIds.length})
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-muted small align-self-center">Select sections below...</span>
+                                                )}
+
+                                                
+                                                <button className="btn btn-sm btn-outline-danger" onClick={() => { setIsSelectMode(false); setSelectedSectionIds([]); }}>
+                                                    <i className="fa fa-times me-2"></i>Cancel
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
@@ -818,6 +959,22 @@ const SubjectDetails = () => {
                                                         <th>Room</th>
                                                         <th>Total Students</th>
                                                         <th className="text-center">Actions</th>
+                                                        {isSelectMode && (
+                                                            <th className="text-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="form-check-input"
+                                                                    checked={selectedSectionIds.length === currentSections.length && currentSections.length > 0}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setSelectedSectionIds(currentSections.map(s => s._id));
+                                                                        } else {
+                                                                            setSelectedSectionIds([]);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </th>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -858,6 +1015,22 @@ const SubjectDetails = () => {
                                                                     </button>
                                                                 </div>
                                                             </td>
+                                                            {isSelectMode && (
+                                                                <td className="align-middle text-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="form-check-input"
+                                                                        checked={selectedSectionIds.includes(section._id)}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                setSelectedSectionIds(prev => [...prev, section._id]);
+                                                                            } else {
+                                                                                setSelectedSectionIds(prev => prev.filter(id => id !== section._id));
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -910,9 +1083,9 @@ const SubjectDetails = () => {
                                         <div className="row mb-3">
                                             <div className="col-6">
                                                 <label className="form-label text-capitalize fw-bold">
-                                                    Section Name
-                                                    {loadingSections && <span className="spinner-border spinner-border-sm ms-2"></span>}
+                                                    Section Name:
                                                 </label>
+                                                <span className="text-danger small ms-2">*</span>
                                                 <select
                                                     className="form-select"
                                                     value={selectedSection?.sectionName || ''}
@@ -929,31 +1102,82 @@ const SubjectDetails = () => {
                                             </div>
 
                                             <div className="col-6">
-                                                <label className="form-label small">Room</label>
+                                                <label className="form-label small fw-bold">Room:</label>
+                                                <span className="text-danger small ms-2">*</span>
                                                 <input type="text" className="form-control" placeholder="e.g. Room 101"
                                                     value={selectedSection?.room || ''}
-                                                    onChange={(e) => setSelectedSection({ ...selectedSection, room: e.target.value })} />
+                                                    onChange={(e) => setSelectedSection({ ...selectedSection, room: e.target.value.toUpperCase() })} />
                                             </div>
 
 
 
-
                                             <div className="col-6 mt-3">
-                                                <label className="form-label small">Start Time</label>
+                                                <label className="form-label small fw-bold">Start Time:</label>
+                                                <span className="text-danger small ms-2">*</span>
+
                                                 <input type="time" className="form-control"
-                                                    value={selectedSection?.scheduleStartTime || ''}
-                                                    onChange={(e) => setSelectedSection({ ...selectedSection, scheduleStartTime: e.target.value })} />
+                                                value={selectedSection?.scheduleStartTime || ''}
+                                                onChange={(e) => {
+                                                    const newStart = e.target.value;
+                                                    setSelectedSection({
+                                                        ...selectedSection,
+                                                        scheduleStartTime: newStart,
+                                                        // ✅ auto-set end time to +1hr kapag nag-pick ng start
+                                                        scheduleEndTime: newStart ? addOneHour(newStart) : ''
+                                                    });
+                                                }} />
+                                                
+
+                                                
                                             </div>
                                             <div className="col-6 mt-3">
-                                                <label className="form-label small">End Time</label>
+                                                <label className="form-label small fw-bold">End Time:</label>
+                                                <span className="text-danger small ms-2">*</span>
+                                                
+
                                                 <input type="time" className="form-control"
                                                     value={selectedSection?.scheduleEndTime || ''}
                                                     onChange={(e) => setSelectedSection({ ...selectedSection, scheduleEndTime: e.target.value })} />
+                                                {exceedsOneHour(selectedSection?.scheduleStartTime, selectedSection?.scheduleEndTime) && (
+                                                    <small className="text-danger d-block mt-1">
+                                                        <i className="fa fa-exclamation-circle me-1"></i>
+                                                        Schedule must not exceed 1 hour.
+                                                    </small>
+                                                )}
+                                            
                                             </div>
 
                                             {/* Schedule Days — full width */}
                                             <div className="col-12 mt-3">
-                                                <label className="form-label small fw-bold">Schedule Days</label>
+                                                
+
+                                                <div className="d-flex align-items-center gap-2 mb-1">
+                                                    <label className="form-label small fw-bold mb-0">Schedule Days:</label>
+                                                    <span className="text-danger small ms-1">*</span>
+                                                    <div
+                                                        className="d-flex align-items-center gap-1"
+                                                        style={{ cursor: 'pointer' }}
+                                                        onClick={() => {
+                                                            if (selectedSection?.scheduleDays?.length === dayOptions.length) {
+                                                                setSelectedSection({ ...selectedSection, scheduleDays: [] });
+                                                            } else {
+                                                                setSelectedSection({ ...selectedSection, scheduleDays: [...dayOptions] });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="form-check-input mt-0"
+                                                            checked={selectedSection?.scheduleDays?.length === dayOptions.length}
+                                                            onChange={() => {}}
+                                                            style={{ accentColor: '#dc3545', cursor: 'pointer' }}
+                                                        />
+                                                        <span className="small text-muted">Select All</span>
+                                                    </div>
+                                                </div>
+
+
+
                                                 <div className="d-flex flex-wrap gap-2 mt-1">
                                                     {dayOptions.map(day => {
                                                         const isSelected = selectedSection?.scheduleDays?.includes(day);
@@ -1201,7 +1425,64 @@ const SubjectDetails = () => {
                                                         <th>Start Time</th>
                                                         <th>End Time</th>
                                                         <th>Room</th>
-                                                        <th>Days</th>
+                                                        <th className="d-flex gap-2 align-items-center">
+                                                            Days
+                                                            {(Object.values(editingRows).some(v => v) || manualRows.length > 0) && (
+                                                            <div
+                                                                className="d-flex align-items-center gap-1 mt-1"
+                                                                style={{ cursor: 'pointer' }}
+
+
+                                                                onClick={() => {
+                                                                    const editingExcelRows = excelData.filter((_, idx) => editingRows[idx]);
+                                                                    const allRows = [...editingExcelRows, ...manualRows];
+                                                                    const allSelected = allRows.length > 0 && allRows.every(r => r.scheduleDays?.length === dayOptions.length);
+                                                                    excelData.forEach((row, idx) => {
+                                                                        if (editingRows[idx]) {
+                                                                            updateExcelRow(idx, { scheduleDays: allSelected ? [] : [...dayOptions] });
+                                                                        }
+                                                                    });
+                                                                    manualRows.forEach(row => {
+                                                                        updateManualRow(row.id, { scheduleDays: allSelected ? [] : [...dayOptions] });
+                                                                    });
+                                                                }}
+
+
+                                                            
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="form-check-input mt-0"
+                                                                    
+                                                                    
+                                                                    checked={(() => {
+                                                                        const editingExcelRows = excelData.filter((_, idx) => editingRows[idx]);
+                                                                        const allRows = [...editingExcelRows, ...manualRows];
+                                                                        if (allRows.length === 0) return false;
+                                                                        return allRows.every(r => r.scheduleDays?.length === dayOptions.length);
+                                                                    })()}
+                                                                    
+                                                                    
+
+                                                                    onChange={() => {
+                                                                        const editingExcelRows = excelData.filter((_, idx) => editingRows[idx]);
+                                                                        const allRows = [...editingExcelRows, ...manualRows];
+                                                                        const allSelected = allRows.length > 0 && allRows.every(r => r.scheduleDays?.length === dayOptions.length);
+                                                                        excelData.forEach((row, idx) => {
+                                                                            if (editingRows[idx]) {
+                                                                                updateExcelRow(idx, { scheduleDays: allSelected ? [] : [...dayOptions] });
+                                                                            }
+                                                                        });
+                                                                        manualRows.forEach(row => {
+                                                                            updateManualRow(row.id, { scheduleDays: allSelected ? [] : [...dayOptions] });
+                                                                        });
+                                                                    }}
+                                                                    style={{ accentColor: '#dc3545', cursor: 'pointer' }}
+                                                                />
+                                                                <span className="small text-muted" style={{ fontSize: '0.7rem' }}>All</span>
+                                                            </div>
+                                                            )}
+                                                        </th>
 
                                                         <th style={{ width: '100px' }} className="text-center">Actions</th>
                                                     </tr>
@@ -1290,7 +1571,7 @@ const SubjectDetails = () => {
                                                                             className="form-control form-control-sm"
                                                                             placeholder="e.g. Room 101"
                                                                             value={row.room}
-                                                                            onChange={(e) => updateExcelRow(idx, { room: e.target.value })}
+                                                                            onChange={(e) => updateExcelRow(idx, { room: e.target.value.toUpperCase() })}
                                                                         />
                                                                     ) : (
                                                                         row.room || <span className="text-danger fst-italic">missing</span>
@@ -1298,11 +1579,12 @@ const SubjectDetails = () => {
                                                                 </td>
 
 
-
                                                                 
                                                                 {/* Days */}
                                                                 <td>
                                                                     {isEditing ? (
+
+                                                                        
                                                                         <div className="d-flex flex-wrap gap-1">
                                                                             {dayOptions.map(day => {
                                                                                 const isSelected = row.scheduleDays?.includes(day);
@@ -1442,7 +1724,7 @@ const SubjectDetails = () => {
                                                                     onChange={(e) => updateManualRow(row.id, { room: e.target.value })}
                                                                 />
                                                             </td>
-
+                                                                    
                                                             
                                                             {/* Days */}
                                                             <td>
@@ -1550,6 +1832,98 @@ const SubjectDetails = () => {
                     </div>
                 </div>
             )}
+
+            {/* =====================================
+                Edit Schedule Days Modal ===================================== */}
+            {showEditDaysModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">
+                                    <i className="fa fa-calendar me-2 text-warning"></i>
+                                    Edit Schedule Days
+                                    <span className="badge bg-secondary ms-2 fw-normal" style={{ fontSize: '0.75rem' }}>
+                                        {selectedSectionIds.length} section(s) selected
+                                    </span>
+                                </h5>
+                                <button type="button" className="btn-close" onClick={() => setShowEditDaysModal(false)} disabled={isEditDaysSubmitting}></button>
+                            </div>
+
+                            <div className="modal-body">
+                                <p className="text-muted small mb-3">
+                                    <i className="fa fa-info-circle me-1"></i>
+                                    Selected days will be applied to all <strong>{selectedSectionIds.length}</strong> selected section(s).
+                                </p>
+
+                                <label className="form-label fw-bold small">Select Days</label>
+
+                                
+                                <div className="d-flex flex-wrap gap-2 mt-1">
+                                    {dayOptions.map(day => {
+                                        const isSelected = editDays.includes(day);
+                                        return (
+                                            <div
+                                                key={day}
+                                                onClick={() => toggleEditDay(day)}
+                                                className="d-flex align-items-center gap-2 px-3 py-2 rounded border"
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    backgroundColor: isSelected ? '#fff5f5' : '#f8f9fa',
+                                                    borderColor: isSelected ? '#dc3545' : '#dee2e6',
+                                                    transition: 'all 0.15s ease'
+                                                }}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => toggleEditDay(day)}
+                                                    className="form-check-input mt-0"
+                                                    style={{ accentColor: '#dc3545', cursor: 'pointer' }}
+                                                />
+                                                <span className={`small fw-semibold text-capitalize ${isSelected ? 'text-danger' : 'text-muted'}`}>
+                                                    {day}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {!editDays.length && (
+                                    <small className="text-danger d-block mt-2">
+                                        <i className="fa fa-exclamation-circle me-1"></i>
+                                        Select at least one day.
+                                    </small>
+                                )}
+                            </div>
+
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowEditDaysModal(false)}
+                                    disabled={isEditDaysSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-warning"
+                                    onClick={handleSubmitEditDays}
+                                    disabled={isEditDaysSubmitting || !editDays.length}
+                                >
+                                    {isEditDaysSubmitting ? (
+                                        <><span className="spinner-border spinner-border-sm me-2"></span>Updating...</>
+                                    ) : (
+                                        <><i className="fa fa-save me-2"></i>Apply to {selectedSectionIds.length} Section(s)</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             {/* Alert Modal */}
             {showAlertModal && (

@@ -34,6 +34,42 @@ const sendVerificationEmail = async (email, code ) => {
 
 
 
+
+export const getAccessCodeLogs = async (req, res) => {
+    try {
+        const logs = await AccessCode.find()
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const formatted = logs.map(log => {
+            const now = new Date();
+            let status;
+            if (log.isUsed) status = 'used';
+            else if (log.expiresAt < now) status = 'expired';
+            else status = 'active';
+
+            return {
+                _id:         log._id,
+                code:        log.code,
+                status,
+                generatedAt: log.createdAt,
+                expiresAt:   log.expiresAt,
+                usedAt:      log.usedAt || null,
+                usedBy:      log.usedBy || null,
+            };
+        });
+
+        res.status(200).json({ success: true, data: formatted });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
+
+
+
+
 export const accessGeneratedCode = async(req, res)=> {
     
     try {   

@@ -214,6 +214,7 @@ const EditStudent = () => {
                                             className="form-control text-capitalize"
                                             value={selectedStudent?.firstName || ''}
                                             onChange={(e) => setSelectedStudent({ ...selectedStudent, firstName: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                                            disabled
                                         />
                                     </div>
                                     <div className="col-md-4">
@@ -223,6 +224,7 @@ const EditStudent = () => {
                                             className="form-control text-capitalize"
                                             value={selectedStudent?.middleName || ''}
                                             onChange={(e) => setSelectedStudent({ ...selectedStudent, middleName: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                                            disabled
                                         />
                                     </div>
                                     <div className="col-md-4">
@@ -232,6 +234,7 @@ const EditStudent = () => {
                                             className="form-control text-capitalize"
                                             value={selectedStudent?.lastName || ''}
                                             onChange={(e) => setSelectedStudent({ ...selectedStudent, lastName: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                                            disabled
                                         />
                                     </div>
                                 </div>
@@ -255,6 +258,7 @@ const EditStudent = () => {
                                                 setSelectedStudent({ ...selectedStudent, lrn: cleaned });
                                             }}
                                             maxLength={12}
+                                            disabled
                                         />
                                         <small className="text-muted d-block mt-1">
                                             <i className="fa fa-info-circle me-1"></i>

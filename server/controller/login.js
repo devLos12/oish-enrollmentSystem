@@ -3,47 +3,34 @@ import Staff from "../model/staff.js";
 import Student from "../model/student.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import Logs from "../model/logs.js";
+import { createLogs } from "./logs.js"; // shared helper na
 
 
 
+const CreateCookie = (res, account, role) => {
+    const accessToken = jwt.sign(
+        { id: account?._id, role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_SECRET_EXPIRESIN }
+    );
 
-const CreateLogs = async(id, name, role) => {
-    await Logs.create({
-        participantId: id,
-        participantName: name,
-        role: role,
-        status: "Logged In"
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+    const isLocal = allowedOrigins.some(origin => 
+        origin.includes('localhost') || origin.startsWith('http://')
+    );
+
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: !isLocal,
+        sameSite: 'lax',
+        path: "/",
     });
 }
 
-    const CreateCookie = (res, account, role) => {
-        const accessToken = jwt.sign(
-            { id: account?._id, role },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_SECRET_EXPIRESIN }
-        );
-
-        // Check if running locally based on allowed origins
-        const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
-        const isLocal = allowedOrigins.some(origin => 
-            origin.includes('localhost') || origin.startsWith('http://')
-        );
-
-        res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            secure: !isLocal, // false if local (http), true if production (https)
-            sameSite: 'lax',
-            path: "/",
-        });
-    }
-
-    
 const LoginPortal = async(req, res) => {
     try {
         const { identifier, password } = req.body;
 
-        // Validate input
         if (!identifier || !password) {
             return res.status(400).json({ 
                 field: 'identifier',
@@ -51,87 +38,94 @@ const LoginPortal = async(req, res) => {
             });
         }
 
-        
         let account = null;
         let role = '';
-
-        // Check if identifier is email (contains @) or student number
         const isEmail = identifier.includes('@');
 
         if (isEmail) {
-            // Try to find in Admin first
             account = await Admin.findOne({ email: identifier });
             if (account) {
                 role = "admin";
             } else {
-                // If not admin, try Staff
                 account = await Staff.findOne({ email: identifier });
-                if (account) {
-                    role = "staff";
-                } else {
-                    // If not staff, try Student with email
+                if (account) role = "staff";
+                else {
                     account = await Student.findOne({ email: identifier });
-                    if (account) {
-                        role = "student";
-                    }
+                    if (account) role = "student";
                 }
             }
 
             if (!account) {
+                // ✅ Log failed — email not found (admin default kasi di pa alam kung sino)
+                await createLogs(
+                    null,
+                    'admin',
+                    'LOGIN FAILED',
+                    `Failed login attempt: ${identifier} (email not found)`,
+                    'Failed' 
+                    
+                );
                 return res.status(401).json({ 
                     field: 'identifier',
-                    message: "Invalid email. " 
+                    message: "Invalid email." 
                 });
             }
 
         } else {
-            // Identifier is student number
             account = await Student.findOne({ studentNumber: identifier });
-            
             if (!account) {
                 return res.status(401).json({ 
                     field: 'identifier',
-                    message: "Invalid student number. " 
+                    message: "Invalid student number." 
                 });
             }
-            
             role = "student";
         }
 
-        // Verify password
         const isMatch = await bcrypt.compare(password, account.password);
-        
+
         if (!isMatch) {
+            // ✅ Log failed — wrong password (may account na, alam na ang role)
+            if (role === "admin" || role === "staff") {
+                const name = account?.firstName
+                    ? `${account.firstName} ${account.lastName}`
+                    : account?.name || "Admin";
+
+                await createLogs(
+                    account._id,
+                    role,
+                    'LOGIN FAILED',
+                    `${name} (${identifier}) entered wrong password`,
+                    'Failed' 
+                );
+            }
             return res.status(401).json({ 
                 field: 'password',
-                message: "Invalid password. " 
+                message: "Invalid password." 
             });
         }
 
-        // Optional: Check if account needs verification (add this if you have verification logic)
-        // if (account.verificationStatus === 'pending') {
-        //     return res.status(403).json({ 
-        //         showModal: true,
-        //         message: "Your account is pending verification. Please wait for admin approval." 
-        //     });
-        // }
-
-        // Create name for logs
         const name = account?.firstName 
             ? `${account.firstName} ${account.lastName}`
             : account?.name || "Admin";
 
-        // Create logs (only for admin/staff, optional for students)
+        // ✅ Log successful login
         if (role === "admin" || role === "staff") {
-            await CreateLogs(account._id, name, role);
+            await createLogs(
+                account._id,
+                role,
+                'LOGIN',
+                `${name} (${identifier}) logged in successfully`,
+                'Success'
+            );
         }
 
-        // Create cookie and send response
         CreateCookie(res, account, role);
         
         return res.status(200).json({ 
             message: "Successfully logged in!", 
-            role 
+            role,
+            isFirstLogin: role === 'student' ? account.isFirstLogin : false 
         });
 
     } catch (error) {

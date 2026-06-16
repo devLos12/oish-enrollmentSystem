@@ -1,6 +1,67 @@
 import Enrollment from "../model/enrollment.js";
 import Program from "../model/program.js";
 
+
+
+
+// GET /api/studentsByCategory
+export const getStudentsByCategory = async (req, res) => {
+  try {
+    const { category, startDate, endDate } = req.query;
+
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+        }
+      };
+    }
+
+    const categoryFilterMap = {
+      regular:    { studentType: "regular" },
+      returnee:   { studentType: "returnee" },
+      transferee: { studentType: "transferee" },
+      pwd:        { "learnerInfo.learnerWithDisability.isDisabled": true },
+      indigenous: { "learnerInfo.indigenousCommunity.isMember": true },
+      fourps:     { "learnerInfo.fourPs.isBeneficiary": true },
+    };
+
+    const categoryFilter = categoryFilterMap[category];
+    if (!categoryFilter) {
+      return res.status(400).json({ success: false, message: "Invalid category" });
+    }
+
+    const students = await Enrollment.find(
+      { ...dateFilter, ...categoryFilter },
+      {
+        "learnerInfo.lastName": 1,
+        "learnerInfo.firstName": 1,
+        "learnerInfo.middleName": 1,
+        "learnerInfo.lrn": 1,
+        "learnerInfo.sex": 1,
+        "seniorHigh.strand": 1,
+        "seniorHigh.track": 1,
+        gradeLevelToEnroll: 1,
+        studentType: 1,
+        status: 1,
+      }
+    ).sort({ "learnerInfo.lastName": 1 });
+
+    res.status(200).json({ success: true, data: students });
+  } catch (error) {
+    console.error("Error fetching students by category:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch students by category",
+      error: error.message
+    });
+  }
+};
+
+
+
 // Dashboard stats: total, studentType, gender, PWD, Indigenous, 4Ps (with date range support)
 export const getEnrollmentStats = async (req, res) => {
   try {
@@ -85,6 +146,9 @@ export const getEnrollmentStats = async (req, res) => {
   }
 };
 
+
+
+
 // Stats by gradeLevelToEnroll (with date range support)
 export const getEnrollmentStatsByGrade = async (req, res) => {
   try {
@@ -132,6 +196,8 @@ export const getEnrollmentStatsByGrade = async (req, res) => {
   }
 };
 
+
+
 // Stats by seniorHigh.track (with date range support)
 export const getEnrollmentStatsByTrack = async (req, res) => {
   try {
@@ -169,6 +235,13 @@ export const getEnrollmentStatsByTrack = async (req, res) => {
     });
   }
 };
+
+
+
+
+
+
+
 
 
 // Stats by seniorHigh.strand (dynamically fetched from Program collection, with date range support)

@@ -145,6 +145,7 @@ const studentSchema = new mongoose.Schema({
   ],
   repeatedSection: { type: String},
   hasEnrollmentRequest: { type: Boolean, default: false},
+  isFirstLogin: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
 

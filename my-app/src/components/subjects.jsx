@@ -208,7 +208,7 @@ const SubjectManagement = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     // 🔥 Strip all whitespace from code, trim name
-                    subjectName: selectedSubject.subjectName.trim(),
+                    subjectName: selectedSubject.subjectName.trim().toUpperCase(),
                     subjectCode: selectedSubject.subjectCode.replace(/\s+/g, '').toUpperCase(),
                     gradeLevel: parseInt(selectedSubject.gradeLevel),
                     subjectType: selectedSubject.subjectType,
@@ -490,7 +490,7 @@ const SubjectManagement = () => {
                     id: `row-${index}-${Date.now()}`,
                     // 🔥 Strip all whitespace from code, collapse spaces in name
                     subjectCode: normalizedRow.subjectCode?.toString().replace(/\s+/g, '').toUpperCase() || '',
-                    subjectName: normalizedRow.subjectName?.toString().replace(/\s{2,}/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase()) || '',
+                    subjectName: normalizedRow.subjectName?.toString().replace(/\s{2,}/g, ' ').trim().toUpperCase() || '',
                     gradeLevel: parseInt(normalizedRow.gradeLevel) || 11,
                     track: normalizedRow.track?.toString().trim() || '',
                     strand: normalizedRow.strand?.toString().trim() || '', // ✅ Keep original case (not uppercase)
@@ -659,13 +659,13 @@ const SubjectManagement = () => {
             showAlert('No data to import', 'error');
             return;
         }
-
+        
         try {
             setIsProcessingExcel(true);
             const subjects = allRows.map(row => ({
                 // 🔥 Final safety: strip whitespace from code, trim name
                 subjectCode: row.subjectCode.replace(/\s+/g, '').toUpperCase(),
-                subjectName: row.subjectName.trim(),
+                subjectName: row.subjectName.trim().toUpperCase(),
                 gradeLevel: parseInt(row.gradeLevel),
                 track: row.track,
                 strand: row.strand,
@@ -837,7 +837,9 @@ const SubjectManagement = () => {
                                     <div className="modal-body">
                                         <div className="row mb-3">
                                             <div className="col-6">
-                                                <label className="form-label fw-bold">Track</label>
+                                                <label className="form-label fw-bold">Track:</label>
+                                                <span className="text-danger small ms-2">*</span>
+
                                                 <select className="form-select" value={selectedSubject?.track || ''}
                                                     onChange={(e) => setSelectedSubject({ ...selectedSubject, track: e.target.value, strand: '' })}>
                                                     <option value="">Select Track</option>
@@ -845,7 +847,9 @@ const SubjectManagement = () => {
                                                 </select>
                                             </div>
                                             <div className="col-6">
-                                                <label className="form-label fw-bold">Strand</label>
+                                                <label className="form-label fw-bold">Strand:</label>
+                                                <span className="text-danger small ms-2">*</span>
+
                                                 <select className="form-select" value={selectedSubject?.strand || ''}
                                                     onChange={(e) => setSelectedSubject({ ...selectedSubject, strand: e.target.value })}
                                                     disabled={!selectedSubject?.track}>
@@ -857,7 +861,8 @@ const SubjectManagement = () => {
 
                                         <div className="row mb-3">
                                             <div className="col-6">
-                                                <label className="form-label fw-bold">Subject Code</label>
+                                                <label className="form-label fw-bold">Subject Code:</label>
+                                                <span className="text-danger small ms-2">*</span>
                                                 <input
                                                     type="text"
                                                     className="form-control font-monospace"
@@ -871,14 +876,17 @@ const SubjectManagement = () => {
                                                 />
                                             </div>
                                             <div className="col-6">
-                                                <label className="form-label fw-bold">Subject Name</label>
+                                                <label className="form-label fw-bold">Subject Name:</label>
+                                                <span className="text-danger small ms-2">*</span>
+
+
                                                 <input
                                                     type="text"
                                                     className="form-control text-capitalize"
                                                     value={selectedSubject?.subjectName || ''}
                                                     onChange={(e) => {
                                                         // 🔥 Collapse multiple spaces to one (keep single spaces between words)
-                                                        const cleaned = e.target.value.replace(/\s{2,}/g, ' ');
+                                                        const cleaned = e.target.value.replace(/\s{2,}/g, ' ').toUpperCase();
                                                         setSelectedSubject({ ...selectedSubject, subjectName: cleaned });
                                                     }}
                                                     placeholder="e.g. General Mathematics"
@@ -888,14 +896,19 @@ const SubjectManagement = () => {
 
                                         <div className="row mb-3">
                                             <div className="col-6">
-                                                <label className="form-label fw-bold">Subject Type</label>
+                                                <label className="form-label fw-bold">Subject Type:</label>
+                                                <span className="text-danger small ms-2">*</span>
+
                                                 <select className="form-select" value={selectedSubject?.subjectType || 'core'}
                                                     onChange={(e) => setSelectedSubject({ ...selectedSubject, subjectType: e.target.value })}>
                                                     {subjectTypeOptions.map(t => <option key={t} value={t} className="text-capitalize">{t}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-6">
-                                                <label className="form-label fw-bold">Teacher</label>
+                                                <label className="form-label fw-bold">Teacher:</label>
+                                                <span className="text-danger small ms-2">*</span>
+                                                
+
                                                 <select className="form-select" value={selectedSubject?.teacher || ""}
                                                     onChange={(e) => {
                                                         const selectedTeacher = teachersList.find(t => t.fullName === e.target.value);
@@ -910,7 +923,10 @@ const SubjectManagement = () => {
 
                                         <div className="row mb-3">
                                             <div className="col-6">
-                                                <label className="form-label fw-bold">Grade Level</label>
+                                                <label className="form-label fw-bold">Grade Level:</label>
+                                                <span className="text-danger small ms-2">*</span>
+
+
                                                 <select className="form-select" value={selectedSubject?.gradeLevel || 11}
                                                     onChange={(e) => setSelectedSubject({ ...selectedSubject, gradeLevel: parseInt(e.target.value) })}>
                                                     {gradeOptions.map(g => <option key={g} value={g}>Grade {g}</option>)}
@@ -1170,7 +1186,7 @@ const SubjectManagement = () => {
                                                                             value={row.subjectName}
                                                                             onChange={(e) => updateExcelRow(idx, {
                                                                                 // 🔥 Collapse multiple spaces in name inline
-                                                                                subjectName: e.target.value.replace(/\s{2,}/g, ' ')
+                                                                                subjectName: e.target.value.replace(/\s{2,}/g, ' ').toUpperCase()
                                                                             })} />
                                                                     ) : row.subjectName || <span className="text-danger fst-italic">missing</span>}
                                                                 </td>
@@ -1285,7 +1301,7 @@ const SubjectManagement = () => {
                                                                     value={row.subjectName} placeholder="Subject Name"
                                                                     onChange={(e) => updateManualRow(row.id, {
                                                                         // 🔥 Collapse multiple spaces in name
-                                                                        subjectName: e.target.value.replace(/\s{2,}/g, ' ')
+                                                                        subjectName: e.target.value.replace(/\s{2,}/g, ' ').toUpperCase()
                                                                     })} />
                                                             </td>
                                                             <td>

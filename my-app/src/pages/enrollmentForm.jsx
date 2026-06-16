@@ -4,6 +4,38 @@ import { globalContext } from "../context/global";
 import imageCompression from 'browser-image-compression';
 
 
+
+
+const Reminder = () => {
+
+    const [showReminder, setShowReminder] = useState(true);
+
+    return (
+        
+        showReminder && (
+            <div className="alert alert-warning alert-dismissible fade show bg-warning bg-opacity-10 border-warning mx-auto mb-3" 
+                style={{ maxWidth: '700px' }} 
+                role="alert">
+                <i className="fa-solid fa-triangle-exclamation me-2 text-warning"></i>
+                <strong>Reminder:</strong> This form will ask for the following requirements:
+                <ul className="mb-0 mt-1 small">
+                    <li>PSA Birth Certificate</li>
+                    <li>Report Card (Form 138)</li>
+                    <li>2x2 ID Picture</li>
+                    <li>Good Moral Certificate <span className="text-muted">(optional)</span></li>
+                </ul>
+                <button type="button" 
+                onClick={() => setShowReminder(false)}
+                className="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        )  
+
+    )
+}
+
+
+
+
 const ProgressStepper = ({ currentStep }) => {
     const steps = [
         { number: 1, label: 'Student\nInformation' },
@@ -926,7 +958,7 @@ export const Step1 = () => {
                         onChange={handleChange}
                         className="form-control"
                         disabled={viewOnly}
-                        placeholder="e.g. Jr., Sr., II, III, MD, PhD, CPA, Esq."
+                        placeholder="e.g. Jr., Sr., II, III"
                         maxLength={10}
                     />
                 </div>
@@ -1239,6 +1271,8 @@ export const Step1 = () => {
                         <ProgressStepper currentStep={1} />
                     )}
 
+                    <Reminder/>
+
 
                     <div className="p-0 p-md-4">
                     
@@ -1317,7 +1351,7 @@ export const Step1 = () => {
                             <div className="col-12 col-md-8 mt-2">
                                 <div className="card border-0 h-100">
                                     <div className="card-body">
-                                        <p className="mb-3">Check the appropriate circle only</p>
+                                        <p className="mb-3">Select the appropriate circle only</p>
                                         {radioGroups.map(group => renderRadioGroup(group))}
                                     </div>
                                 </div>
@@ -1415,8 +1449,6 @@ export const Step1 = () => {
 
 
 
-
-
 export const FORM_FIELDS = {
     parentInfo: [
         { label: 'Last Name', name: 'lastName', type: 'text' }, 
@@ -1476,168 +1508,472 @@ const DEFAULT_FORM_STRUCTURE = {
     }
 };
 
+
+
+
 // ZIP Code mapping for major cities/municipalities
 export const ZIP_CODE_MAP = {
-
-
-    // BATANGAS - Complete List
-    'Agoncillo': '4211',
-    'Alitagtag': '4205',
-    'Balayan': '4213',
-    'Balete': '4219',
-    'City of Batangas': '4200',
-    'Batangas City': '4200',
-    'Bauan': '4201',
-    'Calaca': '4212',
-    'Calatagan': '4215',
-    'Cuenca': '4222',
-    'Ibaan': '4230',
-    'Laurel': '4221',
-    'Lemery': '4209',
-    'Lian': '4216',
-    'City of Lipa': '4217',
-    'Lipa': '4217',
-    'Lipa City': '4217',
-    'Lobo': '4229',
-    'Mabini': '4202',
-    'Malvar': '4233',
-    'Mataasnakahoy': '4223',
-    'Mataas na Kahoy': '4223',
-    'Nasugbu': '4231',
-    'Padre Garcia': '4224',
-    'Rosario': '4225',
-    'San Jose': '4227',
-    'San Juan': '4226',
-    'San Luis': '4210',
-    'San Nicolas': '4207',
-    'San Pascual': '4204',
-    'City of Tanauan': '4232',
-    'Tanauan': '4232',
-    'Tanauan City': '4232',
-    'Talisay': '4220',
-    'Taysan': '4228',
-    'Tingloy': '4208',
-    'Tuy': '4214',
-
-
-    // Metro Manila
-    'Manila': '1000',
-    'Quezon City': '1100',
-    'Makati': '1200',
-    'Pasay': '1300',
-    'Mandaluyong': '1550',
-    'San Juan': '1500',
-    'Pasig': '1600',
-    'Marikina': '1800',
-    'Taguig': '1630',
-    'Parañaque': '1700',
-    'Las Piñas': '1740',
-    'Muntinlupa': '1770',
-    'Caloocan': '1400',
-    'Malabon': '1470',
-    'Navotas': '1485',
-    'Valenzuela': '1440',
-
-    // CAVITE - Complete List
-    'Cavite City': '4100',
-    'City of Cavite': '4100',
-    'Kawit': '4104',
-    'Noveleta': '4105',
-    'Rosario': '4106',
-    'City of Bacoor': '4102',
-    'Bacoor': '4102',
-    'City of Imus': '4103',
-    'Imus': '4103',
-    'Tanza': '4108',
-    'City of Trece Martires': '4109',
-    'Trece Martires City': '4109',
-    'Trece Martires': '4109',
-    'Naic': '4110',
-    'Ternate': '4111',
-    'Maragondon': '4112',
-    'Magallanes': '4113',
-    'City of Dasmariñas': '4114',
-    'Dasmariñas': '4114',
-    'Carmona': '4116',
-    'City of General Trias': '4107',
-    'General Trias': '4107',
-    'Gen. Trias': '4107',
-    'General Mariano Alvarez': '4117',
-    'Gen. Mariano Alvarez': '4117',
-    'Silang': '4118',
-    'Amadeo': '4119',
-    'City of Tagaytay': '4120',
-    'Tagaytay': '4120',
-    'Mendez': '4121',
-    'Mendez-Nuñez': '4121',
-    'Indang': '4122',
-    'Alfonso': '4123',
+    // Format: 'MunicipalityName, ProvinceName': 'zipCode'
     
-    // Laguna
-    'City of Calamba': '4027',
-    'Calamba': '4027',
-    'City of Santa Rosa': '4026',
-    'Santa Rosa': '4026',
-    'City of Biñan': '4024',
-    'Biñan': '4024',
-    'City of San Pedro': '4023',
-    'San Pedro': '4023',
-    'Los Baños': '4030',
-    'City of Cabuyao': '4025',
-    'Cabuyao': '4025',
-    
-    // Bulacan
-    'City of Malolos': '3000',
-    'Malolos': '3000',
-    'City of Meycauayan': '3020',
-    'Meycauayan': '3020',
-    'City of San Jose del Monte': '3023',
-    'San Jose del Monte': '3023',
-    
-    // Rizal
-    'City of Antipolo': '1870',
-    'Antipolo': '1870',
-    'Cainta': '1900',
-    'Taytay': '1920',
-    
-    // Major Cities
-    'Cebu City': '6000',
-    'City of Cebu': '6000',
-    'Davao City': '8000',
-    'City of Davao': '8000',
-    'Zamboanga City': '7000',
-    'City of Zamboanga': '7000',
-    'Cagayan de Oro': '9000',
-    'City of Cagayan de Oro': '9000',
-    'Bacolod': '6100',
-    'City of Bacolod': '6100',
-    'Iloilo City': '5000',
-    'City of Iloilo': '5000',
-    'Baguio': '2600',
-    'City of Baguio': '2600',
+    // ILOCOS NORTE
+    'Laoag, Ilocos Norte': '2900',
+    'Batac, Ilocos Norte': '2906',
+    'Adams, Ilocos Norte': '2919',
+    'Bacarra, Ilocos Norte': '2916',
+    'Badoc, Ilocos Norte': '2904',
+    'Bangui, Ilocos Norte': '2920',
+    'Banna, Ilocos Norte': '2914',
+    'Burgos, Ilocos Norte': '2922',
+    'Carasi, Ilocos Norte': '2913',
+    'Currimao, Ilocos Norte': '2903',
+    'Dingras, Ilocos Norte': '2911',
+    'Dumalneg, Ilocos Norte': '2921',
+    'Marcos, Ilocos Norte': '2908',
+    'Nueva Era, Ilocos Norte': '2912',
+    'Pagudpud, Ilocos Norte': '2923',
+    'Paoay, Ilocos Norte': '2902',
+    'Pasuquin, Ilocos Norte': '2917',
+    'Piddig, Ilocos Norte': '2915',
+    'Pinili, Ilocos Norte': '2907',
+    'San Nicolas, Ilocos Norte': '2901',
+    'Sarrat, Ilocos Norte': '2910',
+    'Solsona, Ilocos Norte': '2909',
+    'Vintar, Ilocos Norte': '2918',
+
+    // ILOCOS SUR
+    'Vigan, Ilocos Sur': '2700',
+    'Candon, Ilocos Sur': '2517',
+    'Bantay, Ilocos Sur': '2727',
+    'Cabugao, Ilocos Sur': '2724',
+    'Caoayan, Ilocos Sur': '2705',
+    'Cervantes, Ilocos Sur': '2716',
+    'Galimuyod, Ilocos Sur': '2514',
+    'Gregorio del Pilar, Ilocos Sur': '2720',
+    'Lidlidda, Ilocos Sur': '2719',
+    'Magsingal, Ilocos Sur': '2722',
+    'Nagbukel, Ilocos Sur': '2706',
+    'Narvacan, Ilocos Sur': '2508',
+    'Quirino, Ilocos Sur': '2718',
+    'Salcedo, Ilocos Sur': '2713',
+    'San Emilio, Ilocos Sur': '2721',
+    'San Esteban, Ilocos Sur': '2509',
+    'San Ildefonso, Ilocos Sur': '2707',
+    'San Juan, Ilocos Sur': '2726',
+    'San Vicente, Ilocos Sur': '2710',
+    'Santa, Ilocos Sur': '2723',
+    'Santa Catalina, Ilocos Sur': '2711',
+    'Santa Cruz, Ilocos Sur': '2512',
+    'Santa Lucia, Ilocos Sur': '2715',
+    'Santa Maria, Ilocos Sur': '2709',
+    'Santiago, Ilocos Sur': '2725',
+    'Santo Domingo, Ilocos Sur': '2712',
+    'Sigay, Ilocos Sur': '2717',
+    'Sinait, Ilocos Sur': '2506',
+    'Sugpon, Ilocos Sur': '2714',
+    'Suyo, Ilocos Sur': '2716',
+    'Tagudin, Ilocos Sur': '2515',
+
+    // LA UNION
+    'San Fernando, La Union': '2500',
+    'Agoo, La Union': '2504',
+    'Aringay, La Union': '2503',
+    'Bacnotan, La Union': '2515',
+    'Bagulin, La Union': '2506',
+    'Balaoan, La Union': '2511',
+    'Bangar, La Union': '2513',
+    'Bauang, La Union': '2501',
+    'Burgos, La Union': '2516',
+    'Caba, La Union': '2502',
+    'Luna, La Union': '2512',
+    'Naguilian, La Union': '2505',
+    'Pugo, La Union': '2508',
+    'Rosario, La Union': '2519',
+    'San Gabriel, La Union': '2507',
+    'San Juan, La Union': '2514',
+    'Santo Tomas, La Union': '2504',
+    'Santol, La Union': '2509',
+    'Sudipen, La Union': '2510',
+    'Tubao, La Union': '2503',
+
+    // PANGASINAN
+    'Dagupan, Pangasinan': '2400',
+    'San Carlos, Pangasinan': '2420',
+    'Urdaneta, Pangasinan': '2428',
+    'Alaminos, Pangasinan': '2404',
+    'Agno, Pangasinan': '2408',
+    'Aguilar, Pangasinan': '2415',
+    'Alcala, Pangasinan': '2425',
+    'Anda, Pangasinan': '2405',
+    'Asingan, Pangasinan': '2432',
+    'Balungao, Pangasinan': '2443',
+    'Bani, Pangasinan': '2407',
+    'Basista, Pangasinan': '2423',
+    'Bautista, Pangasinan': '2442',
+    'Bayambang, Pangasinan': '2423',
+    'Binalonan, Pangasinan': '2436',
+    'Binmaley, Pangasinan': '2417',
+    'Bolinao, Pangasinan': '2406',
+    'Bugallon, Pangasinan': '2416',
+    'Burgos, Pangasinan': '2409',
+    'Calasiao, Pangasinan': '2418',
+    'Dasol, Pangasinan': '2410',
+    'Infanta, Pangasinan': '2412',
+    'Labrador, Pangasinan': '2412',
+    'Laoac, Pangasinan': '2437',
+    'Lingayen, Pangasinan': '2401',
+    'Mabini, Pangasinan': '2411',
+    'Malasiqui, Pangasinan': '2421',
+    'Manaoag, Pangasinan': '2430',
+    'Mangaldan, Pangasinan': '2432',
+    'Mangatarem, Pangasinan': '2413',
+    'Mapandan, Pangasinan': '2429',
+    'Natividad, Pangasinan': '2439',
+    'Pozorrubio, Pangasinan': '2435',
+    'Rosales, Pangasinan': '2441',
+    'San Fabian, Pangasinan': '2433',
+    'San Jacinto, Pangasinan': '2431',
+    'San Manuel, Pangasinan': '2438',
+    'San Nicolas, Pangasinan': '2447',
+    'San Quintin, Pangasinan': '2444',
+    'Santa Barbara, Pangasinan': '2419',
+    'Santa Maria, Pangasinan': '2427',
+    'Santo Tomas, Pangasinan': '2434',
+    'Sison, Pangasinan': '2434',
+    'Sual, Pangasinan': '2403',
+    'Tayug, Pangasinan': '2445',
+    'Umingan, Pangasinan': '2440',
+    'Urbiztondo, Pangasinan': '2414',
+    'Villasis, Pangasinan': '2427',
+
+    // MISAMIS ORIENTAL
+    'Cagayan de Oro, Misamis Oriental': '9000',
+    'Gingoog, Misamis Oriental': '9014',
+    'El Salvador, Misamis Oriental': '9017',
+    'Alubijid, Misamis Oriental': '9003',
+    'Balingasag, Misamis Oriental': '9005',
+    'Balingoan, Misamis Oriental': '9007',
+    'Binuangan, Misamis Oriental': '9006',
+    'Claveria, Misamis Oriental': '9004',
+    'Gitagum, Misamis Oriental': '9022',
+    'Initao, Misamis Oriental': '9001',
+    'Jasaan, Misamis Oriental': '9003',
+    'Kinoguitan, Misamis Oriental': '9008',
+    'Lagonglong, Misamis Oriental': '9023',
+    'Laguindingan, Misamis Oriental': '9019',
+    'Libertad, Misamis Oriental': '9021',
+    'Lugait, Misamis Oriental': '9002',
+    'Magsaysay, Misamis Oriental': '9020',
+    'Manticao, Misamis Oriental': '9018',
+    'Medina, Misamis Oriental': '9011',
+    'Naawan, Misamis Oriental': '9023',
+    'Opol, Misamis Oriental': '9016',
+    'Salay, Misamis Oriental': '9009',
+    'Sugbongcogon, Misamis Oriental': '9010',
+    'Tagoloan, Misamis Oriental': '9001',
+    'Talisayan, Misamis Oriental': '9013',
+    'Villanueva, Misamis Oriental': '9023',
+
+    // MISAMIS OCCIDENTAL
+    'Oroquieta, Misamis Occidental': '7207',
+    'Ozamiz, Misamis Occidental': '7200',
+    'Tangub, Misamis Occidental': '7214',
+    'Aloran, Misamis Occidental': '7205',
+    'Baliangao, Misamis Occidental': '7212',
+    'Bonifacio, Misamis Occidental': '7213',
+    'Calamba, Misamis Occidental': '7206',
+    'Clarin, Misamis Occidental': '7203',
+    'Concepcion, Misamis Occidental': '7208',
+    'Don Victoriano Chiongbian, Misamis Occidental': '7215',
+    'Jimenez, Misamis Occidental': '7204',
+    'Lopez Jaena, Misamis Occidental': '7209',
+    'Panaon, Misamis Occidental': '7201',
+    'Plaridel, Misamis Occidental': '7210',
+    'Sapang Dalaga, Misamis Occidental': '7211',
+    'Sinacaban, Misamis Occidental': '7202',
+    'Tudela, Misamis Occidental': '7216',
+
+    // BUKIDNON
+    'Malaybalay, Bukidnon': '8700',
+    'Valencia, Bukidnon': '8709',
+    'Cabanglasan, Bukidnon': '8707',
+    'Baungon, Bukidnon': '8703',
+    'Damulog, Bukidnon': '8706',
+    'Dangcagan, Bukidnon': '8707',
+    'Don Carlos, Bukidnon': '8712',
+    'Impasugong, Bukidnon': '8702',
+    'Kadingilan, Bukidnon': '8714',
+    'Kalilangan, Bukidnon': '8713',
+    'Kibawe, Bukidnon': '8710',
+    'Kitaotao, Bukidnon': '8711',
+    'Lantapan, Bukidnon': '8701',
+    'Libona, Bukidnon': '8703',
+    'Malitbog, Bukidnon': '8714',
+    'Manolo Fortich, Bukidnon': '8703',
+    'Maramag, Bukidnon': '8716',
+    'Pangantucan, Bukidnon': '8715',
+    'Quezon, Bukidnon': '8715',
+    'San Fernando, Bukidnon': '8712',
+    'Sumilao, Bukidnon': '8704',
+    'Talakag, Bukidnon': '8705',
+
+    // LANAO DEL NORTE
+    'Iligan, Lanao del Norte': '9200',
+    'Bacolod, Lanao del Norte': '9211',
+    'Baloi, Lanao del Norte': '9209',
+    'Baroy, Lanao del Norte': '9210',
+    'Kapatagan, Lanao del Norte': '9214',
+    'Kauswagan, Lanao del Norte': '9209',
+    'Kolambugan, Lanao del Norte': '9207',
+    'Lala, Lanao del Norte': '9210',
+    'Linamon, Lanao del Norte': '9208',
+    'Magsaysay, Lanao del Norte': '9212',
+    'Maigo, Lanao del Norte': '9205',
+    'Matungao, Lanao del Norte': '9213',
+    'Munai, Lanao del Norte': '9215',
+    'Nunungan, Lanao del Norte': '9216',
+    'Pantao Ragat, Lanao del Norte': '9217',
+    'Pantar, Lanao del Norte': '9218',
+    'Poona Piagapo, Lanao del Norte': '9219',
+    'Salvador, Lanao del Norte': '9206',
+    'Sapad, Lanao del Norte': '9220',
+    'Sultan Naga Dimaporo, Lanao del Norte': '9204',
+    'Tagoloan, Lanao del Norte': '9201',
+    'Tangkal, Lanao del Norte': '9221',
+    'Tubod, Lanao del Norte': '9203',
+
+    // CAMIGUIN
+    'Mambajao, Camiguin': '9100',
+    'Catarman, Camiguin': '9103',
+    'Guinsiliban, Camiguin': '9104',
+    'Mahinog, Camiguin': '9101',
+    'Sagay, Camiguin': '9102',
+
+    // BATANGAS
+    'Agoncillo, Batangas': '4211',
+    'Alitagtag, Batangas': '4205',
+    'Balayan, Batangas': '4213',
+    'Balete, Batangas': '4219',
+    'Batangas City, Batangas': '4200',
+    'Bauan, Batangas': '4201',
+    'Calaca, Batangas': '4212',
+    'Calatagan, Batangas': '4215',
+    'Cuenca, Batangas': '4222',
+    'Ibaan, Batangas': '4230',
+    'Laurel, Batangas': '4221',
+    'Lemery, Batangas': '4209',
+    'Lian, Batangas': '4216',
+    'Lipa, Batangas': '4217',
+    'Lobo, Batangas': '4229',
+    'Mabini, Batangas': '4202',
+    'Malvar, Batangas': '4233',
+    'Mataas na Kahoy, Batangas': '4223',
+    'Nasugbu, Batangas': '4231',
+    'Padre Garcia, Batangas': '4224',
+    'Rosario, Batangas': '4225',
+    'San Antonio, Batangas': '4203',
+    'San Jose, Batangas': '4227',
+    'San Juan, Batangas': '4226',
+    'San Luis, Batangas': '4210',
+    'San Nicolas, Batangas': '4207',
+    'San Pascual, Batangas': '4204',
+    'Santa Teresita, Batangas': '4206',
+    'Santo Tomas, Batangas': '4234',
+    'Talisay, Batangas': '4220',
+    'Tanauan, Batangas': '4232',
+    'Taysan, Batangas': '4228',
+    'Tingloy, Batangas': '4208',
+    'Tuy, Batangas': '4214',
+
+    // CAVITE
+    'Cavite City, Cavite': '4100',
+    'Kawit, Cavite': '4104',
+    'Noveleta, Cavite': '4105',
+    'Rosario, Cavite': '4106',
+    'Bacoor, Cavite': '4102',
+    'Imus, Cavite': '4103',
+    'Tanza, Cavite': '4108',
+    'Trece Martires, Cavite': '4109',
+    'Naic, Cavite': '4110',
+    'Ternate, Cavite': '4111',
+    'Maragondon, Cavite': '4112',
+    'Magallanes, Cavite': '4113',
+    'Dasmariñas, Cavite': '4114',
+    'Carmona, Cavite': '4116',
+    'General Trias, Cavite': '4107',
+    'General Mariano Alvarez, Cavite': '4117',
+    'Silang, Cavite': '4118',
+    'Amadeo, Cavite': '4119',
+    'Tagaytay, Cavite': '4120',
+    'Mendez, Cavite': '4121',
+    'Indang, Cavite': '4122',
+    'Alfonso, Cavite': '4123',
+
+    // LAGUNA
+    'Calamba, Laguna': '4027',
+    'Santa Rosa, Laguna': '4026',
+    'Biñan, Laguna': '4024',
+    'San Pedro, Laguna': '4023',
+    'Los Baños, Laguna': '4030',
+    'Cabuyao, Laguna': '4025',
+    'San Pablo, Laguna': '4000',
+    'Santa Cruz, Laguna': '4009',
+    'Pagsanjan, Laguna': '4008',
+    'Paete, Laguna': '4016',
+    'Pakil, Laguna': '4013',
+    'Pangil, Laguna': '4017',
+    'Majayjay, Laguna': '4005',
+    'Liliw, Laguna': '4004',
+    'Magdalena, Laguna': '4007',
+    'Cavinti, Laguna': '4013',
+    'Luisiana, Laguna': '4032',
+    'Lucban, Laguna': '4328',
+    'Siniloan, Laguna': '4019',
+    'Famy, Laguna': '4021',
+    'Mabitac, Laguna': '4020',
+    'Nagcarlan, Laguna': '4003',
+    'Rizal, Laguna': '4001',
+    'Alaminos, Laguna': '4001',
+    'Bay, Laguna': '4033',
+    'Calauan, Laguna': '4012',
+    'Kalayaan, Laguna': '4015',
+    'Lumban, Laguna': '4014',
+    'Pila, Laguna': '4010',
+    'San Antonio, Laguna': '4011',
+    'Victoria, Laguna': '4031',
+    'Santa Maria, Laguna': '4022',
+
+    // RIZAL
+    'Antipolo, Rizal': '1870',
+    'Cainta, Rizal': '1900',
+    'Taytay, Rizal': '1920',
+    'Angono, Rizal': '1930',
+    'Binangonan, Rizal': '1940',
+    'Cardona, Rizal': '1950',
+    'Jala-Jala, Rizal': '1960',
+    'Morong, Rizal': '1960',
+    'Pililla, Rizal': '1910',
+    'San Mateo, Rizal': '1850',
+    'Tanay, Rizal': '1980',
+    'Baras, Rizal': '1970',
+    'Teresa, Rizal': '1880',
+    'Rodriguez, Rizal': '1860',
+
+    // QUEZON
+    'Lucena, Quezon': '4301',
+    'Tayabas, Quezon': '4327',
+    'Sariaya, Quezon': '4322',
+    'Candelaria, Quezon': '4323',
+    'Tiaong, Quezon': '4325',
+    'Dolores, Quezon': '4326',
+    'San Antonio, Quezon': '4324',
+    'Pagbilao, Quezon': '4302',
+    'Padre Burgos, Quezon': '4303',
+    'Atimonan, Quezon': '4331',
+    'Gumaca, Quezon': '4307',
+    'Plaridel, Quezon': '4308',
+    'Lopez, Quezon': '4316',
+    'Macalelon, Quezon': '4309',
+    'General Luna, Quezon': '4310',
+    'Pitogo, Quezon': '4311',
+    'Mulanay, Quezon': '4312',
+    'San Narciso, Quezon': '4313',
+    'San Francisco, Quezon': '4314',
+    'Catanauan, Quezon': '4306',
+    'General Nakar, Quezon': '4335',
+    'Infanta, Quezon': '4336',
+    'Real, Quezon': '4335',
+    'Polillo, Quezon': '4337',
+    'Burdeos, Quezon': '4338',
+    'Panukulan, Quezon': '4339',
+    'Patnanungan, Quezon': '4340',
+    'Jomalig, Quezon': '4341',
+    'Perez, Quezon': '4304',
+    'Unisan, Quezon': '4305',
+    'Guinayangan, Quezon': '4319',
+    'Tagkawayan, Quezon': '4318',
+    'Calauag, Quezon': '4318',
+    'Mauban, Quezon': '4330',
+    'Quezon, Quezon': '4332',
+    'Alabat, Quezon': '4333',
+    'Baler, Quezon': '3200',
+
+    // NCR
+    'Manila, Metro Manila': '1000',
+    'Quezon City, Metro Manila': '1100',
+    'Makati, Metro Manila': '1200',
+    'Pasay, Metro Manila': '1300',
+    'Mandaluyong, Metro Manila': '1550',
+    'Pasig, Metro Manila': '1600',
+    'Marikina, Metro Manila': '1800',
+    'Taguig, Metro Manila': '1630',
+    'Parañaque, Metro Manila': '1700',
+    'Las Piñas, Metro Manila': '1740',
+    'Muntinlupa, Metro Manila': '1770',
+    'Caloocan, Metro Manila': '1400',
+    'Malabon, Metro Manila': '1470',
+    'Navotas, Metro Manila': '1485',
+    'Valenzuela, Metro Manila': '1440',
+    'San Juan, Metro Manila': '1500',
+
+    // MAJOR CITIES
+    'Cebu City, Cebu': '6000',
+    'Davao City, Davao del Sur': '8000',
+    'Zamboanga City, Zamboanga del Sur': '7000',
+    'Bacolod, Negros Occidental': '6100',
+    'Iloilo City, Iloilo': '5000',
+    'Baguio, Benguet': '2600',
+
+    // BULACAN
+    'Malolos, Bulacan': '3000',
+    'Meycauayan, Bulacan': '3020',
+    'San Jose del Monte, Bulacan': '3023',
+    'Marilao, Bulacan': '3019',
+    'Bocaue, Bulacan': '3018',
+    'Balagtas, Bulacan': '3016',
+    'Guiguinto, Bulacan': '3015',
+    'Plaridel, Bulacan': '3004',
+    'Pulilan, Bulacan': '3005',
+    'Bustos, Bulacan': '3007',
+    'San Rafael, Bulacan': '3008',
+    'San Miguel, Bulacan': '3011',
+    'Baliuag, Bulacan': '3006',
+    'Calumpit, Bulacan': '3003',
+    'Hagonoy, Bulacan': '3002',
+    'Paombong, Bulacan': '3001',
+    'Obando, Bulacan': '3021',
+    'Santa Maria, Bulacan': '3022',
+    'Norzagaray, Bulacan': '3013',
+    'San Ildefonso, Bulacan': '3010',
+    'Angat, Bulacan': '3012',
+    'Doña Remedios Trinidad, Bulacan': '3009',
+    'Pandi, Bulacan': '3014',
 };
 
 
 // Helper function to get ZIP code from map
-export const getZipCode = (municipalityName) => {
+export const getZipCode = (municipalityName, provinceName = '') => {
     if (!municipalityName) return '';
     
-    // Try exact match
-    let zipCode = ZIP_CODE_MAP[municipalityName];
-    
-    // Try without "City of" prefix
-    if (!zipCode && municipalityName.startsWith('City of ')) {
-        zipCode = ZIP_CODE_MAP[municipalityName.replace('City of ', '')];
-    }
-    
-    // Try with "City of" prefix
-    if (!zipCode && !municipalityName.startsWith('City of ')) {
-        zipCode = ZIP_CODE_MAP['City of ' + municipalityName];
-    }
-    
-    return zipCode || '';
-};
+    // Try with province first (most accurate)
+    if (provinceName) {
+        const withProvince = `${municipalityName}, ${provinceName}`;
+        if (ZIP_CODE_MAP[withProvince]) return ZIP_CODE_MAP[withProvince];
 
+        // Try cleaning "City of" prefix
+        if (municipalityName.startsWith('City of ')) {
+            const without = municipalityName.replace('City of ', '');
+            if (ZIP_CODE_MAP[`${without}, ${provinceName}`]) 
+                return ZIP_CODE_MAP[`${without}, ${provinceName}`];
+        }
+    }
+
+    // Fallback - municipality name lang (para sa NCR at unique names)
+    const direct = ZIP_CODE_MAP[`${municipalityName}, ${provinceName}`] 
+        || Object.entries(ZIP_CODE_MAP).find(([k]) => k.startsWith(municipalityName + ','))?.[1]
+        || '';
+    
+    return direct;
+};
 
 // Utility function to merge saved data with defaults
 const mergeWithDefaults = (savedData) => {
@@ -1783,7 +2119,7 @@ export const AddressDropdowns = ({ addressType, values, onChange, disabled }) =>
 
 
                                     // Auto-fetch ZIP code based on municipality
-                                    const zipCode = getZipCode(values.municipality);
+                                    const zipCode = getZipCode(values.municipality, values.province);
 
                                     // Update ZIP code if found
                                     if (zipCode) {
@@ -1883,6 +2219,7 @@ export const AddressDropdowns = ({ addressType, values, onChange, disabled }) =>
             setLoading(prev => ({ ...prev, municipalities: true }));
             try {
                 const response = await fetch(`https://psgc.gitlab.io/api/provinces/${selectedCodes.provinceCode}/cities-municipalities/`);
+                
                 const data = await response.json();
                 setMunicipalities(data);
             } catch (error) {
@@ -1988,7 +2325,9 @@ export const AddressDropdowns = ({ addressType, values, onChange, disabled }) =>
         // If API didn't provide zipCode, use our fallback map
         if (!zipCode && municipalityName) {
             // Try exact match first
-            zipCode = ZIP_CODE_MAP[municipalityName];
+            const currentProvince = provinces.find(p => p.code === selectedCodes.provinceCode)?.name || '';
+            zipCode = getZipCode(municipalityName, currentProvince);
+            
             
             // Try normalized version (remove special chars, extra spaces)
             if (!zipCode) {
@@ -2013,6 +2352,8 @@ export const AddressDropdowns = ({ addressType, values, onChange, disabled }) =>
         setTimeout(() => {
             onChange({ target: { name: 'municipality', value: municipalityName } }, addressType);
             onChange({ target: { name: 'zipCode', value: zipCode || '' } }, addressType);
+            // ✅ I-flag kung auto-filled o hindi
+            onChange({ target: { name: 'zipAutoFilled', value: !!zipCode } }, addressType);
         }, 0);
     };
 
@@ -2133,17 +2474,19 @@ export const AddressDropdowns = ({ addressType, values, onChange, disabled }) =>
 };
 
 
-export const FormField = ({ label, name, type, value, onChange, disabled, required = false }) => {
+export const FormField = ({ label, name, type, value, onChange, disabled, required = false, zipAutoFilled = false, hasMunicipality = false }) => {
     
     
     // ✅ Special handling for Zip Code (numbers only)
     if (name === 'zipCode') {
+
+        const isDisabled = disabled || zipAutoFilled;
+
         return (
             <div className="mb-3">
                 <label className="form-label small">
                     {label}
                     {required && <span className="text-danger ms-1">*</span>}
-
                 </label>
                 
                 <input
@@ -2152,7 +2495,7 @@ export const FormField = ({ label, name, type, value, onChange, disabled, requir
                     className="form-control"
                     value={value || ''}
                     onChange={onChange}
-                    disabled={disabled}
+                    disabled={isDisabled}
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength="4"
@@ -2754,7 +3097,7 @@ export const Step2 = () => {
             return;
         }
 
-         // ✅ If has changes, clear the saved indicator to force re-submit
+        // ✅ If has changes, clear the saved indicator to force re-submit
         if (hasChanges) {
             sessionStorage.removeItem("step2Saved");
         }
@@ -2886,27 +3229,45 @@ export const Step2 = () => {
 
     const handleGuardianSameAs = useCallback((source) => {
         const newSource = guardianSameAs === source ? '' : source;
-
         setGuardianSameAs(newSource);
         sessionStorage.setItem("guardianSameAs", newSource);
 
-        if (newSource && newSource !== 'others') {
-            // ✅ Copy father or mother data
-            const sourceData = formData.parentGuardianInfo?.[newSource];
+        if (newSource === 'mother') {
+            // ✅ Copy mother data + auto-set relationship to "mother"
+            const motherData = formData.parentGuardianInfo?.mother;
             setFormData(prev => ({
                 ...prev,
                 parentGuardianInfo: {
                     ...prev.parentGuardianInfo,
                     guardian: {
-                        lastName: sourceData?.lastName || '',
-                        firstName: sourceData?.firstName || '',
-                        middleName: sourceData?.middleName || '',
-                        contactNumber: sourceData?.contactNumber || ''
+                        lastName: motherData?.lastName || '',
+                        firstName: motherData?.firstName || '',
+                        middleName: motherData?.middleName || '',
+                        contactNumber: motherData?.contactNumber || '',
+                        relationship: 'mother'  // ← AUTO-SET
                     }
                 }
             }));
-        } else {
-            // ✅ Clear guardian fields kapag "others" or uncheck
+        } 
+        else if (newSource === 'father') {
+            // ✅ Copy father data + auto-set relationship to "father"
+            const fatherData = formData.parentGuardianInfo?.father;
+            setFormData(prev => ({
+                ...prev,
+                parentGuardianInfo: {
+                    ...prev.parentGuardianInfo,
+                    guardian: {
+                        lastName: fatherData?.lastName || '',
+                        firstName: fatherData?.firstName || '',
+                        middleName: fatherData?.middleName || '',
+                        contactNumber: fatherData?.contactNumber || '',
+                        relationship: 'father'  // ← AUTO-SET
+                    }
+                }
+            }));
+        } 
+        else {
+            // ✅ Uncheck/Clear all
             setFormData(prev => ({
                 ...prev,
                 parentGuardianInfo: {
@@ -2915,7 +3276,9 @@ export const Step2 = () => {
                         lastName: '',
                         firstName: '',
                         middleName: '',
-                        contactNumber: ''
+                        contactNumber: '',
+                        relationship: '',
+                        relationshipOther: ''
                     }
                 }
             }));
@@ -2923,6 +3286,9 @@ export const Step2 = () => {
 
         setHasChanges(true);
     }, [guardianSameAs, formData.parentGuardianInfo, setFormData]);
+
+
+
 
 
     
@@ -2937,6 +3303,8 @@ export const Step2 = () => {
                         <ProgressStepper currentStep={2} />
                     )}
 
+                    <Reminder/>
+
                     <div className="p-0 p-md-4">
 
                         
@@ -2949,7 +3317,7 @@ export const Step2 = () => {
                                         <h2 className="h5 fw-bold mb-4">PARENT/GUARDIAN INFORMATION</h2>
 
                                         
-                                       <FormSection
+                                    <FormSection
                                             title="Father's Information (Optional)"
                                             fields={FORM_FIELDS.parentInfo.map(field => ({
                                                 ...field,
@@ -2972,6 +3340,40 @@ export const Step2 = () => {
                                             disabled={viewOnly}
                                             parentType="mother"
                                         />
+
+                                        {/* ✅ Guardian Checkboxes - Same As Mother/Father */}
+                                        <div className="mb-4 p-3 border rounded" style={{ backgroundColor: '#f8f9fa' }}>
+                                            <label className="fw-semibold small mb-3 d-block">Guardian Same as:</label>
+                                            <div className="d-flex gap-3">
+                                                <div className="form-check">
+                                                    <input 
+                                                        className="form-check-input" 
+                                                        type="checkbox" 
+                                                        checked={guardianSameAs === 'mother'}
+                                                        onChange={() => handleGuardianSameAs('mother')}
+                                                        disabled={viewOnly}
+                                                        id="sameAsMother"
+                                                    />
+                                                    <label className="form-check-label" htmlFor="sameAsMother">
+                                                        Mother
+                                                    </label>
+                                                </div>
+                                                
+                                                <div className="form-check">
+                                                    <input 
+                                                        className="form-check-input" 
+                                                        type="checkbox" 
+                                                        checked={guardianSameAs === 'father'}
+                                                        onChange={() => handleGuardianSameAs('father')}
+                                                        disabled={viewOnly}
+                                                        id="sameAsFather"
+                                                    />
+                                                    <label className="form-check-label" htmlFor="sameAsFather">
+                                                        Father
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
 
                                         <FormSection
                                             title="Guardian's Information"
@@ -3000,27 +3402,37 @@ export const Step2 = () => {
                                                 disabled={viewOnly}
                                             >
                                                 <option value="">Select Relationship</option>
-                                                <option value="mother">Mother</option>
-                                                <option value="father">Father</option>
-                                                <option value="sister">Sister</option>
-                                                <option value="brother">Brother</option>
-                                                <option value="grandmother">Grandmother</option>
-                                                <option value="grandfather">Grandfather</option>
-                                                <option value="aunt">Aunt</option>
-                                                <option value="uncle">Uncle</option>
-                                                <option value="cousin">Cousin</option>
-                                                <option value="godmother">Godmother</option>
-                                                <option value="godfather">Godfather</option>
-                                                <option value="stepmother">Stepmother</option>
-                                                <option value="stepfather">Stepfather</option>
-                                                <option value="adoptive-mother">Adoptive Mother</option>
-                                                <option value="adoptive-father">Adoptive Father</option>
-                                                <option value="others">Others</option>
+                                                {guardianSameAs === 'mother' && (
+                                                    <option value="mother">Mother</option>
+                                                )}
+                                                {guardianSameAs === 'father' && (
+                                                    <option value="father">Father</option>
+                                                )}
+                                                {!guardianSameAs && (
+                                                    <>
+                                                        <option value="mother">Mother</option>
+                                                        <option value="father">Father</option>
+                                                        <option value="sister">Sister</option>
+                                                        <option value="brother">Brother</option>
+                                                        <option value="grandmother">Grandmother</option>
+                                                        <option value="grandfather">Grandfather</option>
+                                                        <option value="aunt">Aunt</option>
+                                                        <option value="uncle">Uncle</option>
+                                                        <option value="cousin">Cousin</option>
+                                                        <option value="godmother">Godmother</option>
+                                                        <option value="godfather">Godfather</option>
+                                                        <option value="stepmother">Stepmother</option>
+                                                        <option value="stepfather">Stepfather</option>
+                                                        <option value="adoptive-mother">Adoptive Mother</option>
+                                                        <option value="adoptive-father">Adoptive Father</option>
+                                                        <option value="others">Others</option>
+                                                    </>
+                                                )}
                                             </select>
                                         </div>
 
                                         {/* Text Input for Others */}
-                                        {formData.parentGuardianInfo?.guardian?.relationship === 'others' && (
+                                        {!guardianSameAs && formData.parentGuardianInfo?.guardian?.relationship === 'others' && (
                                             <div className="mb-3">
                                                 <label className="form-label small">
                                                     Please specify:
@@ -3073,7 +3485,6 @@ export const Step2 = () => {
                                             onChange={(e) => handleAddressChange(e, 'current')}
                                             disabled={viewOnly}
                                             required={true}
-
                                         />
 
                                         <AddressDropdowns
@@ -3083,7 +3494,6 @@ export const Step2 = () => {
                                             disabled={viewOnly}
                                         />
 
-
                                         <FormField
                                             label="Zip Code"
                                             name="zipCode"
@@ -3091,7 +3501,9 @@ export const Step2 = () => {
                                             value={formData.address?.current?.zipCode}
                                             onChange={(e) => handleAddressChange(e, 'current')}
                                             disabled={viewOnly}
-                                            required={true} 
+                                            required={true}
+                                            zipAutoFilled={!!formData.address?.current?.zipAutoFilled}
+                                            hasMunicipality={!!formData.address?.current?.municipality}
                                         />
 
                                         <FormField
@@ -3147,8 +3559,7 @@ export const Step2 = () => {
                                             value={formData.address?.permanent?.street}
                                             onChange={(e) => handleAddressChange(e, 'permanent')}
                                             disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
-                                            required={!formData.address?.permanent?.sameAsCurrent} 
-
+                                            required={!formData.address?.permanent?.sameAsCurrent}
                                         />
 
                                         <AddressDropdowns
@@ -3157,8 +3568,6 @@ export const Step2 = () => {
                                             onChange={handleAddressChange}
                                             disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
                                         />
-
-
                                         <FormField
                                             label="Zip Code"
                                             name="zipCode"
@@ -3166,8 +3575,9 @@ export const Step2 = () => {
                                             value={formData.address?.permanent?.zipCode}
                                             onChange={(e) => handleAddressChange(e, 'permanent')}
                                             disabled={formData.address?.permanent?.sameAsCurrent || viewOnly}
-                                            required={!formData.address?.permanent?.sameAsCurrent} 
-
+                                            required={!formData.address?.permanent?.sameAsCurrent}
+                                            zipAutoFilled={!!formData.address?.permanent?.zipAutoFilled}
+                                            hasMunicipality={!!formData.address?.permanent?.municipality}
                                         />
                                     </div>
                                 </div>
@@ -3347,7 +3757,7 @@ export const Step2 = () => {
                                 </div>
                             </div>
                         </div>
-                       
+                    
 
                         {/* Navigation Buttons */}
                         <div className="d-flex align-items-center justify-content-center gap-3 my-3">
@@ -3790,6 +4200,8 @@ export const Step3 = () => {
                     {!viewOnly && (
                         <ProgressStepper currentStep={3} />
                     )}
+
+                    <Reminder/>
                     
                     <div className="p-0 p-md-4">
                         <div className="row justify-content-center">

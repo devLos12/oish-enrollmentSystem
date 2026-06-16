@@ -5,6 +5,15 @@ import Section from "../model/section.js";
 import Staff from "../model/staff.js";
 import cloudinary from "../config/cloudinary.js";
 import SchoolYear from "../model/schoolYear.js";
+import Enrollment from "../model/enrollment.js";
+
+
+
+const normalizeName = (value) => {
+    if (!value || value === 'N/A') return value;
+    return value.trim().toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 
 
 // Helper function to upload to Cloudinary
@@ -33,7 +42,7 @@ export const updateProfile = multer({ storage: storage });
 
 
 
-
+//sa student side
 export const updateStudentProfile = async (req, res) => {
     try {
         const { id } = req.params;
@@ -81,6 +90,63 @@ export const updateStudentProfile = async (req, res) => {
                 });
             }
         }
+
+        // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Student (exclude current)
+        const incomingFirstName  = firstName?.trim()    || student.firstName;
+        const incomingLastName   = lastName?.trim()     || student.lastName;
+        const incomingMiddleName = middleName?.trim();
+
+        const studentQuery = {
+            firstName:  { $regex: new RegExp(`^${incomingFirstName}$`, 'i') },
+            lastName:   { $regex: new RegExp(`^${incomingLastName}$`, 'i') },
+            _id: { $ne: id }
+        };
+        
+        
+        if (incomingMiddleName) {
+            studentQuery.middleName = { $regex: new RegExp(`^${incomingMiddleName}$`, 'i') };
+        } else {
+            studentQuery.$or = [
+                { middleName: { $exists: false } },
+                { middleName: null },
+                { middleName: '' },
+                { middleName: 'N/A' },
+            ];
+        }
+
+
+        const existingStudentName = await Student.findOne(studentQuery);
+        if (existingStudentName) {
+            return res.status(409).json({
+                message: "Full name already exists."
+            });
+        }
+
+        // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Staff
+        const staffQuery = {
+            firstName: { $regex: new RegExp(`^${incomingFirstName}$`, 'i') },
+            lastName:  { $regex: new RegExp(`^${incomingLastName}$`, 'i') },
+        };
+
+        if (incomingMiddleName) {
+            staffQuery.middleName = { $regex: new RegExp(`^${incomingMiddleName}$`, 'i') };
+        } else {
+            staffQuery.$or = [
+                { middleName: { $exists: false } },
+                { middleName: null },
+                { middleName: '' },
+                { middleName: 'N/A' },
+            ];
+        }
+
+        const existingStaffName = await Staff.findOne(staffQuery);
+            if (existingStaffName) {
+                return res.status(409).json({
+                    message: "Full name already exists."
+                });
+            }
+        
+
 
         // Handle profile image upload
         let profileImageUrl = student.profileImage;
@@ -148,26 +214,15 @@ export const updateStudentProfile = async (req, res) => {
 };
 
 
+ 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+//para sa teacher
 export const UpdateProfile = async (req, res) => {
     try {
         const { id } = req.account;
-        const { firstName, lastName, email } = req.body;
+        const { firstName, middleName, lastName, suffix, email } = req.body;
 
         // Find the staff
         const staff = await Staff.findById(id);
@@ -175,10 +230,74 @@ export const UpdateProfile = async (req, res) => {
             return res.status(404).json({ message: "Staff not found" });
         }
 
+
+
+        const validSuffixes = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III', 'JR', 'SR.'];
+        if (suffix && !validSuffixes.includes(suffix.trim())) {
+            return res.status(400).json({ message: "Invalid suffix. Accepted values: Jr., Sr., II, III" });
+        }
+        
+
+        // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Staff (exclude current)
+        const incomingFirstName = firstName?.trim() || staff.firstName;
+        const incomingLastName  = lastName?.trim()  || staff.lastName;
+        const incomingMiddleName = middleName?.trim();
+
+        const staffQuery = {
+          firstName: { $regex: new RegExp(`^${incomingFirstName}$`, 'i') },
+          lastName:  { $regex: new RegExp(`^${incomingLastName}$`, 'i') },
+          _id: { $ne: id }
+        };
+
+        if (incomingMiddleName) {
+          staffQuery.middleName = { $regex: new RegExp(`^${incomingMiddleName}$`, 'i') };
+        } else {
+          staffQuery.$or = [
+            { middleName: { $exists: false } },
+            { middleName: null },
+            { middleName: '' },
+            { middleName: 'N/A' },
+          ];
+        }
+        const existingStaffName = await Staff.findOne(staffQuery);
+        if (existingStaffName) {
+          return res.status(409).json({
+            message: "A staff member with the same full name already exists."
+          });
+        }
+
+                
+        // ✅ VALIDATION: Same firstName + lastName + middleName not allowed in Enrollment
+        const existingApplicant = await Enrollment.findOne({
+          "learnerInfo.firstName":  normalizeName(incomingFirstName),
+          "learnerInfo.lastName":   normalizeName(incomingLastName),
+          "learnerInfo.middleName": normalizeName(incomingMiddleName || 'N/A'),
+        });
+        if (existingApplicant) {
+          return res.status(409).json({
+            message: "Full name already exists."
+          });
+        }
+
+        const existingApplicant2 = await Enrollment.findOne({
+          "learnerInfo.firstName":  normalizeName(incomingFirstName),
+          "learnerInfo.lastName":   normalizeName(incomingLastName),
+        });
+        if (existingApplicant2) {
+          return res.status(409).json({
+            message: "Full name already exists."
+          });
+        }
+
+
+
         // Update fields
-        if (firstName) staff.firstName = firstName;
-        if (lastName) staff.lastName = lastName;
+        if (firstName) staff.firstName = firstName.trim().toUpperCase();
+        if (middleName !== undefined) staff.middleName = middleName?.trim().toUpperCase() || 'N/A';
+        if (lastName) staff.lastName = lastName.trim().toUpperCase();
+        if (suffix !== undefined) staff.suffix = suffix.trim().toUpperCase();
         if (email) staff.email = email;
+
 
         // Handle profile image upload
         if (req.file) {
@@ -218,8 +337,6 @@ export const UpdateProfile = async (req, res) => {
 
 
 
-
-
 export const getStudentProfile = async (req, res) => {
     try {
         const { id } = req.account;
@@ -231,7 +348,15 @@ export const getStudentProfile = async (req, res) => {
             })
             .lean();
 
-        if (!student) return res.status(409).json({ message: "User not found." });
+        if (!student) {
+            return res.status(404).json({ 
+                success: false,
+                code: "STUDENT_NOT_FOUND", // ✅ specific code para makilala ng frontend
+                message: "Student account no longer exists." 
+            });
+        }
+
+        
 
         const currentSchoolYear = await SchoolYear.findOne({ isCurrent: true });
 
@@ -360,13 +485,12 @@ export const getProfile = async(req, res) => {
             return res.status(409).json({ message: "account not found."});
         }
 
+        
         return res.status(200).json(profile);
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 }
-
-
 
 
 
@@ -401,7 +525,8 @@ export const changePassword = async (req, res) => {
         // Update password based on account type
         if (account instanceof Student || account.constructor.modelName === 'Student') {
             await Student.findByIdAndUpdate(id, {
-                password: hashedPassword
+                password: hashedPassword,
+                isFirstLogin: false  // ✅ set to false after password change
             });
         } else {
             await Staff.findByIdAndUpdate(id, {
@@ -415,6 +540,10 @@ export const changePassword = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+
+
+
 
 // Optional: Delete profile image only (keep account)
 export const deleteProfileImage = async (req, res) => {

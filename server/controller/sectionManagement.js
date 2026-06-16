@@ -2,6 +2,8 @@ import Section from "../model/section.js";
 import Student from "../model/student.js";
 import Subject from "../model/subject.js";
 import SchoolYear from "../model/schoolYear.js";
+import { createLogs } from "./logs.js";
+
 
 
 
@@ -98,6 +100,15 @@ export const createSection = async (req, res) => {
             // Guard — only applies if creating G12 section
             // G11 sections sa new SY ay fresh students (from admission)
             if (gradeLevel !== 12) {
+                const { id: accountId, role } = req.account;
+                await createLogs(
+                    accountId,
+                    role,
+                    'CREATE SECTION',
+                    `Created section: ${name} (Grade ${gradeLevel} - ${strand})`,
+                    'Success'
+                );
+
                 return res.status(201).json({ message: "Section created successfully." });
             }
 
@@ -134,12 +145,24 @@ export const createSection = async (req, res) => {
             }
         }
 
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId,
+            role,
+            'CREATE SECTION',
+            `Created section: ${name} (Grade ${gradeLevel} - ${strand})`,
+            'Success'
+        );
+
+
         res.status(201).json({ message: "Section created successfully." });
 
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 
 // UPDATE section
@@ -171,6 +194,19 @@ export const updateSection = async (req, res) => {
 
         // 🔥 IF ONLY SIMPLE UPDATES (name, track, strand, maxCapacity), RETURN EARLY
         if (!criticalFieldsChanged) {
+
+
+            const { id: accountId, role } = req.account;
+            await createLogs(
+                accountId,
+                role,
+                'UPDATE SECTION',
+                `Updated section: ${name} (Grade ${newGradeLevel} - ${section.strand})`,
+                'Success'
+            );
+
+
+
             return res.status(200).json({ 
                 message: "Section updated successfully.",
                 section: updatedSection
@@ -185,6 +221,17 @@ export const updateSection = async (req, res) => {
         const students = await Student.find({ _id: { $in: section.students } });
 
         if (students.length === 0) {
+
+
+            const { id: accountId, role } = req.account;
+            await createLogs(
+                accountId,
+                role,
+                'UPDATE SECTION',
+                `Updated section: ${name} (Grade ${newGradeLevel} - ${section.strand})`,
+                'Success'
+            );
+
             return res.status(200).json({
                 message: "Section updated successfully.",
             });
@@ -203,6 +250,15 @@ export const updateSection = async (req, res) => {
                 { students: { $in: section.students } },
                 { $pull: { students: { $in: studentIds }}}
             )
+
+            const { id: accountId, role } = req.account;
+            await createLogs(
+                accountId,
+                role,
+                'UPDATE SECTION',
+                `Updated section: ${name} (Grade ${newGradeLevel} - ${section.strand}) — Reset for enrollment`,
+                'Success'
+            );
 
             return res.status(200).json({ message: "Section updated successfully. Ready for enrollment."});
         }
@@ -510,6 +566,16 @@ export const updateSection = async (req, res) => {
             await Student.bulkWrite(updateHistoryBatch);
         }
 
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId,
+            role,
+            'UPDATE SECTION',
+            `Updated section: ${name} (Grade ${newGradeLevel} - ${section.strand}) — Full migration done`,
+            'Success'
+        );
+
         res.status(200).json({ 
             message: "Section updated successfully.",
             section: updatedSection
@@ -540,18 +606,39 @@ export const updateEnrollmentStatus = async(req, res) => {
 }
 
 
+
+
+
 // DELETE section
 export const deleteSection = async (req, res) => {
     try {
         const id = req.params.id;
 
-        await Section.deleteOne({_id: id});
+        // ✅ Fetch muna bago i-delete para makuha yung name
+        const section = await Section.findById(id);
+        if (!section) {
+            return res.status(404).json({ message: "Section not found." });
+        }
+
+        await Section.deleteOne({ _id: id });
+
+        // ✅ LOG — Delete Section
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId,
+            role,
+            'DELETE SECTION',
+            `Deleted section: ${section.name} (Grade ${section.gradeLevel} - ${section.strand})`,
+            'Success'
+        );
 
         res.status(200).json({ message: "Section deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
+
 
 
 
@@ -714,6 +801,17 @@ export const bulkAddSections = async (req, res) => {
                 validationErrors.push(`Row: Failed to create "${sec.name}": ${sectionError.message}`);
             }
         }
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId,
+            role,
+            'BULK ADD SECTION',
+            `Bulk added ${importedCount} section(s) out of ${sections.length} total`,
+            'Success'
+        );
+
 
         res.status(201).json({ 
             message: `${importedCount} section(s) created successfully`,
@@ -1027,6 +1125,18 @@ export const addStudentToSection = async (req, res) => {
 
         await student.save();
 
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId,
+            role,
+            'ADD STUDENT TO SECTION',
+            `Added ${student.firstName} ${student.lastName} to section ${section.name} (Grade ${section.gradeLevel} - ${section.strand})`,
+            'Success'
+        );
+
+
+
         return res.status(200).json({ 
             message: `${student.firstName} ${student.lastName} successfully added to ${section.name}.`,
             student
@@ -1103,6 +1213,17 @@ export const removeStudentFromSection = async (req, res) => {
 
 
         await student.save();
+
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId,
+            role,
+            'REMOVE STUDENT FROM SECTION',
+            `Removed ${student.firstName} ${student.lastName} from section ${section.name} (Grade ${section.gradeLevel} - ${section.strand})`,
+            'Success'
+        );
+        
 
         res.status(200).json({ message: "Student unenrolled from section successfully." });
 

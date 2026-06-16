@@ -1,10 +1,11 @@
 import express from "express";
 import { Logout } from "../controller/logout.js";
-import { accessGeneratedCode, accessGmailCode } from "../controller/admin/accessCode.js";
+import { accessGeneratedCode, accessGmailCode, getAccessCodeLogs } from "../controller/admin/accessCode.js";
 import { createFacultyMember, deleteStaff, getStaffList, updateStaff } from "../controller/stafffManagement.js";
 import { createSubject, bulkAddSubjects,
 deleteSubject, getAllSubjects, updateSubject, getAllTeachers, getSubjectSection,
-getSubjectDetails, addSubjectSection, bulkAddSubjectSections, updateSubjectSection, deleteSubjectSection  
+getSubjectDetails, addSubjectSection, bulkAddSubjectSections, updateSubjectSection, deleteSubjectSection,  
+updateScheduleDays
 } from "../controller/subject.js";
 import { Add_Applicants, ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant, revertToPending } from "../controller/enrollment.js";
 import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent, 
@@ -14,7 +15,7 @@ import { addStudentToSection, createSection, deleteSection, getSectionById, getS
     bulkAddSections 
 
 } from "../controller/sectionManagement.js";
-import { getEnrollmentStats, getEnrollmentStatsByGrade } from "../controller/dashboard.js";
+import { getEnrollmentStats, getEnrollmentStatsByGrade, getStudentsByCategory } from "../controller/dashboard.js";
 import { getEnrollmentStatsByStrand, getEnrollmentStatsByTrack } from "../controller/dashboard.js";
 import { uploadFiles, addAnnouncement, getAnnouncements, updateAnnouncement, deleteAnnouncement } from "../controller/announcement.js";
 import {verifyAuth} from "../auth/authMiddleware.js";
@@ -25,6 +26,8 @@ import { deleteEmailHistory, getAllEmails, getAllStudents, scheduleRequirements 
 import { activateSchoolYear, createSchoolYear, getSchoolYears, toggleEnrollmentStatus, getAllSchoolYears, setCurrentSchoolYear, getActiveSchoolYear, deleteSchoolYear, } from "../controller/schoolYear-semester.js";
 
 import { enrollmentUpload, Update_Applicant } from "../controller/enrollment.js";
+import { bulkApproveApplicants } from "../controller/enrollment.js";
+
 
 
 
@@ -48,6 +51,7 @@ import { deleteQRCode, generateQRCode, getQRCodes, updateQRCode } from "../contr
 const SharedRouter = express.Router();
 
 SharedRouter.get('/generate_code', accessGeneratedCode);
+SharedRouter.get('/access_code_logs', getAccessCodeLogs);
 SharedRouter.get('/getApplicants', GetAllEnrollments);
 
 
@@ -56,8 +60,8 @@ SharedRouter.get('/staff_list', getStaffList);
 SharedRouter.post("/create_facultyAccount", verifyAuth, createFacultyMember);
 SharedRouter.patch('/staff_update/:id', updateStaff);
 SharedRouter.delete('/staff_delete/:id', deleteStaff);
-SharedRouter.post('/addSubjects', createSubject);
-SharedRouter.post('/bulkAddSubjects', bulkAddSubjects);
+SharedRouter.post('/addSubjects', verifyAuth, createSubject);
+SharedRouter.post('/bulkAddSubjects', verifyAuth, bulkAddSubjects);
 
 SharedRouter.get('/getSubjects', verifyAuth, getAllSubjects);
 SharedRouter.get('/getTeachers',verifyAuth, getAllTeachers);
@@ -65,35 +69,39 @@ SharedRouter.get('/getSubjetSections', verifyAuth, getSubjectSection);
 SharedRouter.get('/getSubjectDetails/:id', verifyAuth, getSubjectDetails);
 SharedRouter.post('/addSubjectSection/:id', verifyAuth, addSubjectSection);
 SharedRouter.post("/bulkAddSubjectSections/:id",verifyAuth, bulkAddSubjectSections);
-SharedRouter.patch("/updateSubjectSection/:id/:sectionId", updateSubjectSection);
-SharedRouter.delete("/deleteSubjectSection/:id/:sectionId", deleteSubjectSection);
+SharedRouter.patch("/updateSubjectSection/:id/:sectionId", verifyAuth, updateSubjectSection);
+SharedRouter.delete("/deleteSubjectSection/:id/:sectionId", verifyAuth, deleteSubjectSection);
+SharedRouter.patch('/updateSectionScheduleDays/:subjectId', verifyAuth, updateScheduleDays);
 
-SharedRouter.patch('/updateSubjects/:id', updateSubject);
-SharedRouter.delete('/deleteSubject/:id', deleteSubject);
-SharedRouter.patch('/approveApplicant', ApplicantApproval);
-SharedRouter.patch('/rejectApplicant/:id', rejectApplicant);
-SharedRouter.delete('/removeApplicant/:id', deleteApplicant);
+SharedRouter.patch('/updateSubjects/:id', verifyAuth, updateSubject);
+SharedRouter.delete('/deleteSubject/:id', verifyAuth, deleteSubject);
+SharedRouter.patch('/approveApplicant', verifyAuth, ApplicantApproval);
+SharedRouter.patch('/rejectApplicant/:id', verifyAuth, rejectApplicant);
+SharedRouter.delete('/removeApplicant/:id', verifyAuth, deleteApplicant);
 SharedRouter.get('/getStudents', getStudents);
 SharedRouter.get('/getSections', verifyAuth, getAssignSections);
 SharedRouter.post('/createStudent', verifyAuth, createStudent);
-SharedRouter.patch('/updateStudent/:id',  updateStudent);
-SharedRouter.delete('/deleteStudent/:id',  deleteStudent);
-SharedRouter.patch('/markAsGraduated/:id', markAsGraduated);
+SharedRouter.patch('/updateStudent/:id', verifyAuth,  updateStudent);
+SharedRouter.delete('/deleteStudent/:id', verifyAuth, deleteStudent);
+SharedRouter.patch('/markAsGraduated/:id', verifyAuth, markAsGraduated);
 
 
 SharedRouter.get('/sections', getSections);
-SharedRouter.post('/addSection', createSection);
+SharedRouter.post('/addSection', verifyAuth, createSection);
 SharedRouter.post('/bulkAddSections', verifyAuth, bulkAddSections);
-SharedRouter.patch('/updateSection/:id', updateSection);
-SharedRouter.delete('/deleteSection/:id', deleteSection);
-SharedRouter.get("/announcements", getAnnouncements);
-SharedRouter.post("/addAnnouncement", uploadFiles, addAnnouncement);
+SharedRouter.patch('/updateSection/:id', verifyAuth, updateSection);
+SharedRouter.delete('/deleteSection/:id', verifyAuth, deleteSection);
+SharedRouter.get("/announcements", verifyAuth, getAnnouncements);
+SharedRouter.post("/addAnnouncement",  uploadFiles, addAnnouncement);
 SharedRouter.patch("/updateAnnouncement/:id",  uploadFiles, updateAnnouncement);
 SharedRouter.delete('/deleteAnnouncement/:id', deleteAnnouncement);
 SharedRouter.get('/dashboardStats', getEnrollmentStats);
 SharedRouter.get('/enrollmentStatsByGrade', getEnrollmentStatsByGrade);
 SharedRouter.get('/enrollmentStatsByTrack', getEnrollmentStatsByTrack);
 SharedRouter.get('/enrollmentStatsByStrand', getEnrollmentStatsByStrand);
+SharedRouter.get("/studentsByCategory", getStudentsByCategory);
+
+
 SharedRouter.put('/setStudentsPending', setStudentsPending);
 SharedRouter.patch('/updateEnrollment/:id', updateEnrollmentStatus);
 SharedRouter.get('/getProfile', verifyAuth, getProfile);
@@ -108,10 +116,10 @@ SharedRouter.patch('/revertToPending/:id', verifyAuth, revertToPending);
 
 
 
-SharedRouter.patch('/set-current-school-year/:id', setCurrentSchoolYear);
-SharedRouter.post('/create-school-year', createSchoolYear);
-SharedRouter.delete('/delete-school-year/:id', deleteSchoolYear);  // Reusing activateSchoolYear for deletion since it already checks if the school year is active or not.
-SharedRouter.get('/get-school-years', getSchoolYears);
+SharedRouter.patch('/set-current-school-year/:id', verifyAuth, setCurrentSchoolYear);
+SharedRouter.post('/create-school-year', verifyAuth, createSchoolYear);
+SharedRouter.delete('/delete-school-year/:id', verifyAuth, deleteSchoolYear);  // Reusing activateSchoolYear for deletion since it already checks if the school year is active or not.
+SharedRouter.get('/get-school-years', verifyAuth, getSchoolYears);
 
 
 
@@ -119,22 +127,20 @@ SharedRouter.get('/get-school-years', getSchoolYears);
 
 // Reusing activateSchoolYear for deletion since it already checks if the school year is active or not.
 SharedRouter.get('/getAllSchoolYears', getAllSchoolYears);  // ✅ Moved from homeRouter
-SharedRouter.patch('/update-school-year/:id', activateSchoolYear);
+SharedRouter.patch('/update-school-year/:id', verifyAuth, activateSchoolYear);
 SharedRouter.patch('/toggleEnrollmentStatus', toggleEnrollmentStatus);  // ✅ New endpoint to toggle enrollment
-
 
 
 
 
 SharedRouter.get('/sections/search-student', searchStudentForSection);
 SharedRouter.get('/sections/:id', getSectionById);
-SharedRouter.post('/sections/:id/add-student',  addStudentToSection);
-SharedRouter.delete('/sections/:id/remove-student/:studentId', removeStudentFromSection);
+SharedRouter.post('/sections/:id/add-student', verifyAuth,  addStudentToSection);
+SharedRouter.delete('/sections/:id/remove-student/:studentId', verifyAuth, removeStudentFromSection);
 
 
 
 SharedRouter.get('/activeSchoolYear', verifyAuth, getActiveSchoolYear);
-
 
 
 
@@ -155,13 +161,16 @@ SharedRouter.delete('/deleteStrand/:trackId/:strandId', verifyAuth, deleteStrand
 
 
 SharedRouter.post('/add-applicant', verifyAuth, enrollmentUpload, Add_Applicants);
-SharedRouter.put('/update-applicant/:id', enrollmentUpload, Update_Applicant);
+SharedRouter.put('/update-applicant/:id', verifyAuth, enrollmentUpload, Update_Applicant);
 
 
 SharedRouter.post("/generate-qr-code", verifyAuth, generateQRCode);
 SharedRouter.get("/qr-codes", verifyAuth, getQRCodes);
 SharedRouter.patch('/qr-codes/:id', verifyAuth, updateQRCode);
 SharedRouter.delete('/qr-codes/:id', verifyAuth, deleteQRCode);
+
+
+SharedRouter.post('/bulkApproveApplicants', verifyAuth, bulkApproveApplicants);
 
 
 SharedRouter.get("/Logout", verifyAuth, Logout);

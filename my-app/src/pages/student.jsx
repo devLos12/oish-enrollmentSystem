@@ -1,5 +1,5 @@
-import React, {useState, useEffect, useContext} from "react";
-import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import React, {useState, useEffect, useContext, useRef} from "react";
+import { Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
 import SideBar from "../components/sidebar";
 import { globalContext } from "../context/global";
 import Modal from "../components/modal.jsx";
@@ -12,6 +12,9 @@ import StudentTable from "../components/student/classmate.jsx";
 import EditProfile from "../components/student/editprofile.jsx";
 import ChangePassword from "../components/changepassword.jsx";
 import { useLayoutEffect } from "react";
+import { io } from "socket.io-client";
+
+
 
 
 const Student = () => {
@@ -21,28 +24,91 @@ const Student = () => {
 
     } = useContext(globalContext);    
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const [isAutoLoggingOut, setIsAutoLoggingOut] = useState(false);
+
+    const isLoggingOutRef = useRef(false);
+
+    const isOnChangePassword = location.pathname.includes('change_password');
 
 
 
+
+    const handleForceLogout = async () => {
+        setIsAutoLoggingOut(true); // show loader muna
+
+
+        setTimeout(() => {
+            navigate("/", { replace: true });  // Navigate FIRST
+            
+            // Clear states & logout AFTER navigation
+            setTimeout(() => {
+
+                fetch(`${import.meta.env.VITE_API_URL}/api/studentLogout`, {
+                    method: "GET",
+                    credentials: "include"
+                })
+                .then((res) => res.json())
+                .then((data) => {
+                    setStudentAuth(false);
+                    setRole(null);
+                    setProfile(null);
+                })
+                .catch((err) => console.error("Logout error:", err));
+
+            }, 100);  // Small delay para ma-execute na ang navigate
+        }, 2500); // 2.5 seconds bago mag-redirect
+    };
+
+
+    
     //fetch profile
     useEffect(() => {
         fetch(`${import.meta.env.VITE_API_URL}/api/getStudentProfile`, {
             method: "GET",
             credentials: "include"
         })
-        .then( async(res) => {
+        .then(async(res) => {
             const data = await res.json();
-            if(!res.ok) throw new Error(data.message);
+
+            // ✅ Student deleted na (reverted to pending) — force logout
+            if (res.status === 404 && data.code === "STUDENT_NOT_FOUND") {
+                handleForceLogout();
+                return;
+            }
+
+
+            if (!res.ok) throw new Error(data.message);
             return data;
         })
         .then((data) => {
-            setProfile(data);
-
+            if (data) setProfile(data);
         })
         .catch((error) => {
             console.log("Error: ", error.message);
         });
-    },[trigger]);
+    }, [trigger]);
+
+
+
+    useEffect(() => {
+        const socket = io(import.meta.env.VITE_API_URL, {
+            withCredentials: true
+        });
+
+        socket.on("student-reverted", (data) => {
+            if (profile?.email === data.email) {
+                handleForceLogout();
+            }
+        });
+
+        return () => socket.disconnect(); // cleanup!
+    }, [profile]);
+
+
+
+
 
 
     const routes = [
@@ -101,36 +167,119 @@ const Student = () => {
                 </div>
             </div>
 
+            {/* ✅ First Login Blocking Modal */}
+            {profile?.isFirstLogin === true && !isOnChangePassword && (
+                <>
+                    {/* Backdrop */}
+                    <div
+                        className="position-fixed top-0 start-0 w-100 h-100"
+                        style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9998 }}
+                    />
+
+                    {/* Modal — shadcn style */}
+                    <div
+                        className="position-fixed top-50 start-50 translate-middle bg-white shadow"
+                        style={{ 
+                            zIndex: 9999, 
+                            width: "90%", 
+                            maxWidth: "420px",
+                            borderRadius: "12px",
+                            border: "1px solid #e5e7eb"
+                        }}
+                    >
+                        {/* Header */}
+                        <div className="px-4 pt-4 pb-3 border-bottom">
+                            <div className="d-flex align-items-center gap-2 mb-1">
+                                <i className="fa fa-lock text-dark" style={{ fontSize: "16px" }}></i>
+                                <h6 className="fw-semibold mb-0" style={{ fontSize: "15px" }}>Security Notice</h6>
+                            </div>
+                            <p className="text-muted mb-0" style={{ fontSize: "13px" }}>
+                                Action required before continuing
+                            </p>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-4 py-4">
+                            <p className="mb-0" style={{ fontSize: "14px", color: "#374151", lineHeight: "1.6" }}>
+                                This is your <strong>first login</strong>. For your security, you must 
+                                change your temporary password before accessing the system.
+                            </p>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-4 pb-4 d-flex justify-content-end gap-2">
+                            <button
+                                onClick={() => navigate(`/${role}/change_password`, { replace: true })}
+                                className="btn btn-dark btn-sm px-4"
+                                style={{ fontSize: "13px", borderRadius: "6px" }}
+                            >
+                                Change Password
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+
 
             {modal?.isShow  && <Modal textModal={modal?.text}
-            handleClickYes={()=> {
+                handleClickYes={()=> {
 
-                setModal((prev) => ({
-                    ...prev, isShow: false, text: ""
-                }) )
+                    setModal((prev) => ({
+                        ...prev, isShow: false, text: ""
+                    }) )
 
-                setIsLoggingOut(true);
-                setStudentAuth(false);
-                setFormData({});
-                
-                fetch(`${import.meta.env.VITE_API_URL}/api/studentLogout`, {
-                    method: "GET",
-                    credentials: "include"
-                })
-                .then((res) => res.json())
-                .then((data) => {
-                    console.log(data.message);
+                    setIsLoggingOut(true);
+                    setStudentAuth(false);
+                    setFormData({});
                     
-                    setRole(null);
-                    navigate("/", { replace: true });
-                })
-                .catch((err) => console.log("Error: ", err.message ));
-                
-            }}
-            handleClickNo={()=> setModal((prev) => ({
-                ...prev, isShow: false, text: ""
-            }))}
+                    fetch(`${import.meta.env.VITE_API_URL}/api/studentLogout`, {
+                        method: "GET",
+                        credentials: "include"
+                    })
+                    .then((res) => res.json())
+                    .then((data) => {
+
+                        setRole(null);
+                        navigate("/", { replace: true });
+                    })
+                    .catch((err) => console.log("Error: ", err.message ));
+                    
+                }}
+                handleClickNo={()=> setModal((prev) => ({
+                    ...prev, isShow: false, text: ""
+                }))}
             />}
+
+
+            {/*Auto Logout Overlay */}
+            {isAutoLoggingOut && (
+                <div
+                    className="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+                    style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 99999 }}
+                >
+                    <div className="text-center text-white">
+                        {/* Spinner */}
+                        <div className="mb-4">
+                            <div
+                                className="spinner-border"
+                                style={{ width: "48px", height: "48px", color: "#dc3545" }}
+                                role="status"
+                            />
+                        </div>
+
+                        {/* Message */}
+                        <h5 className="fw-semibold mb-2">Session Ended</h5>
+                        <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
+                            Your account has been updated by the administrator.
+                            <br/>
+                            You will be redirected shortly...
+                        </p>
+                    </div>
+                </div>
+            )}
+
+
         </>
     )
 }

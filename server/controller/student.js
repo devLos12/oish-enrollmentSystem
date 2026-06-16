@@ -5,6 +5,13 @@ import bcrypt from "bcrypt";
 import Staff from "../model/staff.js";
 import Admin from "../model/admin.js";
 import SchoolYear from "../model/schoolYear.js";
+import { createLogs } from "./logs.js";
+
+
+
+
+
+
 
 
 
@@ -155,9 +162,6 @@ export const createStudent = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
-
-
 
 
 
@@ -389,6 +393,16 @@ export const updateStudent = async (req, res) => {
 
             await updatedStudent.save();
 
+
+            const { id: accountId, role } = req.account;
+            await createLogs(
+                accountId, role,
+                "ENROLL REPEATER",
+                `Enrolled repeater student "${updatedStudent.firstName} ${updatedStudent.lastName}" to section "${section}"`,
+                "Success"
+            );
+
+
             return res.status(200).json({
                 message: "Repeater enrolled successfully.",
                 student: updatedStudent
@@ -448,6 +462,18 @@ export const updateStudent = async (req, res) => {
                 return res.status(409).json({ message: "Failed to update." });
             }
 
+
+
+
+            const { id: accountId, role } = req.account;
+            await createLogs(
+                accountId, role,
+                "TAG REPEATER",
+                `Tagged student "${updatedStudent.firstName} ${updatedStudent.lastName}" as repeater with ${repeatedSubjectsToSave.length} failed subject(s)`,
+                "Success"
+            );
+
+            
             return res.status(200).json({
                 message: "Student marked as repeater successfully.",
                 student: updatedStudent
@@ -638,6 +664,16 @@ export const updateStudent = async (req, res) => {
                 );
             }
 
+
+            const { id: accountId, role } = req.account;
+            await createLogs(
+                accountId, role,
+                "UPDATE STUDENT",
+                `Updated student "${updatedStudent.firstName} ${updatedStudent.lastName}" - Status: ${status}, Section: ${section || 'N/A'}`,
+                "Success"
+            );
+
+
             return res.status(200).json({ 
                 message: "Student updated successfully.",
                 student: updatedStudent
@@ -652,6 +688,7 @@ export const updateStudent = async (req, res) => {
 };
 
 
+
 export const getStudents = async (req, res) => {
     try {
         const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
@@ -660,7 +697,7 @@ export const getStudents = async (req, res) => {
         if (!activeSchoolYear || !currentSchoolYear) {
             return res.status(400).json({ message: "No active/current school year set." });
         }
-
+        
         const query = {
             $or: [
                 // ✅ May registrationHistory entry sa active SY + sem + enrolled
@@ -917,7 +954,6 @@ export const setStudentsPending = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
-
 
 
 

@@ -11,7 +11,7 @@ import SchoolYear from "../model/schoolYear.js";
 import Program from "../model/program.js";
 import crypto from "crypto";
 
-
+import { createLogs } from "./logs.js";
 
 
 
@@ -101,7 +101,19 @@ export const deleteApplicant = async (req, res) => {
     
     // Delete from database
     await Enrollment.deleteOne({ _id: id });
-    
+
+    const { id: accountId, role } = req.account;
+    const studentName = `${enrollment.learnerInfo?.firstName} ${enrollment.learnerInfo?.lastName}`;
+
+    await createLogs(
+      accountId,
+      role,
+      'REMOVE APPLICANT',
+      `Removed applicant: ${studentName} (${enrollment.gradeLevelToEnroll})`,
+      'Success'
+    );
+        
+
     res.status(200).json({ message: "Successfully deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -377,10 +389,18 @@ export const rejectApplicant = async (req, res) => {
     const studentName = `${applicant.learnerInfo.firstName} ${applicant.learnerInfo.lastName}`;
     const updateLink = `${req.headers['origin']}/enrollment/update?token=${updateToken}`;
 
+    
+    const { id: accountId, role } = req.account;
+    await createLogs(
+      accountId,
+      role,
+      'REJECT APPLICANT',
+      `Rejected applicant: ${studentName} — Reason: ${reason}`,
+      'Success'
+    );
 
 
-
-    // ✅ Send rejection email (don't wait for it, just fire and forget)
+    //Send rejection email (don't wait for it, just fire and forget)
     sendRejectionEmail(email, studentName, reason, updateLink)
       .then(result => {
         if (result.success) {
@@ -524,15 +544,14 @@ export const EnrollmentRegistration = async (req, res) => {
           }
       }
 
-
-
+      
       // ✅ VALIDATION: Extension Name (if provided)  <-- DITO ILAGAY
-      const validExtensionNames = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+      const validExtensionNames = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III'];
       const extensionNameInput = learnerInfo.extensionName?.trim() || '';
 
       if (extensionNameInput && extensionNameInput !== 'N/A' && !validExtensionNames.includes(extensionNameInput)) {
           return res.status(400).json({ 
-              message: 'Invalid extension name. Accepted values: jr. Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA' 
+              message: 'Invalid extension name. Accepted values: jr. Jr., Sr., II, III' 
           });
       }
 
@@ -655,6 +674,77 @@ export const EnrollmentRegistration = async (req, res) => {
         }
       }
 
+      const existingApplicant = await Enrollment.findOne({
+        "learnerInfo.firstName": normalizeName(learnerInfo.firstName),
+        "learnerInfo.birthDate": learnerInfo.birthDate,
+        _id: { $ne: enrollmentId }
+      });
+
+      if (existingApplicant) {
+        return res.status(409).json({ 
+          message: "An applicant with the same name and birth date already exists." 
+        });
+      }
+
+
+      const existingFullName = await Enrollment.findOne({
+        "learnerInfo.firstName": normalizeName(learnerInfo.firstName),
+        "learnerInfo.lastName": normalizeName(learnerInfo.lastName),
+        "learnerInfo.middleName": normalizeName(learnerInfo.middleName?.trim() || 'N/A'),
+        _id: { $ne: enrollmentId }
+      });
+
+      if (existingFullName) {
+        return res.status(409).json({ 
+          message: "Full name already exists." 
+        });
+      }
+
+
+      const existingFullName2 = await Enrollment.findOne({
+        "learnerInfo.firstName": normalizeName(learnerInfo.firstName),
+        "learnerInfo.lastName": normalizeName(learnerInfo.lastName),
+        _id: { $ne: enrollmentId }
+      });
+
+      if (existingFullName2) {
+        return res.status(409).json({ 
+          message: "Full name already exists." 
+        });
+      }
+
+
+
+      const existingStaffName = await Staff.findOne({
+        firstName: normalizeName(learnerInfo.firstName),
+        lastName: normalizeName(learnerInfo.lastName),
+        middleName: normalizeName(learnerInfo.middleName?.trim() || 'N/A'),
+      });
+
+      if (existingStaffName) {
+        return res.status(409).json({ 
+          message: "Full name already exists." 
+        });
+      }
+
+
+      const existingStaffName2 = await Staff.findOne({
+        firstName: normalizeName(learnerInfo.firstName),
+        lastName: normalizeName(learnerInfo.lastName),
+      });
+
+      if (existingStaffName2) {
+        return res.status(409).json({ 
+          message: "Full name already exists." 
+        });
+      }
+
+      
+
+
+      
+
+
 
       const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
 
@@ -663,11 +753,6 @@ export const EnrollmentRegistration = async (req, res) => {
           message: "No active school year." 
         });
       }
-
-      //  Auto-generate school year
-      // const currentYear = new Date().getFullYear();
-      // const nextYear = currentYear + 1;
-      // const autoSchoolYear = `${currentYear}-${nextYear}`;
 
       //  Handle optional fields - set to "N/A" if empty
       const extensionName = learnerInfo.extensionName?.trim() || 'N/A';
@@ -761,6 +846,7 @@ export const EnrollmentRegistration = async (req, res) => {
         step1: true,
       });
     }
+
 
     // ==========================================
     // STEP 2: UPDATE ADDRESS & PARENTS INFO
@@ -1210,6 +1296,7 @@ export const EnrollmentRegistration = async (req, res) => {
           { new: true }
       );
 
+
       io.emit("new-enrollment", { message: "" });
 
       return res.status(200).json({
@@ -1231,12 +1318,6 @@ export const EnrollmentRegistration = async (req, res) => {
     });
     }
 };
-
-
-
-
-
-
 
 
 
@@ -1291,11 +1372,11 @@ export const Add_Applicants = async (req, res) => {
     }
 
     // Extension Name
-    const validExtensionNames = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+    const validExtensionNames = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III'];
     const extensionNameInput = learnerInfo.extensionName?.trim() || '';
     if (extensionNameInput && extensionNameInput !== 'N/A' && !validExtensionNames.includes(extensionNameInput)) {
       return res.status(400).json({
-        message: 'Invalid extension name. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA'
+        message: 'Invalid extension name. Accepted values: Jr., Sr., II, III'
       });
     }
 
@@ -1352,6 +1433,68 @@ export const Add_Applicants = async (req, res) => {
         return res.status(409).json({ message: "LRN is already registered" });
       }
     }
+
+    // ✅ VALIDATION: Same firstName + lastName + birthDate = duplicate applicant
+    const existingApplicant = await Enrollment.findOne({
+      "learnerInfo.firstName": normalizeName(learnerInfo.firstName),
+      "learnerInfo.birthDate": learnerInfo.birthDate,
+    });
+    if (existingApplicant) {
+      return res.status(409).json({
+        message: "An applicant with the same name and birth date already exists."
+      });
+    }
+
+    // ✅ VALIDATION: Same firstName + lastName + middleName = duplicate applicant
+    const existingFullName = await Enrollment.findOne({
+      "learnerInfo.firstName":  normalizeName(learnerInfo.firstName),
+      "learnerInfo.lastName":   normalizeName(learnerInfo.lastName),
+      "learnerInfo.middleName": normalizeName(learnerInfo.middleName?.trim() || 'N/A'),
+    });
+    if (existingFullName) {
+      return res.status(409).json({
+        message: "Full name already exists."
+      });
+    }
+    
+
+    const existingFullName2 = await Enrollment.findOne({
+      "learnerInfo.firstName":  normalizeName(learnerInfo.firstName),
+      "learnerInfo.lastName":   normalizeName(learnerInfo.lastName),
+    });
+    if (existingFullName2) {
+      return res.status(409).json({
+        message: "Full name already exists."
+      });
+    }
+
+
+
+    // ✅ VALIDATION: Same full name not allowed in Staff
+    const existingStaffName = await Staff.findOne({
+      firstName:  { $regex: new RegExp(`^${learnerInfo.firstName.trim()}$`, 'i') },
+      lastName:   { $regex: new RegExp(`^${learnerInfo.lastName.trim()}$`, 'i') },
+      middleName: { $regex: new RegExp(`^${(learnerInfo.middleName?.trim() || 'N/A')}$`, 'i') },
+    });
+    if (existingStaffName) {
+      return res.status(409).json({
+        message: "Full name already exists."
+      });
+    }
+
+
+    const existingStaffName2 = await Staff.findOne({
+      firstName:  { $regex: new RegExp(`^${learnerInfo.firstName.trim()}$`, 'i') },
+      lastName:   { $regex: new RegExp(`^${learnerInfo.lastName.trim()}$`, 'i') },
+    });
+    if (existingStaffName2) {
+      return res.status(409).json({
+        message: "Full name already exists."
+      });
+    }
+
+
+
 
     // ==========================================
     // VALIDATIONS — STEP 2 (Address & Parents)
@@ -1651,6 +1794,23 @@ export const Add_Applicants = async (req, res) => {
       statusRegistration:   'complete',
     });
 
+
+
+
+
+    const { id, role } = req.account;
+    const studentName = `${normalizeName(learnerInfo.firstName)} ${normalizeName(learnerInfo.lastName)}`;
+
+    await createLogs(
+      id,
+      role,
+      'ADD APPLICANT',
+      `Added applicant: ${studentName} (${gradeLevelToEnroll})`,
+      'Success'
+    );
+
+
+
     io.emit("new-enrollment", { message: "" });
 
     return res.status(201).json({
@@ -1723,11 +1883,11 @@ export const Update_Applicant = async (req, res) => {
     }
 
     // Extension Name
-    const validExtensionNames = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'MD', 'PhD', 'Esq.', 'CPA'];
+    const validExtensionNames = ['', 'jr.', 'Jr.', 'Sr.', 'II', 'III'];
     const extensionNameInput = learnerInfo.extensionName?.trim() || '';
     if (extensionNameInput && extensionNameInput !== 'N/A' && !validExtensionNames.includes(extensionNameInput)) {
       return res.status(400).json({
-        message: 'Invalid extension name. Accepted values: Jr., Sr., II, III, IV, V, MD, PhD, Esq., CPA'
+        message: 'Invalid extension name. Accepted values: Jr., Sr., II, III'
       });
     }
 
@@ -1789,7 +1949,6 @@ export const Update_Applicant = async (req, res) => {
     const incomingLRN = learnerInfo.lrn?.trim();
 
     if (incomingLRN !== currentLRN && incomingLRN && incomingLRN !== 'N/A') {
-      // LRN changed — check duplicates
       const dupLRN = await Enrollment.findOne({
         "learnerInfo.lrn": incomingLRN,
         _id: { $ne: id }
@@ -1797,6 +1956,68 @@ export const Update_Applicant = async (req, res) => {
       if (dupLRN) {
         return res.status(409).json({ message: "LRN is already registered." });
       }
+    }
+
+    // ✅ VALIDATION: Same firstName + lastName + birthDate = duplicate (exclude current record)
+    const existingApplicant = await Enrollment.findOne({
+      "learnerInfo.firstName": normalizeName(learnerInfo.firstName),
+      "learnerInfo.lastName":  normalizeName(learnerInfo.lastName),
+      "learnerInfo.birthDate": learnerInfo.birthDate,
+      _id: { $ne: id }
+    });
+    if (existingApplicant) {
+      return res.status(409).json({
+        message: "An applicant with the same name and birth date already exists."
+      });
+    }
+
+    // ✅ VALIDATION: Same firstName + lastName + middleName = duplicate (exclude current record)
+    const existingFullName = await Enrollment.findOne({
+      "learnerInfo.firstName":  normalizeName(learnerInfo.firstName),
+      "learnerInfo.lastName":   normalizeName(learnerInfo.lastName),
+      "learnerInfo.middleName": normalizeName(learnerInfo.middleName?.trim() || 'N/A'),
+      _id: { $ne: id }
+    });
+
+    if (existingFullName) {
+      return res.status(409).json({
+        message: "Full name already exists."
+      });
+    }
+
+    const existingFullName2 = await Enrollment.findOne({
+      "learnerInfo.firstName":  normalizeName(learnerInfo.firstName),
+      "learnerInfo.lastName":   normalizeName(learnerInfo.lastName),
+      _id: { $ne: id }
+    });
+
+    if (existingFullName2) {
+      return res.status(409).json({
+        message: "Full name already exists."
+      });
+    }
+
+    // ✅ VALIDATION: Same full name not allowed in Staff
+    const staffQuery = {
+      firstName: { $regex: new RegExp(`^${learnerInfo.firstName.trim()}$`, 'i') },
+      lastName:  { $regex: new RegExp(`^${learnerInfo.lastName.trim()}$`, 'i') },
+    };
+    const middleName = learnerInfo.middleName?.trim();
+    if (middleName) {
+      staffQuery.middleName = { $regex: new RegExp(`^${middleName}$`, 'i') };
+    } else {
+      staffQuery.$or = [
+        { middleName: { $exists: false } },
+        { middleName: null },
+        { middleName: '' },
+        { middleName: 'N/A' },
+      ];
+    }
+    const existingStaffName = await Staff.findOne(staffQuery);
+    if (existingStaffName) {
+      return res.status(409).json({
+        message: "Full name already exists."
+      });
     }
 
     // ==========================================
@@ -2082,6 +2303,19 @@ export const Update_Applicant = async (req, res) => {
       { new: true }
     );
 
+
+
+    const { id: accountId, role } = req.account;
+    const studentName = `${normalizeName(learnerInfo.firstName)} ${normalizeName(learnerInfo.lastName)}`;
+    
+    await createLogs(
+      accountId,
+      role,
+      'UPDATE APPLICANT',
+      `Updated applicant: ${studentName} (${gradeLevelToEnroll})`,
+      'Success'
+    );
+
     return res.status(200).json({
       success: true,
       message: 'Applicant updated successfully.'
@@ -2092,17 +2326,6 @@ export const Update_Applicant = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message || "Internal Server Error" });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -2330,6 +2553,8 @@ const sendStudentAccount = async (email, studentNo, password, studentName) => {
 
 
 
+
+
 export const ApplicantApproval = async (req, res) => {
   try {
     const { enrollmentId } = req.body;
@@ -2421,13 +2646,26 @@ export const ApplicantApproval = async (req, res) => {
       strand: applicant.seniorHigh.strand,
       semester: applicant.seniorHigh.semester,
       password: hashedPass,
-      enrollmentYear: applicant.schoolYear
+      enrollmentYear: applicant.schoolYear,
+      isFirstLogin: true
     });
+        
 
     applicant.status = "approved";
     await applicant.save();
     
     const studentName = `${applicant.learnerInfo?.firstName} ${applicant.learnerInfo?.lastName}`;
+
+
+
+    const { id: accountId, role } = req.account;
+    await createLogs(
+      accountId,
+      role,
+      'APPROVE APPLICANT',
+      `Approved applicant: ${studentName} — Student No: ${studentNumber} (${applicant.gradeLevelToEnroll})`,
+      'Success'
+    );
 
     sendStudentAccount(applicant.learnerInfo.email, studentNumber, defaultPass, studentName)
       .catch(err => console.log("Email sending failed: ", err));
@@ -2439,6 +2677,9 @@ export const ApplicantApproval = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 
 
@@ -2470,12 +2711,27 @@ export const revertToPending = async (req, res) => {
       { $set: { status: "pending" } }
     );
 
+    const { id: accountId, role } = req.account;
+    const studentName = `${enrollment.learnerInfo?.firstName} ${enrollment.learnerInfo?.lastName}`;
+
+    await createLogs(
+      accountId,
+      role,
+      'REVERT APPLICANT',
+      `Reverted to pending: ${studentName} (${enrollment.gradeLevelToEnroll})`,
+      'Success'
+    );
+
+    io.emit("student-reverted", { email });
+    
+
     return res.status(200).json({ message: "Reverted to pending successfully." });
 
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
@@ -2514,3 +2770,138 @@ export const getEnrollmentByToken = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
+
+export const bulkApproveApplicants = async (req, res) => {
+  try {
+    const { enrollmentIds } = req.body;
+
+    if (!enrollmentIds || !Array.isArray(enrollmentIds) || enrollmentIds.length === 0) {
+      return res.status(400).json({ message: "No applicants selected." });
+    }
+
+    const activeSchoolYear = await SchoolYear.findOne({ isCurrent: true });
+    if (!activeSchoolYear) {
+      return res.status(400).json({ message: "No active school year." });
+    }
+
+    const results = { success: [], failed: [] };
+
+    for (const enrollmentId of enrollmentIds) {
+      try {
+        const applicant = await Enrollment.findById(enrollmentId);
+        if (!applicant) {
+          results.failed.push({ enrollmentId, reason: "Applicant not found." });
+          continue;
+        }
+
+        // Generate student number
+        const year = new Date().getFullYear();
+        const lastStudent = await Student.findOne({
+          studentNumber: new RegExp(`^${year}-`)
+        }).sort({ studentNumber: -1 }).select('studentNumber');
+
+        let nextNumber = 1;
+        if (lastStudent) {
+          const lastNumber = parseInt(lastStudent.studentNumber.split('-')[1]);
+          nextNumber = lastNumber + 1;
+        }
+
+        const studentNumber = `${year}-${String(nextNumber).padStart(4, "0")}`;
+
+        // Duplicate checks
+        const existingStudentNumber = await Student.findOne({ studentNumber });
+        if (existingStudentNumber) {
+          results.failed.push({ enrollmentId, reason: "Duplicate student number." });
+          continue;
+        }
+
+        const lrnValue = applicant.learnerInfo.lrn?.trim();
+        const isValidLRN = lrnValue && lrnValue !== '' &&
+          lrnValue.toLowerCase() !== 'n/a' &&
+          lrnValue !== 'null' && lrnValue !== 'undefined';
+
+        if (isValidLRN) {
+          const existingLRN = await Student.findOne({ lrn: lrnValue });
+          if (existingLRN) {
+            results.failed.push({ enrollmentId, reason: "LRN already exists." });
+            continue;
+          }
+        }
+
+        // Create student
+        const defaultPass = Math.random().toString(36).slice(-6);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPass = await bcrypt.hash(defaultPass, salt);
+
+        const gradeNumber = parseInt(applicant.gradeLevelToEnroll.replace(/\D/g, ""), 10);
+
+        await Student.create({
+          schoolYear: activeSchoolYear._id,
+          studentNumber,
+          lrn: applicant.learnerInfo.lrn,
+          firstName: applicant.learnerInfo.firstName,
+          middleName: applicant.learnerInfo.middleName,
+          lastName: applicant.learnerInfo.lastName,
+          extensionName: applicant.learnerInfo.extensionName,
+          birthDate: applicant.learnerInfo.birthDate,
+          sex: applicant.learnerInfo.sex,
+          contactNumber: applicant.address.current.contactNumber,
+          email: applicant.learnerInfo.email,
+          address: applicant.address.current,
+          gradeLevel: gradeNumber,
+          track: applicant.seniorHigh.track,
+          strand: applicant.seniorHigh.strand,
+          semester: applicant.seniorHigh.semester,
+          password: hashedPass,
+          enrollmentYear: applicant.schoolYear,
+          isFirstLogin: true
+        });
+
+        // Update status
+        applicant.status = "approved";
+        await applicant.save();
+
+        // Send email (fire and forget)
+        const studentName = `${applicant.learnerInfo.firstName} ${applicant.learnerInfo.lastName}`;
+        sendStudentAccount(applicant.learnerInfo.email, studentNumber, defaultPass, studentName)
+          .catch(err => console.error("Email failed:", err));
+
+        results.success.push(enrollmentId);
+
+      } catch (err) {
+        console.error(`Error approving ${enrollmentId}:`, err.message);
+        results.failed.push({ enrollmentId, reason: err.message });
+      }
+    }
+
+
+    const { id: accountId, role } = req.account;
+    await createLogs(
+      accountId,
+      role,
+      'BULK APPROVE APPLICANT',
+      `Bulk approved ${results.success.length} applicant(s), ${results.failed.length} failed`,
+      'Success'
+    );
+    
+
+    io.emit("new-approve", { message: "bulk approve done." });
+
+    return res.status(200).json({
+      message: `${results.success.length} approved, ${results.failed.length} failed.`,
+      ...results
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
+

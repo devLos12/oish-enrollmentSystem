@@ -1,44 +1,47 @@
-import Logs from "../model/logs.js";
+import { createLogs } from "./logs.js";
+import Admin from "../model/admin.js";
 import Staff from "../model/staff.js";
-
-
-
-const createLogs = async (id, role) => {
-
-    let name = "Admin";
-
-    // Fetch staff only if role is "Staff"
-    if (role === "staff") {
-        const staff = await Staff.findById(id);
-        if (staff) {
-            name = `${staff.firstName} ${staff.lastName}`;
-        }
-    }
-    await Logs.create({
-        participantId: id,
-        participantName: name,
-        role: role,
-        status: "Logged Out"
-    });
-};
-
 
 export const Logout = async (req, res) => {
     try {
         const { id, role } = req.account;
 
-        await createLogs(id, role);
+        let name = "Admin";
+        if (role === "staff") {
+            const staff = await Staff.findById(id);
+            if (staff) name = `${staff.firstName} ${staff.lastName}`;
+        } else if (role === "admin") {
+            const admin = await Admin.findById(id);
+            if (admin) name = admin.name || "Admin";
+        }
+
+        
+        await createLogs(
+            id,
+            role,
+            'LOGOUT',
+            `${name} logged out successfully`,
+            'Success'
+        );
 
         res.clearCookie("accessToken", { path: "/" });
         res.status(200).json({ message: "Logout successfully" });
-
     } catch (error) {
         console.error(error);
+        
+        await createLogs(
+            req.account?.id || null,
+            req.account?.role || 'admin',
+            'LOGOUT',
+            `Logout failed due to an error`,
+            'Failed'
+        );
+        
         res.status(500).json({ message: error.message });
     }
 };
 
-export const studentLogout = async(req, res) => {
+export const studentLogout = async (req, res) => {
     try {
         res.clearCookie("accessToken", { path: "/" });
         res.status(200).json({ message: "Logout successfully" });
@@ -46,4 +49,4 @@ export const studentLogout = async(req, res) => {
         console.error(error);
         res.status(500).json({ message: error.message });
     }
-} 
+};

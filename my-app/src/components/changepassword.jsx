@@ -2,8 +2,11 @@ import React, { useLayoutEffect, useState, useContext } from "react";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 
+
+
+
 const ChangePassword = () => {
-    const { setTextHeader, profile } = useContext(globalContext);
+    const { setTextHeader, profile, setTrigger, setProfile, role } = useContext(globalContext);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -25,6 +28,14 @@ const ChangePassword = () => {
     const [showAlertModal, setShowAlertModal] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success');
+
+
+
+
+
+    
+
+
 
     const showAlert = (message, type = 'success') => {
         setAlertMessage(message);
@@ -125,10 +136,13 @@ const ChangePassword = () => {
                 newPassword: '',
                 confirmPassword: ''
             });
+
+            // ✅ Re-fetch profile para ma-confirm isFirstLogin: false from DB
+            setTrigger(prev => !prev);
             
-            // Navigate after showing alert
+            // Navigate back to dashboard after showing alert
             setTimeout(() => {
-                navigate(-1);
+                navigate(`/${role}`, { replace: true });
             }, 1500);
             
         } catch (error) {
@@ -137,7 +151,7 @@ const ChangePassword = () => {
             setLoading(false);
         }
     };
-
+    
     const handleCancel = () => {
         setFormData({
             currentPassword: '',
@@ -145,7 +159,7 @@ const ChangePassword = () => {
             confirmPassword: ''
         });
         setErrors({});
-        navigate(-1);
+        navigate(`/${role}`, { replace: true });
     };
 
     if (!profile) {
