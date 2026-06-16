@@ -60,6 +60,32 @@ const StudentManagement = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertType, setAlertType] = useState('success');
 
+
+
+
+
+
+
+
+
+    const [isBulkSectionMode, setIsBulkSectionMode] = useState(false);
+    const [selectedStudentsForSection, setSelectedStudentsForSection] = useState([]);
+    const [showBulkSectionModal, setShowBulkSectionModal] = useState(false);
+    const [bulkSectionData, setBulkSectionData] = useState({ section: '' });
+    const [availableSections, setAvailableSections] = useState([]);
+    const [loadingSections, setLoadingSections] = useState(false);
+    const [isSubmittingBulkSection, setIsSubmittingBulkSection] = useState(false);
+
+
+
+
+
+
+
+
+
+
+
     const gradeOptions = [11, 12];
 
     const sanitizeNameInput = (value) => value.replace(/[^a-zA-Z\s\-]/g, '');
@@ -627,6 +653,134 @@ const StudentManagement = () => {
         </select>
     );
 
+
+
+
+
+
+
+    const handleSelectStudentForSection = (studentId) => {
+        setSelectedStudentsForSection(prev =>
+            prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]
+        );
+    };
+
+    const handleSelectAllForSection = () => {
+        if (currentStudents.every(s => selectedStudentsForSection.includes(s._id))) {
+            setSelectedStudentsForSection(prev => prev.filter(id => !currentStudents.map(s => s._id).includes(id)));
+        } else {
+            setSelectedStudentsForSection(prev => [...new Set([...prev, ...currentStudents.map(s => s._id)])]);
+        }
+    };
+
+    const handleCancelBulkSectionSelection = () => {
+        setIsBulkSectionMode(false);
+        setSelectedStudentsForSection([]);
+    };
+
+    // Derive common grade/strand/track from selected students
+    const getCommonAcademicInfo = () => {
+        const selected = studentList.filter(s => selectedStudentsForSection.includes(s._id));
+        if (selected.length === 0) return null;
+
+        const grades   = [...new Set(selected.map(s => s.displayGradeLevel))];
+        const strands  = [...new Set(selected.map(s => s.displayStrand))];
+        const tracks   = [...new Set(selected.map(s => s.track))];
+
+        // All must share the same grade, strand, track for a valid bulk assign
+        if (grades.length > 1 || strands.length > 1 || tracks.length > 1) return null;
+        return { gradeLevel: grades[0], strand: strands[0], track: tracks[0] };
+    };
+
+    const handleOpenBulkSectionModal = async () => {
+        if (selectedStudentsForSection.length === 0) {
+            showAlert("Please select at least one student!", 'error');
+            return;
+        }
+        const info = getCommonAcademicInfo();
+        if (!info) {
+            showAlert("Selected students must have the same Grade Level, Track, and Strand.", 'error');
+            return;
+        }
+        try {
+            setLoadingSections(true);
+            setShowBulkSectionModal(true);
+            const params = new URLSearchParams({
+                gradeLevel: info.gradeLevel,
+                track: info.track,
+                strand: info.strand
+            });
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getSections?${params}`, {
+                credentials: "include"
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            setAvailableSections(data);
+        } catch (err) {
+            showAlert("Failed to load sections: " + err.message, 'error');
+            setShowBulkSectionModal(false);
+        } finally {
+            setLoadingSections(false);
+        }
+    };
+
+    const handleSubmitBulkSection = async () => {
+        if (!bulkSectionData.section) {
+            showAlert("Please select a section!", 'error');
+            return;
+        }
+        const info = getCommonAcademicInfo();
+        if (!info) { showAlert("Student academic info mismatch.", 'error'); return; }
+
+        try {
+            setIsSubmittingBulkSection(true);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bulkAssignSection`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    studentIds: selectedStudentsForSection,
+                    section: bulkSectionData.section,
+                    gradeLevel: info.gradeLevel,
+                    track: info.track,
+                    strand: info.strand
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            let msg = data.message;
+            if (data.failedCount > 0) {
+                msg += ` (${data.failedCount} skipped)`;
+            }
+            showAlert(msg, 'success');
+            setShowBulkSectionModal(false);
+            setSelectedStudentsForSection([]);
+            setIsBulkSectionMode(false);
+            setBulkSectionData({ section: '' });
+            fetchStudentsData();
+        } catch (err) {
+            showAlert("Failed to assign section: " + err.message, 'error');
+        } finally {
+            setIsSubmittingBulkSection(false);
+        }
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     return (
         <>
             <div className="container-fluid py-4 g-0 g-md-5">
@@ -645,20 +799,37 @@ const StudentManagement = () => {
                         </div>
                     </div>
                     <div className="col-12 col-md-6 mt-2 mt-md-0 d-flex justify-content-start justify-content-md-end gap-2">
-                        {!isSelectionMode ? (
-                            <>
-                                {/* <button type="button" className="btn btn-success btn-sm" onClick={handleAddStudent}><i className="fa fa-plus me-2"></i>Add Student</button> */}
-                                <button type="button" className="btn btn-danger btn-sm" onClick={() => setIsSelectionMode(true)}><i className="fa fa-check-square me-2"></i>Select for Email</button>
-                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleRefreshAll} disabled={loading || loadingHistory}>
-                                    {(loading || loadingHistory) ? <span className="spinner-border spinner-border-sm"></span> : <i className="fa fa-refresh"></i>}
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button type="button" className="btn btn-secondary btn-sm" onClick={handleCancelSelection}><i className="fa fa-times me-2"></i>Cancel</button>
-                                <button type="button" className="btn btn-danger btn-sm" onClick={handleScheduleRequirements} disabled={selectedStudentsForEmail.length === 0}><i className="fa fa-calendar me-2"></i>Set Schedule ({selectedStudentsForEmail.length})</button>
-                            </>
-                        )}
+                    {!isSelectionMode && !isBulkSectionMode ? (
+                        <>
+                            <button type="button" className="btn btn-danger btn-sm" onClick={() => setIsSelectionMode(true)}>
+                                <i className="fa fa-check-square me-2"></i>Select for Email
+                            </button>
+                            <button type="button" className="btn btn-primary btn-sm" onClick={() => setIsBulkSectionMode(true)}>
+                                <i className="fa fa-users me-2"></i>Bulk Assign Section
+                            </button>
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleRefreshAll} disabled={loading || loadingHistory}>
+                                {(loading || loadingHistory) ? <span className="spinner-border spinner-border-sm"></span> : <i className="fa fa-refresh"></i>}
+                            </button>
+                        </>
+                    ) : isSelectionMode ? (
+                        <>
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={handleCancelSelection}>
+                                <i className="fa fa-times me-2"></i>Cancel
+                            </button>
+                            <button type="button" className="btn btn-danger btn-sm" onClick={handleScheduleRequirements} disabled={selectedStudentsForEmail.length === 0}>
+                                <i className="fa fa-calendar me-2"></i>Set Schedule ({selectedStudentsForEmail.length})
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={handleCancelBulkSectionSelection}>
+                                <i className="fa fa-times me-2"></i>Cancel
+                            </button>
+                            <button type="button" className="btn btn-primary btn-sm" onClick={handleOpenBulkSectionModal} disabled={selectedStudentsForSection.length === 0}>
+                                <i className="fa fa-building me-2"></i>Assign Section ({selectedStudentsForSection.length})
+                            </button>
+                        </>
+                    )}
                     </div>
                 </div>
 
@@ -718,11 +889,28 @@ const StudentManagement = () => {
                                             <table className="table table-hover mb-0">
                                                 <thead className="bg-light">
                                                     <tr>
-                                                        {isSelectionMode && (
+                                                        {(isSelectionMode || isBulkSectionMode) && (
                                                             <th className="text-capitalize fw-semibold text-center">
                                                                 <input type="checkbox" className="form-check-input"
-                                                                    checked={currentStudents.length > 0 && currentStudents.every(s => selectedStudentsForEmail.includes(s._id))}
-                                                                    onChange={handleSelectAllForEmail}
+
+                                                                    checked={(() => {
+                                                                        if (isSelectionMode) {
+                                                                            return currentStudents.length > 0 && currentStudents.every(s => selectedStudentsForEmail.includes(s._id));
+                                                                        }
+                                                                        const pendingStudents = currentStudents.filter(s => getDerivedStatus(s) === 'pending');
+                                                                        return pendingStudents.length > 0 && pendingStudents.every(s => selectedStudentsForSection.includes(s._id));
+                                                                    })()}
+
+
+                                                                    onChange={isSelectionMode ? handleSelectAllForEmail : () => {
+                                                                        const pendingStudents = currentStudents.filter(s => getDerivedStatus(s) === 'pending');
+                                                                        if (pendingStudents.every(s => selectedStudentsForSection.includes(s._id))) {
+                                                                            setSelectedStudentsForSection(prev => prev.filter(id => !pendingStudents.map(s => s._id).includes(id)));
+                                                                        } else {
+                                                                            setSelectedStudentsForSection(prev => [...new Set([...prev, ...pendingStudents.map(s => s._id)])]);
+                                                                        }
+                                                                    }}
+
                                                                     style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
                                                             </th>
                                                         )}
@@ -742,6 +930,19 @@ const StudentManagement = () => {
                                                                         style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
                                                                 </td>
                                                             )}
+
+                                                            {isBulkSectionMode && (
+                                                                <td className="align-middle text-center">
+                                                                    <input type="checkbox" className="form-check-input"
+                                                                        checked={getDerivedStatus(student) === 'pending' && selectedStudentsForSection.includes(student._id)}
+                                                                        disabled={getDerivedStatus(student) !== 'pending'}
+                                                                        onChange={() => handleSelectStudentForSection(student._id)}
+                                                                        title={getDerivedStatus(student) !== 'pending' ? 'Already enrolled' : ''}
+                                                                        style={{ width: '20px', height: '20px', cursor: getDerivedStatus(student) === 'pending' ? 'pointer' : 'not-allowed' }} />
+                                                                </td>
+                                                            )}
+
+
                                                             <td className="align-middle">{indexOfFirstItem + index + 1}</td>
                                                             <td className="align-middle">
                                                                 <span className="badge bg-info text-dark font-monospace">
@@ -943,6 +1144,92 @@ const StudentManagement = () => {
                     </div>
                 </div>
             </div>
+
+
+            {/* BULK ASSIGN SECTION MODAL */}
+            {showBulkSectionModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title text-capitalize">
+                                    <i className="fa fa-building me-2"></i>Bulk Assign Section
+                                </h5>
+                                <button type="button" className="btn-close" onClick={() => setShowBulkSectionModal(false)}></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="alert alert-info mb-3">
+                                    <i className="fa fa-info-circle me-2"></i>
+                                    Assigning <strong>{selectedStudentsForSection.length}</strong> student(s). All selected students must share the same Grade, Track, and Strand.
+                                </div>
+
+                                {(() => {
+                                    const info = getCommonAcademicInfo();
+                                    return info ? (
+                                        <div className="mb-3 d-flex gap-2 flex-wrap">
+                                            <span className="badge bg-secondary">Grade {info.gradeLevel}</span>
+                                            <span className="badge bg-secondary">{info.track}</span>
+                                            <span className="badge bg-secondary">{info.strand}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="alert alert-danger">
+                                            Selected students have mixed Grade/Track/Strand. Please select students from the same group.
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold text-capitalize">
+                                        Select Section <span className="text-danger">*</span>
+                                    </label>
+                                    {loadingSections ? (
+                                        <div className="text-center py-3">
+                                            <span className="spinner-border spinner-border-sm text-primary me-2"></span>
+                                            Loading sections...
+                                        </div>
+                                    ) : availableSections.length === 0 ? (
+                                        <div className="alert alert-warning mb-0">
+                                            <i className="fa fa-exclamation-triangle me-2"></i>
+                                            No available sections found for this Grade/Track/Strand.
+                                        </div>
+                                    ) : (
+                                        <select
+                                            className="form-select"
+                                            value={bulkSectionData.section}
+                                            onChange={(e) => setBulkSectionData({ section: e.target.value })}
+                                        >
+                                            <option value="">-- Select a section --</option>
+                                            {availableSections.map(sec => (
+                                                <option key={sec._id} value={sec.name} disabled={sec.isFull}>
+                                                    {sec.name} — {sec.currentStudents}/{sec.maxCapacity} students
+                                                    {sec.isFull ? ' (Full)' : ` (${sec.availableSlots} slots left)`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary"
+                                    onClick={() => setShowBulkSectionModal(false)}
+                                    disabled={isSubmittingBulkSection}>
+                                    Cancel
+                                </button>
+                                <button type="button" className="btn btn-primary"
+                                    onClick={handleSubmitBulkSection}
+                                    disabled={isSubmittingBulkSection || !bulkSectionData.section || loadingSections}>
+                                    {isSubmittingBulkSection
+                                        ? <><span className="spinner-border spinner-border-sm me-2"></span>Assigning...</>
+                                        : <><i className="fa fa-check me-2"></i>Assign Section</>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
 
             {/* SCHEDULE REQUIREMENTS MODAL */}
             {showScheduleModal && (

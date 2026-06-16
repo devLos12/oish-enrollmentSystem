@@ -9,7 +9,8 @@ updateScheduleDays
 } from "../controller/subject.js";
 import { Add_Applicants, ApplicantApproval, deleteApplicant, GetAllEnrollments, rejectApplicant, revertToPending } from "../controller/enrollment.js";
 import { deleteStudent, getStudents, getAssignSections, updateStudent, setStudentsPending, createStudent, 
-markAsGraduated } from "../controller/student.js";
+markAsGraduated, 
+bulkAssignSection} from "../controller/student.js";
 import { addStudentToSection, createSection, deleteSection, getSectionById, getSections, 
     removeStudentFromSection, searchStudentForSection, updateEnrollmentStatus, updateSection,
     bulkAddSections 
@@ -84,7 +85,7 @@ SharedRouter.post('/createStudent', verifyAuth, createStudent);
 SharedRouter.patch('/updateStudent/:id', verifyAuth,  updateStudent);
 SharedRouter.delete('/deleteStudent/:id', verifyAuth, deleteStudent);
 SharedRouter.patch('/markAsGraduated/:id', verifyAuth, markAsGraduated);
-
+SharedRouter.post('/bulkAssignSection', verifyAuth, bulkAssignSection);
 
 SharedRouter.get('/sections', getSections);
 SharedRouter.post('/addSection', verifyAuth, createSection);

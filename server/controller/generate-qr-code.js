@@ -50,6 +50,8 @@ export const getQRCodes = async (req, res) => {
     try {
         const qrCodes = await QrCodeModel.find();
 
+        console.log(qrCodes);
+
         res.status(200).json({
             success: true,
             data: qrCodes

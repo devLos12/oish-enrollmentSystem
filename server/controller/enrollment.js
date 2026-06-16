@@ -647,7 +647,7 @@ export const EnrollmentRegistration = async (req, res) => {
       }
       
 
-      // Validation checks
+      // Validation checks dito ang email validations
       if (learnerInfo.email) {
         const existingEmailEnrollment = await Enrollment.findOne({
           "learnerInfo.email": learnerInfo.email,
@@ -661,6 +661,10 @@ export const EnrollmentRegistration = async (req, res) => {
           return res.status(409).json({ message: "Email already exists." });
         }
       }
+
+
+
+
 
 
       if (learnerInfo.lrn) {

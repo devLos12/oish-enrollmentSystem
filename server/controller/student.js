@@ -10,7 +10,174 @@ import { createLogs } from "./logs.js";
 
 
 
+export const bulkAssignSection = async (req, res) => {
+    try {
+        const { studentIds, section, gradeLevel, track, strand } = req.body;
 
+        if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+            return res.status(400).json({ message: "No students selected." });
+        }
+        if (!section || !gradeLevel || !track || !strand) {
+            return res.status(400).json({ message: "Section, gradeLevel, track, and strand are required." });
+        }
+
+        const activeSchoolYear = await SchoolYear.findOne({ isActive: true });
+        if (!activeSchoolYear) {
+            return res.status(400).json({ message: "No active school year set." });
+        }
+        const currentSemester = activeSchoolYear.semester;
+
+        // ✅ Find the target section — scoped to active SY + sem
+        const findSection = await Section.findOne({
+            name: section,
+            gradeLevel: parseInt(gradeLevel),
+            track,
+            strand,
+            semester: currentSemester,
+            schoolYear: activeSchoolYear._id
+        });
+
+        if (!findSection) {
+            return res.status(404).json({ message: "Section not found for the current semester." });
+        }
+
+        // ✅ Capacity check
+        const alreadyInSection = findSection.students.length;
+        const availableSlots = findSection.maxCapacity - alreadyInSection;
+        if (studentIds.length > availableSlots) {
+            return res.status(400).json({
+                message: `Not enough slots. Available: ${availableSlots}, Requested: ${studentIds.length}`
+            });
+        }
+
+        // ✅ Fetch subjects for this section
+        const matchedSubjects = await Subject.find({
+            gradeLevel: parseInt(gradeLevel),
+            strand,
+            track,
+            semester: currentSemester,
+            schoolYear: activeSchoolYear._id
+        });
+
+        const results = { success: [], failed: [] };
+
+        for (const studentId of studentIds) {
+            try {
+                const student = await Student.findById(studentId);
+                if (!student) { results.failed.push({ id: studentId, reason: "Not found" }); continue; }
+                if (student.studentType === 'repeater') { results.failed.push({ id: studentId, reason: "Repeater — use individual edit" }); continue; }
+
+                // ✅ Pull from old section + subjects
+                await Section.updateOne({ students: studentId }, { $pull: { students: studentId } });
+                await Subject.updateMany({ students: studentId }, { $pull: { students: studentId } });
+
+                // ✅ Push to new section
+                if (!findSection.students.includes(studentId)) {
+                    findSection.students.push(studentId);
+                }
+
+                // ✅ Build subjects array
+                const newSubjects = matchedSubjects.map(subj => {
+                    const sectionSchedule = subj.sections?.find(s => s.sectionName === section);
+                    return {
+                        subjectId: subj._id,
+                        subjectName: subj.subjectName,
+                        subjectTeacher: subj.teacher,
+                        semester: subj.semester,
+                        scheduleDay: sectionSchedule?.scheduleDay || "",
+                        scheduleStartTime: sectionSchedule?.scheduleStartTime || "",
+                        scheduleEndTime: sectionSchedule?.scheduleEndTime || "",
+                        room: sectionSchedule?.room || ""
+                    };
+                });
+
+                // ✅ Add student to each subject
+                for (const subj of matchedSubjects) {
+                    await Subject.findByIdAndUpdate(subj._id, { $addToSet: { students: studentId } });
+                }
+
+                // ✅ Build registrationHistory entry
+                const historyEntry = {
+                    lrn: student.lrn,
+                    studentNumber: student.studentNumber,
+                    firstName: student.firstName,
+                    lastName: student.lastName,
+                    track,
+                    semester: currentSemester,
+                    schoolYear: activeSchoolYear.schoolYear,
+                    gradeLevel: parseInt(gradeLevel),
+                    section,
+                    strand,
+                    status: 'enrolled',
+                    subjects: newSubjects.map(s => ({
+                        subjectId: s.subjectId,
+                        subjectName: s.subjectName,
+                        subjectTeacher: s.subjectTeacher,
+                        semester: s.semester,
+                        scheduleDay: s.scheduleDay,
+                        scheduleStartTime: s.scheduleStartTime,
+                        scheduleEndTime: s.scheduleEndTime,
+                        room: s.room
+                    })),
+                    dateCreated: new Date()
+                };
+
+                const historyIndex = student.registrationHistory.findIndex(h =>
+                    h.schoolYear === activeSchoolYear.schoolYear &&
+                    h.semester === currentSemester
+                );
+
+                if (historyIndex !== -1) {
+                    student.registrationHistory[historyIndex] = {
+                        ...student.registrationHistory[historyIndex].toObject(),
+                        ...historyEntry
+                    };
+                } else {
+                    student.registrationHistory.push(historyEntry);
+                }
+
+                // ✅ Update student fields
+                student.semester = currentSemester;
+                student.gradeLevel = parseInt(gradeLevel);
+                student.section = section;
+                student.status = 'enrolled';
+                student.studentType = 'regular';
+                student.repeatedSubjects = [];
+                student.hasEnrollmentRequest = false;
+                student.repeatedSection = '';
+                student.subjects = newSubjects;
+
+                await student.save();
+                results.success.push(studentId);
+
+            } catch (err) {
+                results.failed.push({ id: studentId, reason: err.message });
+            }
+        }
+
+        // ✅ Save section once after all students pushed
+        await findSection.save();
+
+        const { id: accountId, role } = req.account;
+        await createLogs(
+            accountId, role,
+            "BULK ASSIGN SECTION",
+            `Bulk assigned ${results.success.length} student(s) to section "${section}" (${strand}, Grade ${gradeLevel})`,
+            "Success"
+        );
+
+        return res.status(200).json({
+            message: `Successfully assigned ${results.success.length} student(s) to section "${section}".`,
+            successCount: results.success.length,
+            failedCount: results.failed.length,
+            failed: results.failed
+        });
+
+    } catch (error) {
+        console.error("Bulk assign section error:", error);
+        return res.status(500).json({ message: error.message });
+    }
+};
 
 
 
