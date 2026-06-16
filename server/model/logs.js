@@ -23,24 +23,24 @@ const LogsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    Date: {
+        type: String,
+        default: function() {
+            return new Date().toLocaleDateString('en-CA', {  // ✅ en-US → en-CA
+                timeZone: 'Asia/Manila'                       // ✅ dagdag para consistent sa PH time
+            });
+            // output: "2026-06-16" (YYYY-MM-DD)
+        }
+    },
     time: {
         type: String,
         default: function(){
             return new Date().toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',
-                hour12: true
+                hour12: true,
+                timeZone: 'Asia/Manila'   // ✅ dagdag din dito para PH time
             })
-        }
-    },
-    Date: {
-        type: String,
-        default: function() {
-            return new Date().toLocaleDateString('en-US', {
-                month: '2-digit',
-                day: '2-digit',
-                year: 'numeric'
-            }).replace(/\//g, '-');
         }
     },
     status: {

@@ -25,8 +25,9 @@ const Logs = () => {
   const actionOptions = [...new Set(logs.map((log) => log.action).filter(Boolean))];
 
   const getTodayDate = () => {
-    const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      return new Date().toLocaleDateString('en-CA', { 
+          timeZone: 'Asia/Manila' 
+      }); // ✅ direkta na, same format
   };
 
   useEffect(() => {
@@ -57,9 +58,9 @@ const Logs = () => {
 
 
   const parseLogDate = (dateString) => {
-    if (!dateString) return null;
-    const [month, day, year] = dateString.split('-');
-    return new Date(year, month - 1, day);
+      if (!dateString) return null;
+      const [year, month, day] = dateString.split('-');  // ✅ YYYY-MM-DD na
+      return new Date(year, month - 1, day);
   };
 
 
@@ -85,14 +86,7 @@ const Logs = () => {
     
     .filter((log) => {
         if (!filterDate) return true;
-        const logDate = parseLogDate(log.Date);
-        if (!logDate) return false;
-
-        // ✅ Manual split para local time, hindi UTC
-        const [fyear, fmonth, fday] = filterDate.split('-');
-        const selectedDate = new Date(fyear, fmonth - 1, fday);
-
-        return logDate.toDateString() === selectedDate.toDateString();
+        return log.Date === filterDate;  // ✅ same format na ng input type="date"
     });
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -343,7 +337,14 @@ const Logs = () => {
             <div className="col-12">
               <div className="alert alert-info py-2 mb-0 small">
                 <i className="fa fa-calendar me-2"></i>
-                Showing logs for: <strong>{new Date(filterDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                Showing logs for: 
+                <strong>{(() => {
+                      const [y, m, d] = filterDate.split('-');
+                      return new Date(y, m - 1, d).toLocaleDateString('en-US', { 
+                          year: 'numeric', month: 'long', day: 'numeric' 
+                      });
+                  })()}
+                </strong>
               </div>
             </div>
           </div>
