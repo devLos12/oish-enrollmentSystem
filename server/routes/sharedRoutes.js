@@ -16,7 +16,7 @@ import { addStudentToSection, createSection, deleteSection, getSectionById, getS
     bulkAddSections 
 
 } from "../controller/sectionManagement.js";
-import { getEnrollmentStats, getEnrollmentStatsByGrade, getStudentsByCategory } from "../controller/dashboard.js";
+import { getDashboardSchoolYears, getEnrollmentStats, getEnrollmentStatsByGrade, getStudentsByCategory } from "../controller/dashboard.js";
 import { getEnrollmentStatsByStrand, getEnrollmentStatsByTrack } from "../controller/dashboard.js";
 import { uploadFiles, addAnnouncement, getAnnouncements, updateAnnouncement, deleteAnnouncement } from "../controller/announcement.js";
 import {verifyAuth} from "../auth/authMiddleware.js";
@@ -129,7 +129,7 @@ SharedRouter.get('/get-school-years', verifyAuth, getSchoolYears);
 SharedRouter.get('/getAllSchoolYears', getAllSchoolYears);  // ✅ Moved from homeRouter
 SharedRouter.patch('/update-school-year/:id', verifyAuth, activateSchoolYear);
 SharedRouter.patch('/toggleEnrollmentStatus', toggleEnrollmentStatus);  // ✅ New endpoint to toggle enrollment
-
+SharedRouter.get('/dashboard-school-years', verifyAuth, getDashboardSchoolYears);
 
 
 

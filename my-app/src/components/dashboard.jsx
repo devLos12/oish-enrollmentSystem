@@ -29,29 +29,30 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [loadingStrand, setLoadingStrand] = useState(true);
 
-    const [dateRange, setDateRange] = useState({
-        startDate: '',
-        endDate: ''
-    });
-    const [isFiltering, setIsFiltering] = useState(false);
-    const [dateError, setDateError] = useState('');
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYearId, setSelectedSchoolYearId] = useState('');
 
 
+
+        
     useLayoutEffect(() => {
         setTextHeader(location?.state?.title);
     }, [location?.state?.title]);
 
+    
+        
     useEffect(() => {
-        fetchStats();
-        fetchStrandStats();
+        fetchSchoolYears(); // ← siya na mag-trigger ng fetchStats + fetchStrandStats
     }, []);
 
-    const fetchStats = async (startDate = '', endDate = '') => {
+
+
+
+    const fetchStats = async (schoolYearId = '') => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
-            if (startDate) params.append('startDate', startDate);
-            if (endDate) params.append('endDate', endDate);
+            if (schoolYearId) params.append('schoolYearId', schoolYearId);
             const response = await fetch(
                 `${import.meta.env.VITE_API_URL}/api/dashboardStats?${params.toString()}`, 
                 { method: "GET", credentials: "include" }
@@ -68,12 +69,11 @@ const Dashboard = () => {
         }
     };
 
-    const fetchStrandStats = async (startDate = '', endDate = '') => {
+    const fetchStrandStats = async (schoolYearId = '') => {
         try {
             setLoadingStrand(true);
             const params = new URLSearchParams();
-            if (startDate) params.append('startDate', startDate);
-            if (endDate) params.append('endDate', endDate);
+            if (schoolYearId) params.append('schoolYearId', schoolYearId);
             const response = await fetch(
                 `${import.meta.env.VITE_API_URL}/api/enrollmentStatsByStrand?${params.toString()}`, 
                 { method: "GET", credentials: "include" }
@@ -88,57 +88,38 @@ const Dashboard = () => {
         }
     };
 
-    const getTodayDate = () => {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
-
-    const validateDate = (dateString) => {
-        if (!dateString) return true;
-        return new Date(dateString) <= new Date(getTodayDate());
-    };
-
-    const handleStartDateBlur = () => {
-        if (dateRange.startDate && !validateDate(dateRange.startDate)) {
-            setDateError('Future dates are not allowed. Please select a past or current date.');
-            setDateRange({...dateRange, startDate: ''});
-        } else {
-            setDateError('');
+    const fetchSchoolYears = async () => {
+        try {
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL}/api/dashboard-school-years`, // ← bago
+                { method: "GET", credentials: "include" }
+            );
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+            if (result.success) {
+                setSchoolYears(result.data);
+                const current = result.data.find(sy => sy.isCurrent);
+                if (current) {
+                    // ← i-trigger fetchStats at fetchStrandStats kasama yung current ID
+                    fetchStats(current._id);
+                    fetchStrandStats(current._id);
+                    setSelectedSchoolYearId(current._id);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching school years:", error.message);
         }
     };
 
-    const handleEndDateBlur = () => {
-        if (dateRange.endDate && !validateDate(dateRange.endDate)) {
-            setDateError('Future dates are not allowed. Please select a past or current date.');
-            setDateRange({...dateRange, endDate: ''});
-            return;
-        }
-        if (dateRange.startDate && dateRange.endDate && new Date(dateRange.endDate) < new Date(dateRange.startDate)) {
-            setDateError('End date cannot be before start date.');
-            setDateRange({...dateRange, endDate: ''});
-            return;
-        }
-        setDateError('');
+    const handleSchoolYearChange = (e) => {
+        const newId = e.target.value;
+        setSelectedSchoolYearId(newId);
+        fetchStats(newId);
+        fetchStrandStats(newId);
     };
 
-    const handleApplyFilter = () => {
-        if (!dateRange.startDate || !dateRange.endDate) { alert("Please select both start and end dates"); return; }
-        if (!validateDate(dateRange.startDate) || !validateDate(dateRange.endDate)) { alert("Future dates are not allowed."); return; }
-        if (new Date(dateRange.startDate) > new Date(dateRange.endDate)) { alert("Start date cannot be after end date"); return; }
-        setIsFiltering(true);
-        fetchStats(dateRange.startDate, dateRange.endDate);
-        fetchStrandStats(dateRange.startDate, dateRange.endDate);
-    };
-
-    const handleClearFilter = () => {
-        setDateRange({ startDate: '', endDate: '' });
-        setIsFiltering(false);
-        setDateError('');
-        fetchStats();
-        fetchStrandStats();
+    const getSelectedSchoolYearLabel = () => {
+        return schoolYears.find(sy => sy._id === selectedSchoolYearId)?.label || 'Current School Year';
     };
 
 
@@ -314,16 +295,11 @@ const Dashboard = () => {
     };
 
 
-
-
-
-
     const handleDownloadCategoryPDF = async (item, color, categoryKey) => {
         try {
             const params = new URLSearchParams({ category: categoryKey });
-            if (isFiltering) {
-                params.append('startDate', dateRange.startDate);
-                params.append('endDate', dateRange.endDate);
+            if (selectedSchoolYearId) {
+                params.append('schoolYearId', selectedSchoolYearId);
             }
 
             const response = await fetch(
@@ -373,10 +349,7 @@ const Dashboard = () => {
                         <h2 style="text-align: center; color: #dc3545; margin: 10px 0 4px;">Student Statistics</h2>
                         <h3 style="text-align: center; color: #6c757d; margin: 0 0 16px;">${item.name} Report</h3>
                         <p style="margin: 4px 0;"><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        ${isFiltering
-                            ? `<p style="margin: 4px 0 16px;"><strong>Date Range:</strong> ${new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} - ${new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
-                            : '<p style="margin: 4px 0 16px;"><strong>Showing:</strong> All Time Data</p>'
-                        }
+                        <p style="margin: 4px 0 16px;"><strong>School Year:</strong> ${getSelectedSchoolYearLabel()}</p>
                         <p style="text-align: center; color: #6c757d; margin-top: 40px;">No students found.</p>
                     </div>
                 `
@@ -403,10 +376,7 @@ const Dashboard = () => {
                             <h2 style="text-align: center; color: #dc3545; margin: 10px 0 4px;">Student Statistics</h2>
                             <h3 style="text-align: center; color: #6c757d; margin: 0 0 16px;">${item.name} Report</h3>
                             <p style="margin: 4px 0;"><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            ${isFiltering
-                                ? `<p style="margin: 4px 0 16px;"><strong>Date Range:</strong> ${new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} - ${new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
-                                : '<p style="margin: 4px 0 16px;"><strong>Showing:</strong> All Time Data</p>'
-                            }
+                            <p style="margin: 4px 0 16px;"><strong>School Year:</strong> ${getSelectedSchoolYearLabel()}</p>
                             <div style="display: flex; align-items: center; gap: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;">
                                 <div style="width: 16px; height: 16px; border-radius: 4px; background: ${color}; flex-shrink: 0;"></div>
                                 <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1a1a1a;">
@@ -422,7 +392,6 @@ const Dashboard = () => {
                     `;
                 }).join('');
             
-            // i-add to bago ang html2pdf().set({
             const element = document.createElement('div');
             element.innerHTML = `<div style="font-family: Arial, sans-serif;">${pages}</div>`;
 
@@ -442,20 +411,8 @@ const Dashboard = () => {
     };
 
 
-
-
-
-
-
-
-
-
-
-
     const handleDownloadPDF = () => {
-        const filterText = isFiltering 
-            ? `<p style="margin: 4px 0;"><strong>Date Range:</strong> ${new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} - ${new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
-            : '<p style="margin: 4px 0;"><strong>Showing:</strong> All Time Data</p>';
+        const filterText = `<p style="margin: 4px 0;"><strong>School Year:</strong> ${getSelectedSchoolYearLabel()}</p>`;
 
         const schoolHeader = `
             <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 2px solid #7f1d1d;">
@@ -556,57 +513,30 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Date Range Filter */}
+            {/* School Year Filter */}
             <div className="row mb-4">
                 <div className="col-12">
                     <div className="card shadow-sm border-0">
                         <div className="card-body">
                             <div className="row g-3 align-items-end">
-                                <div className="col-12 col-md-3">
+                                <div className="col-12 col-md-4">
                                     <label className="form-label fw-semibold mb-2">
-                                        <i className="fa fa-calendar me-2 text-danger"></i>Start Date
+                                        <i className="fa fa-calendar-alt me-2 text-danger"></i>School Year
                                     </label>
-                                    <input type="date"
-                                        className={`form-control ${dateError && !dateRange.startDate ? 'is-invalid' : ''}`}
-                                        value={dateRange.startDate}
-                                        onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
-                                        onBlur={handleStartDateBlur} max={getTodayDate()} />
-                                </div>
-                                <div className="col-12 col-md-3">
-                                    <label className="form-label fw-semibold mb-2">
-                                        <i className="fa fa-calendar me-2 text-danger"></i>End Date
-                                    </label>
-                                    <input type="date"
-                                        className={`form-control ${dateError && !dateRange.endDate ? 'is-invalid' : ''}`}
-                                        value={dateRange.endDate}
-                                        onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
-                                        onBlur={handleEndDateBlur} max={getTodayDate()} min={dateRange.startDate || undefined} />
-                                </div>
-                                <div className="col-12 col-md-6">
-                                    <div className="d-flex gap-2">
-                                        <button type="button" className="btn btn-danger" onClick={handleApplyFilter}
-                                            disabled={!dateRange.startDate || !dateRange.endDate || loading || loadingStrand}>
-                                            <i className="fa fa-filter me-2"></i>Apply Filter
-                                        </button>
-                                        {isFiltering && (
-                                            <button type="button" className="btn btn-outline-secondary" onClick={handleClearFilter}>
-                                                <i className="fa fa-times me-2"></i>Clear Filter
-                                            </button>
-                                        )}
-                                    </div>
+                                    <select
+                                        className="form-select"
+                                        value={selectedSchoolYearId}
+                                        onChange={handleSchoolYearChange}
+                                        disabled={loading || loadingStrand}
+                                    >
+                                        {schoolYears.map((sy) => (
+                                            <option key={sy._id} value={sy._id}>
+                                                {sy.label}{sy.isCurrent ? ' (Current)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
-                            {dateError && (
-                                <div className="alert alert-danger mt-3 mb-0">
-                                    <i className="fa fa-exclamation-circle me-2"></i>{dateError}
-                                </div>
-                            )}
-                            {isFiltering && !dateError && (
-                                <div className="alert alert-warning mt-3 mb-0">
-                                    <i className="fa fa-info-circle me-2"></i>
-                                    Showing data from <strong>{new Date(dateRange.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong> to <strong>{new Date(dateRange.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>

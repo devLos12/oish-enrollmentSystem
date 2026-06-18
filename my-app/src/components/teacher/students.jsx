@@ -330,7 +330,7 @@ const Students = () => {
                                             <span className="badge bg-info text-white">{subjectInfo.subjectCode}</span>
                                         </div>
                                         <p className="text-muted mb-2">
-                                            {`${subjectInfo.gradeLevel} - ${subjectInfo.sectionName}`}
+                                            {`Grade ${subjectInfo.gradeLevel} - ${subjectInfo.sectionName}`}
                                         </p>
                                         <p className="text-muted mb-0">List of students enrolled in this subject</p>
                                     </div>
@@ -419,7 +419,7 @@ const Students = () => {
                                                         </td>
                                                         <td className="align-middle">{student.sex}</td>
                                                         <td className="align-middle">
-                                                            {student.gradeLevel} - {student.section}
+                                                            Grade {student.gradeLevel} - {student.section}
                                                         </td>
                                                     </tr>
                                                 ))}

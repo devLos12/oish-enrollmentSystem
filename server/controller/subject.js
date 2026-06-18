@@ -1078,7 +1078,7 @@ export const bulkAddSubjects = async (req, res) => {
             semester: activeSchoolYear.semester,
             track: subject.track.trim(),
             strand: subject.strand,
-            subjectType: subject.subjectType.toLowerCase().trim(),
+            subjectType: subject.subjectType.toUpperCase().trim(),
             teacherId: subject.teacherId,
             teacher: subject.teacherName.trim()
         }));
@@ -1237,7 +1237,7 @@ export const createSubject = async (req, res) => {
             strand: strand,
             track: track || "",
             semester: activeSchoolYear.semester,
-            subjectType: subjectType || 'core',
+            subjectType: (subjectType || 'CORE').toUpperCase().trim(),
             teacherId: teacherId,
             teacher: teacherName,
         });

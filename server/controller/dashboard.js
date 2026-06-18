@@ -1,23 +1,39 @@
 import Enrollment from "../model/enrollment.js";
 import Program from "../model/program.js";
+import SchoolYear from "../model/schoolYear.js";
+import mongoose from "mongoose"; 
 
 
+
+
+const resolveSchoolYearId = async (schoolYearId) => {
+  if (schoolYearId) return new mongoose.Types.ObjectId(schoolYearId);
+  const current = await SchoolYear.findOne({ isCurrent: true });
+  return current?._id?.toString() || null;
+};
+
+
+// GET /api/dashboard/school-years
+export const getDashboardSchoolYears = async (req, res) => {
+  try {
+    const schoolYears = await SchoolYear.find().sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: schoolYears });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 // GET /api/studentsByCategory
 export const getStudentsByCategory = async (req, res) => {
   try {
-    const { category, startDate, endDate } = req.query;
+    const { category, schoolYearId } = req.query;
 
-    let dateFilter = {};
-    if (startDate && endDate) {
-      dateFilter = {
-        createdAt: {
-          $gte: new Date(startDate),
-          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-        }
-      };
-    }
+    const resolvedSchoolYearId = await resolveSchoolYearId(schoolYearId);
+    const schoolYearFilter = resolvedSchoolYearId ? { schoolYearId: resolvedSchoolYearId } : {};
+
+
+
 
     const categoryFilterMap = {
       regular:    { studentType: "regular" },
@@ -34,7 +50,7 @@ export const getStudentsByCategory = async (req, res) => {
     }
 
     const students = await Enrollment.find(
-      { ...dateFilter, ...categoryFilter },
+      { ...schoolYearFilter, ...categoryFilter },
       {
         "learnerInfo.lastName": 1,
         "learnerInfo.firstName": 1,
@@ -65,18 +81,13 @@ export const getStudentsByCategory = async (req, res) => {
 // Dashboard stats: total, studentType, gender, PWD, Indigenous, 4Ps (with date range support)
 export const getEnrollmentStats = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { schoolYearId } = req.query;
 
-    // Build date filter
-    let dateFilter = {};
-    if (startDate && endDate) {
-      dateFilter = {
-        createdAt: {
-          $gte: new Date(startDate),
-          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-        }
-      };
-    }
+    const resolvedSchoolYearId = await resolveSchoolYearId(schoolYearId);
+    const dateFilter = resolvedSchoolYearId ? { schoolYearId: resolvedSchoolYearId } : {};
+
+
+
 
     const totalStudents = await Enrollment.countDocuments(dateFilter);
 
@@ -152,17 +163,15 @@ export const getEnrollmentStats = async (req, res) => {
 // Stats by gradeLevelToEnroll (with date range support)
 export const getEnrollmentStatsByGrade = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { schoolYearId } = req.query;
 
-    let matchStage = {};
-    if (startDate && endDate) {
-      matchStage = {
-        createdAt: {
-          $gte: new Date(startDate),
-          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-        }
-      };
-    }
+    const resolvedSchoolYearId = await resolveSchoolYearId(schoolYearId);
+    let matchStage = resolvedSchoolYearId ? { schoolYearId: resolvedSchoolYearId } : {};
+
+
+
+
+
 
     const pipeline = [];
     
@@ -201,19 +210,21 @@ export const getEnrollmentStatsByGrade = async (req, res) => {
 // Stats by seniorHigh.track (with date range support)
 export const getEnrollmentStatsByTrack = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    
+    
+    const { schoolYearId } = req.query;
     const allTracks = ["Academic", "TVL"];
 
+    const resolvedSchoolYearId = await resolveSchoolYearId(schoolYearId);
     let matchStage = {
       "seniorHigh.track": { $exists: true, $ne: null }
     };
 
-    if (startDate && endDate) {
-      matchStage.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-      };
+    if (resolvedSchoolYearId) {
+      matchStage.schoolYearId = resolvedSchoolYearId;
     }
+
+
 
     const stats = await Enrollment.aggregate([
       { $match: matchStage },
@@ -240,14 +251,14 @@ export const getEnrollmentStatsByTrack = async (req, res) => {
 
 
 
-
-
-
-
 // Stats by seniorHigh.strand (dynamically fetched from Program collection, with date range support)
 export const getEnrollmentStatsByStrand = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+
+    const { schoolYearId } = req.query;
+    const resolvedSchoolYearId = await resolveSchoolYearId(schoolYearId);
+
+
 
     // ✅ Fetch active strands dynamically from Program collection
     const activePrograms = await Program.find({ isActive: true });
@@ -269,12 +280,13 @@ export const getEnrollmentStatsByStrand = async (req, res) => {
       "seniorHigh.strand": { $exists: true, $ne: null }
     };
 
-    if (startDate && endDate) {
-      matchStage.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-      };
+
+
+    if (resolvedSchoolYearId) {
+      matchStage.schoolYearId = resolvedSchoolYearId;
     }
+
+
 
     const stats = await Enrollment.aggregate([
       { $match: matchStage },

@@ -269,7 +269,7 @@ const ClassRoom = () => {
                             <div className="card border-0 shadow-sm h-100 hover-card">
                                 <div className="p-2 bg-danger rounded-top">
                                     <p className="m-0 text-capitalize text-white fw-semibold text-center">
-                                        {`${data.gradeLevel}  ${data.sectionName}`}
+                                        {`Grade ${data.gradeLevel}  ${data.sectionName}`}
                                     </p>
                                 </div>
 

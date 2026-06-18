@@ -405,7 +405,7 @@ export const createSchoolYear = async (req, res) => {
 
 
 
-// GET /api/school-year/get-school-years
+//GET /api/school-year/get-school-years
 export const getSchoolYears = async (req, res) => {
   try {
     const schoolYears = await SchoolYear.find();
@@ -415,7 +415,7 @@ export const getSchoolYears = async (req, res) => {
   }
 };
 
-
+ 
 
 
 

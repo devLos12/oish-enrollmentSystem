@@ -14,7 +14,10 @@ const SubjectSchema = new mongoose.Schema({
   section: { type: String, required: false },
   track: { type: String, required: false },           
   semester: { type: Number, default: 1 },            // optional
-  subjectType: { type: String, enum: ["core", "specialized", "applied"], default: "core" },
+  subjectType: { 
+    type: String, 
+    required: false
+  },
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff'},
   teacher: { type: String, required: false},
   // ✅ ADD SCHEDULE FIELDS

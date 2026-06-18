@@ -212,7 +212,7 @@ const StudentTable = () => {
                                         </div>
                                        <div className="mt-3">
                                             <p className="m-0 fw-semibold">
-                                                {subjectData?.gradeLevel} - {subjectData?.section}
+                                                {`Grade ${subjectData?.gradeLevel}`} - {subjectData?.section}
                                             </p>
 
                                             <p className="m-0 text-muted  ">
@@ -318,7 +318,7 @@ const StudentTable = () => {
                                                                 {student.sex}
                                                             </td>
                                                             <td className="align-middle">
-                                                                {student.gradeLevel} - {student.section}
+                                                                {`Grade ${student.gradeLevel}`} - {student.section}
                                                             </td>
                                                         </tr>
                                                     ))}

@@ -116,7 +116,7 @@ const ClassRoom = () => {
                                 <div className="d-flex gap-2 align-items-center">
                                     <p className="m-0 text-capitalize small fw-semibold">Grade & section:</p>
                                     <p className="m-0 text-capitalize small fw-bold">
-                                        {`${data.gradeLevel} ${data.section || 'N/A'}`}
+                                        {`Grade ${data.gradeLevel} ${data.section || 'N/A'}`}
                                     </p>
                                 </div>
                                 

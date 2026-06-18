@@ -165,7 +165,7 @@ const Dashboard = () => {
                             </div>
 
                             <div className="d-flex gap-2 align-items-center small">
-                                <span className="fw-bold">{profile?.gradeLevel}</span>
+                                <span className="fw-bold">{`Grade ${profile?.gradeLevel}`}</span>
                                 <span className="fw-bold">{profile?.section || "No Section"}</span>
                                 {/* ✅ derivedStatus na, hindi profile.status */}
                                 <span className={getStatusBadge(derivedStatus)}>

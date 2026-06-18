@@ -27,9 +27,23 @@ const RegistrationViewForm = () => {
 
     // ✅ Subjects — currentSemSubjects (derived from backend),
     //    fallback sa currentSemHistory.subjects para safety
-    const displaySubjects = student?.currentSemSubjects?.length > 0
+    
+    
+    
+    const timeToMinutes = (time) => {
+        if (!time) return 9999;
+        const [hours, minutes] = time.split(':').map(Number);
+        return hours * 60 + minutes;
+    };
+
+    const displaySubjects = (student?.currentSemSubjects?.length > 0
         ? student.currentSemSubjects
-        : student?.currentSemHistory?.subjects || [];
+        : student?.currentSemHistory?.subjects || []
+    ).slice().sort((a, b) => timeToMinutes(a?.scheduleStartTime) - timeToMinutes(b?.scheduleStartTime));
+
+
+
+
 
     useEffect(() => {
         if (!location?.state) {
@@ -219,7 +233,7 @@ const RegistrationViewForm = () => {
                                 <div className="col-12 col-md-6 d-flex flex-column gap-2 mt-2 mt-md-0">
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Grade Level: </p>
-                                        <p className="m-0 fw-bold">{displayGradeLevel}</p>
+                                        <p className="m-0 fw-bold">Grade {displayGradeLevel}</p>
                                     </div>
                                     <div className="d-flex gap-2">
                                         <p className="m-0">Section: </p>

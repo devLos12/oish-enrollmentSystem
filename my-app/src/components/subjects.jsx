@@ -1,8 +1,105 @@
-import React, { useState, useEffect, useContext, useLayoutEffect } from "react";
+import React, { useState, useEffect, useContext, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { globalContext } from "../context/global";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as XLSX from 'xlsx';
 import usePrograms from "./hooks/useProgram";
+
+
+
+const TeacherSearchSelect = ({ value, onSelect, teachersList, loading, placeholder = "Search Teacher" }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState(value || '');
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+    const wrapperRef = useRef(null);
+    const inputRef = useRef(null);
+    const listRef = useRef(null);
+
+    useEffect(() => {
+        setSearchTerm(value || '');
+    }, [value]);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            const clickedWrapper = wrapperRef.current?.contains(e.target);
+            const clickedList = listRef.current?.contains(e.target);
+            if (!clickedWrapper && !clickedList) {
+                setIsOpen(false);
+                setSearchTerm(value || '');
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [value]);
+
+    const openDropdown = () => {
+        if (inputRef.current) {
+            const rect = inputRef.current.getBoundingClientRect();
+            setCoords({ top: rect.bottom, left: rect.left, width: rect.width });
+        }
+        setIsOpen(true);
+    };
+
+    const filteredTeachers = teachersList.filter(t =>
+        t.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleSelect = (teacher) => {
+        onSelect(teacher);
+        setSearchTerm(teacher.fullName);
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="position-relative" ref={wrapperRef}>
+            <input
+                ref={inputRef}
+                type="text"
+                className="form-control"
+                placeholder={loading ? 'Loading teachers...' : placeholder}
+                value={searchTerm}
+                disabled={loading}
+                onFocus={openDropdown}
+                onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    openDropdown();
+                }}
+            />
+            {isOpen && !loading && createPortal(
+                <ul
+                    ref={listRef}
+                    className="list-group shadow-sm"
+                    style={{
+                        position: 'fixed',
+                        top: coords.top,
+                        left: coords.left,
+                        width: coords.width,
+                        zIndex: 99999,
+                        maxHeight: '220px',
+                        overflowY: 'auto',
+                    }}
+                >
+                    {filteredTeachers.length === 0 ? (
+                        <li className="list-group-item text-muted small">No teacher found</li>
+                    ) : (
+                        filteredTeachers.map(t => (
+                            <li
+                                key={t._id}
+                                className={`list-group-item list-group-item-action small ${t.fullName === value ? 'active' : ''}`}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => handleSelect(t)}
+                            >
+                                {t.fullName}
+                            </li>
+                        ))
+                    )}
+                </ul>,
+                document.body
+            )}
+        </div>
+    );
+};
+
 
 
 const SubjectManagement = () => {
@@ -20,7 +117,7 @@ const SubjectManagement = () => {
 
     const gradeOptions = [11, 12];
     const semesterOptions = [1, 2];
-    const subjectTypeOptions = ['core', 'specialized', 'applied'];
+    const subjectTypeOptions = ['CORE', 'SPECIALIZED', 'APPLIED'];
     const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
    
     
@@ -153,7 +250,7 @@ const SubjectManagement = () => {
             subjectCode: '',
             gradeLevel: 11,
             strand: '',
-            subjectType: 'core',
+            subjectType: 'CORE',
             track: '',
             teacher: '',
         });
@@ -162,7 +259,7 @@ const SubjectManagement = () => {
     };
 
     const handleEditSubject = (subject) => {
-        setSelectedSubject({ ...subject });
+        setSelectedSubject({ ...subject, subjectType: subject.subjectType?.toUpperCase() || 'CORE' });
         setModalType('edit');
         setShowModal(true);
     };
@@ -264,8 +361,8 @@ const SubjectManagement = () => {
     };
 
     const getSubjectTypeBadge = (type) => {
-        const badges = { core: 'bg-primary', specialized: 'bg-success', applied: 'bg-info' };
-        return badges[type] || 'bg-secondary';
+        const badges = { CORE: 'bg-primary', SPECIALIZED: 'bg-success', APPLIED: 'bg-info' };
+        return badges[type?.toUpperCase()] || 'bg-secondary';
     };
 
     const handlePageChange = (pageNumber) => {
@@ -350,16 +447,16 @@ const SubjectManagement = () => {
         
         let exampleCounter = 1;
         const subjectExamples = {
-            'core': ['Mathematics', 'English', 'Science', 'Social Studies', 'Filipino'],
-            'specialized': ['Technical Drawing', 'ICT', 'Accounting', 'Business Management'],
-            'applied': ['Work Experience', 'Research', 'Capstone', 'Internship']
+            'CORE': ['Mathematics', 'English', 'Science', 'Social Studies', 'Filipino'],
+            'SPECIALIZED': ['Technical Drawing', 'ICT', 'Accounting', 'Business Management'],
+            'APPLIED': ['Work Experience', 'Research', 'Capstone', 'Internship']
         };
         
         for (const track of trackOptions) {
             const strandsForTrack = getStrandOptions(track);
             for (const strand of strandsForTrack) {
                 const typeIndex = exampleCounter % 3;
-                const types = ['core', 'specialized', 'applied'];
+                const types = ['CORE', 'SPECIALIZED', 'APPLIED'];
                 const subjectType = types[typeIndex];
                 const gradeLevel = exampleCounter % 2 === 0 ? '12' : '11';
                 const subjectExampleList = subjectExamples[subjectType];
@@ -388,7 +485,7 @@ const SubjectManagement = () => {
             infoData.push([]);
         }
         infoData.push(['Subject Types:']);
-        for (const type of ['core', 'specialized', 'applied']) infoData.push([`  • ${type}`]);
+        for (const type of ['CORE', 'SPECIALIZED', 'APPLIED']) infoData.push([`  • ${type}`]);
         
         const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
         wsInfo['!cols'] = [{ wch: 30 }];
@@ -468,9 +565,9 @@ const SubjectManagement = () => {
                     }
                 }
 
-                const subjectType = normalizedRow.subjectType?.toString().toLowerCase().trim();
+                const subjectType = normalizedRow.subjectType?.toString().toUpperCase().trim();
                 if (subjectType && !subjectTypeOptions.includes(subjectType))
-                    rowErrors.push('Invalid Subject Type (must be core, specialized, or applied)');
+                    rowErrors.push('Invalid Subject Type (must be CORE, SPECIALIZED, or APPLIED)');
 
                 const teacher = normalizedRow.teacherName
                     ? teachersList.find(t =>
@@ -494,7 +591,7 @@ const SubjectManagement = () => {
                     gradeLevel: parseInt(normalizedRow.gradeLevel) || 11,
                     track: normalizedRow.track?.toString().trim() || '',
                     strand: normalizedRow.strand?.toString().trim() || '', // ✅ Keep original case (not uppercase)
-                    subjectType: subjectType || 'core',
+                    subjectType: subjectType || 'CORE',
                     teacherName: normalizedRow.teacherName?.toString().trim() || '',
                     teacherId: teacher?._id || '',
                     hasError: rowErrors.length > 0,
@@ -598,7 +695,7 @@ const SubjectManagement = () => {
         gradeLevel: 11,
         track: '',
         strand: '',
-        subjectType: 'core',
+        subjectType: 'CORE',
         teacherName: '',
         teacherId: '',
         hasError: true,
@@ -899,9 +996,9 @@ const SubjectManagement = () => {
                                                 <label className="form-label fw-bold">Subject Type:</label>
                                                 <span className="text-danger small ms-2">*</span>
 
-                                                <select className="form-select" value={selectedSubject?.subjectType || 'core'}
+                                               <select className="form-select" value={selectedSubject?.subjectType || 'CORE'}
                                                     onChange={(e) => setSelectedSubject({ ...selectedSubject, subjectType: e.target.value })}>
-                                                    {subjectTypeOptions.map(t => <option key={t} value={t} className="text-capitalize">{t}</option>)}
+                                                    {subjectTypeOptions.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-6">
@@ -909,15 +1006,12 @@ const SubjectManagement = () => {
                                                 <span className="text-danger small ms-2">*</span>
                                                 
 
-                                                <select className="form-select" value={selectedSubject?.teacher || ""}
-                                                    onChange={(e) => {
-                                                        const selectedTeacher = teachersList.find(t => t.fullName === e.target.value);
-                                                        setSelectedSubject({ ...selectedSubject, teacher: e.target.value, teacherId: selectedTeacher?._id || "" });
-                                                    }}
-                                                    disabled={loadingTeachers}>
-                                                    <option value="">{loadingTeachers ? 'Loading teachers...' : 'Select Teacher'}</option>
-                                                    {teachersList.map(t => <option key={t._id} value={t.fullName}>{t.fullName}</option>)}
-                                                </select>
+                                                <TeacherSearchSelect
+                                                    value={selectedSubject?.teacher || ''}
+                                                    teachersList={teachersList}
+                                                    loading={loadingTeachers}
+                                                    onSelect={(teacher) => setSelectedSubject({ ...selectedSubject, teacher: teacher.fullName, teacherId: teacher._id })}
+                                                />
                                             </div>
                                         </div>
 
@@ -1016,7 +1110,7 @@ const SubjectManagement = () => {
                                                 <span className="text-muted small">
                                                     Teacher names must exactly match existing teacher records. Grade Level must be 11 or 12.
                                                     Track must be <strong>Academic</strong> or <strong>TVL</strong>.
-                                                    Subject Type must be <strong>core</strong>, <strong>specialized</strong>, or <strong>applied</strong>.
+                                                    Subject Type must be <strong>CORE</strong>, <strong>SPECIALIZED</strong>, or <strong>APPLIED</strong>.
                                                 </span>
                                             </div>
                                         </div>
@@ -1051,7 +1145,7 @@ const SubjectManagement = () => {
                                                         <td><strong>Grade Level</strong><br /><span className="text-muted">11 or 12</span></td>
                                                         <td><strong>Track</strong><br /><span className="text-muted">Academic or TVL</span></td>
                                                         <td><strong>Strand</strong><br /><span className="text-muted">e.g. STEM, ABM</span></td>
-                                                        <td><strong>Subject Type</strong><br /><span className="text-muted">core / specialized / applied</span></td>
+                                                        <td><strong>Subject Type</strong><br /><span className="text-muted">CORE / SPECIALIZED / APPLIED</span></td>
                                                         <td><strong>Teacher Name</strong><br /><span className="text-muted">Must match exactly</span></td>
                                                     </tr>
                                                 </tbody>
@@ -1242,15 +1336,12 @@ const SubjectManagement = () => {
                                                                 {/* Teacher */}
                                                                 <td>
                                                                     {isEditing ? (
-                                                                        <select className="form-select form-select-sm"
+                                                                        <TeacherSearchSelect
                                                                             value={row.teacherName}
-                                                                            onChange={(e) => {
-                                                                                const teacher = teachersList.find(t => t.fullName === e.target.value);
-                                                                                updateExcelRow(idx, { teacherName: e.target.value, teacherId: teacher?._id || '' });
-                                                                            }}>
-                                                                            <option value="">Select</option>
-                                                                            {teachersList.map(t => <option key={t._id} value={t.fullName}>{t.fullName}</option>)}
-                                                                        </select>
+                                                                            teachersList={teachersList}
+                                                                            loading={false}
+                                                                            onSelect={(teacher) => updateExcelRow(idx, { teacherName: teacher.fullName, teacherId: teacher._id })}
+                                                                        />
                                                                     ) : row.teacherName || <span className="text-danger fst-italic">missing</span>}
                                                                 </td>
 
@@ -1333,11 +1424,12 @@ const SubjectManagement = () => {
                                                                 </select>
                                                             </td>
                                                             <td>
-                                                                <select className="form-select form-select-sm" value={row.teacherName}
-                                                                    onChange={(e) => updateManualRow(row.id, { teacherName: e.target.value })}>
-                                                                    <option value="">Select</option>
-                                                                    {teachersList.map(t => <option key={t._id} value={t.fullName}>{t.fullName}</option>)}
-                                                                </select>
+                                                                <TeacherSearchSelect
+                                                                    value={row.teacherName}
+                                                                    teachersList={teachersList}
+                                                                    loading={false}
+                                                                    onSelect={(teacher) => updateManualRow(row.id, { teacherName: teacher.fullName })}
+                                                                />
                                                             </td>
                                                             <td className="text-center">
                                                                 <button className="btn btn-sm btn-outline-danger"

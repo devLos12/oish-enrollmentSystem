@@ -3343,7 +3343,9 @@ export const Step2 = () => {
 
                                         {/* ✅ Guardian Checkboxes - Same As Mother/Father */}
                                         <div className="mb-4 p-3 border rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                                            <label className="fw-semibold small mb-3 d-block">Guardian Same as:</label>
+                                            <label className="fw-semibold small mb-3 d-block">
+                                                Guardian Same as: <span className="text-muted fw-normal ms-2">(Check only if applicable)</span>
+                                            </label>
                                             <div className="d-flex gap-3">
                                                 <div className="form-check">
                                                     <input 

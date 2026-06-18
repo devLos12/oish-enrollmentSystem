@@ -616,7 +616,7 @@ const StaffManagement = () => {
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    placeholder="e.g. Jr., Sr., II, III, MD, PhD, CPA, Esq."
+                                                    placeholder="e.g. Jr., Sr., II, III"
                                                     className="form-control shadow-sm"
                                                     value={selectedStaff?.suffix || ''}
                                                     onChange={(e) => setSelectedStaff({...selectedStaff, suffix: e.target.value})}
@@ -790,7 +790,7 @@ const StaffManagement = () => {
                                                 </div>
                                                 <input 
                                                     type="text" 
-                                                    placeholder="e.g. Jr., Sr., II, III, MD, PhD, CPA, Esq."
+                                                    placeholder="e.g. Jr., Sr., II, III"
                                                     value={newStaff.suffix}
                                                     onChange={(e) => setNewStaff({...newStaff, suffix: e.target.value})}
                                                     className="form-control shadow-sm"
